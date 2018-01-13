@@ -31,7 +31,7 @@ def listmultichange(x,i,a=lambda b:b):
             if not isinstance(i,list):
                 i = [i]
             print(a,i)
-            
+             
             print(type(a))
             
             for n,j in enumerate(i):
@@ -160,7 +160,7 @@ class system(object):
     # DataSave: Save Boolean
     def __init__(self,L=15,d=2,T=3, model=['ising',1],
                  orderparam=[[0,1],lambda x: sum(x)],
-                 update = [True,None,None,'metropolis',False],
+                 update = [True,None,None,'metropolis',True],
                  datasave = True):
         # Time runtime of system class
         t0 = time.clock() 
