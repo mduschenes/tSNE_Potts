@@ -169,7 +169,7 @@ class system(object):
         t0 = time.clock() 
         
         # Initialize model class, lattice class
-        self.m = Model(model)
+        self.m = Model(model,orderparam)
         t1 = time.clock()
         self.l = Lattice(L,d)
         t2 = time.clock()
@@ -183,18 +183,8 @@ class system(object):
         self.d = d
         self.Nspins = self.l.Nspins
         self.q = self.m.q
-        self.model = self.m.model
 
-        
-        # Define order hamiltonian parameters 
-        # and function to calculate order parameter
-        self.orderp = orderparam[0]
-        if self.model.__name__ == 'ising':
-            self.h = self.orderp[0]
-            self.J = self.orderp[1]
-            self.Tcrit()
-        self.order = self.m.order
-        
+     
         
         # Initialize numpy array with random spin at each site
         self.sites = self.m.state_sites(self.Nspins)
@@ -218,7 +208,6 @@ class system(object):
 
         # Initilize list of observations values
         # obsvmax = len(self.Tlist)*(self.Neqb + self.Nmeas)
-        # datamax = len(self.observables_functions)*self.L
         self.observables = []
         
         self.observables_functions = [self.temperature,self.energy,
@@ -258,6 +247,8 @@ class system(object):
         # Perform Monte Carlo Updates for nclusters of sites and Plot Data
         # bw_cmap = colors.ListedColormap(['black', 'white'])
         
+        self.bond_prob = self.m.model_params[self.m.model.__name__][4]
+        
         for i in range(self.Neqb):
             self.MCUpdatealg(ncluster)
             
@@ -281,7 +272,7 @@ class system(object):
                 plt.xticks([])
                 plt.yticks([])
                 plt.title('%d^%d %s model, m = %f ---- q = %d, T = %.3f' 
-                          %(self.L,self.d,caps(self.model.__name__),
+                          %(self.L,self.d,caps(self.m.model.__name__),
                             signed_val(self.order())/self.Nspins,
                             #self.correlations[-1][0],
                             self.q,
@@ -339,8 +330,22 @@ class system(object):
             
         
     def wolff(self,ncluster=1):
+        # Create Cluster Array and Choose Random Site
+        self.cluster_sites = np.array([])
+        isites = [np.random.randint(self.Nspins) for j in range(ncluster)]
+        self.cluster_sites = np.append(self.cluster_sites,isites)
+        
+        
         return
-                
+    def cluster(self,i):
+        self.cluster_sites = np.append(self.cluster_sites,isites)
+        for j in self.l.neighbour_sites[0][i]:
+            if j in self.cluster_sites:
+                pass
+            if self.sites[j] != self.sites[i]:
+                if self.bond_prob < np.random.rand():
+                    
+
     def neighbours(self,r=1):
         # Return spins of r-distance neighbours for all spin sites
         return np.array([index(self.sites,self.l.neighbour_sites[r-1][i]) 
@@ -363,11 +368,14 @@ class system(object):
         # Calculate spin energy function S(sites):
 #        e_sites = self.m.site_energy(np.copy(self.sites))
         
-        return (-self.orderp[0]*np.sum(self.sites)) + (-(1/2)*np.sum([
-                self.orderp[i]*self.m.site_energy(self.sites[:,np.newaxis],
+        return (-self.m.orderp[0]*np.sum(self.sites)) + (-(1/2)*np.sum([
+                self.m.orderp[i]*self.m.site_energy(self.sites[:,np.newaxis],
                 self.sites[self.l.neighbour_sites[i-1]]) 
-                for i in range(1,len(self.orderp))]))
-
+                for i in range(1,len(self.m.orderp))]))
+    
+    def order(self):
+        return self.m.order(self.sites)
+    
     def correlation(self, r = None):
         # Calculate correlation function c(r) = <s_i*s_j> for all spin pairs
         # where the ri-ir neighbour distance is r = {1:L/2}
@@ -393,19 +401,20 @@ class system(object):
             self.Tc = 2.0/np.log(1.0 + np.sqrt(2))*self.J
         else: # self.d == 3:
             self.Tc = None
+        
     
     def datasave(self,*args):
         
         if self.save == True:
             # Open and write observables to a file in a specific directory
-            dataDir = '%s_Data' %(caps(self.model.__name__))
+            dataDir = '%s_Data' %(caps(self.m.model.__name__))
             if not self.observables :
                 if not(os.path.isdir(dataDir)):
                         os.mkdir(dataDir)
                 return
             
             dataName         = '%s/%s_d%d_L%d__%s.txt' %(
-                                    dataDir,caps(self.model.__name__),
+                                    dataDir,caps(self.m.model.__name__),
                                     self.d,self.L,
                                     datetime.datetime.now().strftime(
                                                             '%Y-%m-%d-%H-%M'))
@@ -439,7 +448,7 @@ class Model(object):
     # Define a Model class for spin model with: 
     # Lattice Model Type: Model Name and Max Spin Value q
     
-    def __init__(self,model=['ising',1]):
+    def __init__(self,model=['ising',1],orderparam = [0,1]):
             # Define Models dictionary for various spin models, with
             # [ Individual spin calculation function, 
             #   Spin Upper, Lower, and Excluded Values]
@@ -447,32 +456,41 @@ class Model(object):
             # Define spin value model and q (~max spin value) parameters
             # (i.e: Ising(s)-> s, Potts(s) -> exp(i2pi s/q)  )
             self.q = model[1]
+            self.orderparam = orderparam
             
-            self.model_params = {'ising': [self.ising,self.ising_energy,
-                                           -self.q,self.q,0],
-                                 'potts': [self.potts,self.potts_energy,
-                                           1,self.q,None]}
-            self.model = self.model_params[model[0].lower()][0]
+            self.model_params = {'ising': {'value': self.ising,
+                                           'energy': self.ising_energy,
+                                           'order': self.ising_order,
+                                           'bond_prob': 
+                                               lambda T: 
+                                            1- np.exp(-2/T*self.orderparam[1]),
+                                           'value_range': [-self.q,self.q,0]},
+                                 'potts': {'value': self.potts,
+                                           'energy': self.potts_energy,
+                                           'order': self.potts_order,
+                                           'bond_prob': 
+                                               lambda T: 
+                                            1- np.exp(-1/T*self.orderparam[1]),
+                                           'value_range': [1,self.q,None]}} 
+                                     
+
+            self.model = self.model_params[model[0].lower()]['model']
                         
             
             # List of range of possible spin values, depending on model
             self.state_range = [x for x in 
-                               range(self.model_params[self.model.__name__][2],
-                                   self.model_params[self.model.__name__][3]+1) 
+                               range(self.model_params[self.model.__name__]['value_range'][0],
+                                   self.model_params[self.model.__name__]['value_range'][1]+1) 
                                if x not in 
                                np.atleast_1d(
-                                  [self.model_params[self.model.__name__][4]])]
-                                       
-            # Define Spin Energy Function
-            self.site_energy = self.model_params[self.model.__name__][1] # lambda x: x #
-                               
+                                  [self.model_params[self.model.__name__]['value_range'][2])]]
             
-    def ising(self,s):
-        return s
-    
-    
-    def potts(self,s):
-        return (np.exp(2j*np.divide(np.multiply(np.pi,s),self.q)))
+            # Define Model Energy and Order Parameter
+            self.site_energy = self.model_params[self.model.__name__][1]
+            self.order = self.model_params[self.model.__name__][2]
+
+                    
+        
 
     def state_gen(self,n0=None):
         # Model dependent generator of spin values
@@ -492,20 +510,27 @@ class Model(object):
             return self.model(np.array([np.random.choice(
                                               [x for x in self.state_range 
                                                if x != np.atleast_1d(n0)[i]]) 
-                                               for i in range(N)]))
+                                               for i in range(N)]))                               
+    # Site Values                                 
+    def ising(self,s):
+        return s
+    
+    def potts(self,s):
+        return (np.exp(2j*np.divide(np.multiply(np.pi,s),self.q)))
+
+    # Model Energy
     def ising_energy(self,*args):
         return args[0]*args[1]
     
     def potts_energy(self,*args):
         return delta_f(args[0],args[1])
 
-
-    def order(self):
-        # Calculate order parameter with orderf function
-        return self.orderf(self.sites)
+    # Model Order Parameter
+    def ising_order(self,s):
+        return np.sum(s)
     
-lambda x: sum(x)
-
+    def potts_order(self,s):
+        return np.abs(np.sum(s))
 
 
 
