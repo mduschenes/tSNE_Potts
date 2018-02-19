@@ -136,6 +136,9 @@ def listindex(x,i):
 def caps(word):
     return word[0].upper()+word[1:].lower()
 
+def delta_f(x,y,f=np.multiply):
+    return f(x,y)[x==y]
+
 class Observables(object):
     def __init__(self,f):
         self.f = f
@@ -157,11 +160,11 @@ class system(object):
     #                                 Number of Measurement Updtes Nmeas
     #                                 Monte Carlo Update Algorithm
     #                                 Monte Carlo Plot Results
-    # DataSave: Save Boolean
-    def __init__(self,L=15,d=2,T=3, model=['ising',1],
-                 orderparam=[[0,1],lambda x: sum(x)],
+    #                                 DataSave Boolean
+    def __init__(self,L=10,d=2,T=3, model=['potts',2],
+                 orderparam=[[0,1]],
                  update = [True,None,None,'metropolis',True],
-                 datasave = True):
+                 datasave = False):
         # Time runtime of system class
         t0 = time.clock() 
         
@@ -170,6 +173,7 @@ class system(object):
         t1 = time.clock()
         self.l = Lattice(L,d)
         t2 = time.clock()
+        
         # Define system parameters of:
         # Temperature, Size, Dimension, Number of Spins, 
         # Maximum spin q value and specific spin model
@@ -189,7 +193,7 @@ class system(object):
             self.h = self.orderp[0]
             self.J = self.orderp[1]
             self.Tcrit()
-        self.orderf = orderparam[1]
+        self.order = self.m.order
         
         
         # Initialize numpy array with random spin at each site
@@ -207,10 +211,10 @@ class system(object):
         self.Neqb = int((1/3)*L**(d)) if update[1]==None else update[1]
         self.Nmeas = int(5*L**(d)) if update[2]==None else update[2]
 
-        self.updatealgs = {'metropolis': self.metropolis, 'wolff': self.wolff}
+        self.update_algs = {'metropolis': self.metropolis, 'wolff': self.wolff}
         self.algorithm = update[3]
         self.animate = update[4]
-        self.MCUpdatealg = self.updatealgs[self.algorithm]
+        self.MCUpdatealg = self.update_algs[self.algorithm]
 
         # Initilize list of observations values
         # obsvmax = len(self.Tlist)*(self.Neqb + self.Nmeas)
@@ -240,9 +244,11 @@ class system(object):
                 print(time.clock()-t3)
                 t3 = time.clock()
                 print('')
-            self.datasave(lambda : 'system class runtime: '+str(time.clock()-t0))
+            self.datasave(lambda : 'system class runtime: '+
+                          str(time.clock()-t0))
             # print(self.correlation())
             # Calculate total runtime for system class
+            print('final order: '+str(self.order()/self.Nspins))
             print('system class runtime: '+str(time.clock()-t0)) 
             print('model class runtime: '+str(t1-t0)) 
             print('lattice class runtime: '+str(t2-t1)) 
@@ -263,19 +269,20 @@ class system(object):
             #print(time.clock()-tmc)
             if i % self.Nmeas/self.L == 0 or True:
                 self.observables.append(signed_val(flatten([
-                                      f() for f in self.observables_functions])))
+                                    f() for f in self.observables_functions])))
             #print(self.observables)
                         
             if self.animate and i == self.Nmeas-1:
-                sitestemp = (np.copy(self.sites))
+                sitestemp = signed_val(np.copy(self.sites))
                 plt.clf()
-                plt.imshow(sitestemp.reshape((self.L,self.L)),interpolation='nearest')
+                plt.imshow(sitestemp.reshape((self.L,self.L)),
+                           interpolation='nearest')
                 #plt.colorbar()
                 plt.xticks([])
                 plt.yticks([])
                 plt.title('%d^%d %s model, m = %f ---- q = %d, T = %.3f' 
                           %(self.L,self.d,caps(self.model.__name__),
-                            (self.order())/self.Nspins,
+                            signed_val(self.order())/self.Nspins,
                             #self.correlations[-1][0],
                             self.q,
                             self.T))
@@ -342,10 +349,7 @@ class system(object):
     def temperature(self):
         return self.T
     
-    def order(self):
-        # Calculate order parameter with orderf function
-        return self.orderf(self.sites)
-    
+
     def energy(self):
         # Calculate energy of spins as sum of spins 
         # + sum of r-distance neighbour interactions
@@ -356,9 +360,12 @@ class system(object):
 #                            for n in self.neighbours(r)[j]) 
 #                            for j in range(self.Nspins)) 
 #                            for r in range(1,len(self.orderp))))
+        # Calculate spin energy function S(sites):
+#        e_sites = self.m.site_energy(np.copy(self.sites))
+        
         return (-self.orderp[0]*np.sum(self.sites)) + (-(1/2)*np.sum([
-                self.orderp[i]*self.sites[:,np.newaxis]
-                *self.sites[self.l.neighbour_sites[i-1]] 
+                self.orderp[i]*self.m.site_energy(self.sites[:,np.newaxis],
+                self.sites[self.l.neighbour_sites[i-1]]) 
                 for i in range(1,len(self.orderp))]))
 
     def correlation(self, r = None):
@@ -414,7 +421,7 @@ class system(object):
             
             # Convert lists of lists of observables to array
             self.observables = np.array([flatten(x) for x in self.observables])
-            for data in signed_val(self.observables):
+            for data in self.observables:
                 dataline = ''
                 for d in data:
                         dataline += '%0.8f \t' %(float(d))
@@ -441,24 +448,28 @@ class Model(object):
             # (i.e: Ising(s)-> s, Potts(s) -> exp(i2pi s/q)  )
             self.q = model[1]
             
-            self.model_params = {'ising': [self.ising,-self.q,self.q,0],
-                                 'potts': [self.potts,1,self.q,None]}
+            self.model_params = {'ising': [self.ising,self.ising_energy,
+                                           -self.q,self.q,0],
+                                 'potts': [self.potts,self.potts_energy,
+                                           1,self.q,None]}
             self.model = self.model_params[model[0].lower()][0]
                         
             
             # List of range of possible spin values, depending on model
             self.state_range = [x for x in 
-                               range(self.model_params[self.model.__name__][1],
-                                   self.model_params[self.model.__name__][2]+1) 
+                               range(self.model_params[self.model.__name__][2],
+                                   self.model_params[self.model.__name__][3]+1) 
                                if x not in 
                                np.atleast_1d(
-                                  [self.model_params[self.model.__name__][3]])]
+                                  [self.model_params[self.model.__name__][4]])]
                                        
-          
+            # Define Spin Energy Function
+            self.site_energy = self.model_params[self.model.__name__][1] # lambda x: x #
                                
             
     def ising(self,s):
-        return s 
+        return s
+    
     
     def potts(self,s):
         return (np.exp(2j*np.divide(np.multiply(np.pi,s),self.q)))
@@ -482,6 +493,22 @@ class Model(object):
                                               [x for x in self.state_range 
                                                if x != np.atleast_1d(n0)[i]]) 
                                                for i in range(N)]))
+    def ising_energy(self,*args):
+        return args[0]*args[1]
+    
+    def potts_energy(self,*args):
+        return delta_f(args[0],args[1])
+
+
+    def order(self):
+        # Calculate order parameter with orderf function
+        return self.orderf(self.sites)
+    
+lambda x: sum(x)
+
+
+
+
 #            
 #            sr = np.copy(self.state_range) 
 #            n = empty
