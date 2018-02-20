@@ -160,10 +160,11 @@ class system(object):
     #                                 Number of Measurement Updtes Nmeas
     #                                 Monte Carlo Update Algorithm
     #                                 Monte Carlo Plot Results
-    #                                 DataSave Boolean
-    def __init__(self,L=10,d=2,T=3, model=['potts',2],
-                 orderparam=[[0,1]],
-                 update = [True,None,None,'metropolis',True],
+    # DataSave Boolean
+    
+    def __init__(self,L=6,d=2,T=3, model=['ising',1],
+                 orderparam=[0,1],
+                 update = [True,None,None,'wolff',True],
                  datasave = False):
         # Time runtime of system class
         t0 = time.clock() 
@@ -188,7 +189,6 @@ class system(object):
         
         # Initialize numpy array with random spin at each site
         self.sites = self.m.state_sites(self.Nspins)
-
 #        # Initialize nearest neighbour sites array
 #        self.nn = self.l.neighbour_sites[0]
         
@@ -247,7 +247,9 @@ class system(object):
         # Perform Monte Carlo Updates for nclusters of sites and Plot Data
         # bw_cmap = colors.ListedColormap(['black', 'white'])
         
-        self.bond_prob = self.m.model_params[self.m.model.__name__][4]
+        self.bond_prob = self.m.model_params[
+                self.m.model.__name__]['bond_prob'](self.T)
+        
         
         for i in range(self.Neqb):
             self.MCUpdatealg(ncluster)
@@ -264,20 +266,13 @@ class system(object):
             #print(self.observables)
                         
             if self.animate and i == self.Nmeas-1:
-                sitestemp = signed_val(np.copy(self.sites))
-                plt.clf()
-                plt.imshow(sitestemp.reshape((self.L,self.L)),
-                           interpolation='nearest')
-                #plt.colorbar()
-                plt.xticks([])
-                plt.yticks([])
-                plt.title('%d^%d %s model, m = %f ---- q = %d, T = %.3f' 
-                          %(self.L,self.d,caps(self.m.model.__name__),
+                plot_title = '%d^%d %s model, m = %f ---- q = %d, T = %.3f'%(self.L,self.d,caps(self.m.model.__name__),
                             signed_val(self.order())/self.Nspins,
                             #self.correlations[-1][0],
                             self.q,
-                            self.T))
-                plt.pause(0.5)
+                            self.T)
+                data = signed_val(np.copy(self.sites)).reshape(self.L,self.L)
+                self.plot_sites(data,plot_title)
         # Plot Corellation length
         #plt.plot()
             
@@ -292,9 +287,7 @@ class system(object):
 #            print(self.sites0)
 #            print('')
             isites = [np.random.randint(self.Nspins) for j in range(ncluster)]
-            #print(self.sites[isites])
             self.sites[isites] = self.m.state_sites(ncluster,sites0[isites])
-            #print(self.sites[isites])
 #            print(self.sites)
 #            print(sites0)
 #            print('')
@@ -330,21 +323,74 @@ class system(object):
             
         
     def wolff(self,ncluster=1):
-        # Create Cluster Array and Choose Random Site
-        self.cluster_sites = np.array([])
-        isites = [np.random.randint(self.Nspins) for j in range(ncluster)]
-        self.cluster_sites = np.append(self.cluster_sites,isites)
+        
+#        # Create list of unique clusters and their values
+#        self.clusters = []
+#        self.cluster_values = []
+#        
+#        
+#        # Create Cluster Array and Choose Random Site
+#        isite = np.random.randint(self.Nspins)
+#        self.cluster_value = self.m.state_sites(ncluster,self.sites[isite])
+#        self.cluster_sites.append(isite)
+#        
+#        # Create list of indices in Cluster and original value of Random Site
+#        self.cluster_sites = []
+#        self.cluster_value0 = self.sites[isite]
+#    
+#        # Perform cluster algorithm to find indices in cluster
+#        self.cluster(isite)
+#        
+#        # Flip spins in cluster to new value
+#        self.sites[self.cluster_sites] = self.cluster_value        
+#        
+#        self.clusters.append(self.cluster_sites)
         
         
-        return
-    def cluster(self,i):
-        self.cluster_sites = np.append(self.cluster_sites,isites)
-        for j in self.l.neighbour_sites[0][i]:
-            if j in self.cluster_sites:
-                pass
-            if self.sites[j] != self.sites[i]:
-                if self.bond_prob < np.random.rand():
+        for i in range(self.Nspins):    
+            # Create Cluster Array and Choose Random Site
+            isite = np.random.randint(self.Nspins)
+            self.cluster_value = self.m.state_sites(ncluster,self.sites[isite])
+            
+            self.cluster_sites = []
+            for c in self.clusters:
+                if isite in c:
+                    self.sites[c] = self.cluster_value
+                    if self.cluster_values in self.cluster_values:
+                        
+                    break
+                else:
+                    self.cluster_sites.append(isite)
+            
+                    self.cluster_sites = []
                     
+            self.cluster_value0 = self.sites[isite]
+        
+            
+            self.cluster(isite)
+            
+            self.sites[self.cluster_sites] = self.cluster_value        
+            
+            self.clusters.append
+            
+        return
+
+
+    def cluster_edge(self):
+        self.edges = []
+        for c in self.clusters:
+             self.edges.append([i for i in c if len([j for j in c if j in self.l.neighbour_sites[0][i]]) < len(self.l.neighbour_sites[0][i])])
+                
+
+    def cluster(self,i):
+        self.cluster_sites.append(i)
+        if len(self.cluster_sites) < int(0.8*self.Nspins):
+            J = (j for j in self.l.neighbour_sites[0][i] if (j not in self.cluster_sites) and (self.sites[j] == self.cluster_value0) )
+            for j in J:
+                if self.bond_prob > np.random.rand():
+                        self.cluster(j)
+        return
+
 
     def neighbours(self,r=1):
         # Return spins of r-distance neighbours for all spin sites
@@ -368,10 +414,10 @@ class system(object):
         # Calculate spin energy function S(sites):
 #        e_sites = self.m.site_energy(np.copy(self.sites))
         
-        return (-self.m.orderp[0]*np.sum(self.sites)) + (-(1/2)*np.sum([
-                self.m.orderp[i]*self.m.site_energy(self.sites[:,np.newaxis],
+        return (-self.m.orderparam[0]*np.sum(self.sites)) + (-(1/2)*np.sum([
+                self.m.orderparam[i]*self.m.site_energy(self.sites[:,np.newaxis],
                 self.sites[self.l.neighbour_sites[i-1]]) 
-                for i in range(1,len(self.m.orderp))]))
+                for i in range(1,len(self.m.orderparam))]))
     
     def order(self):
         return self.m.order(self.sites)
@@ -402,6 +448,16 @@ class system(object):
         else: # self.d == 3:
             self.Tc = None
         
+    
+    def plot_sites(self,data,plot_title):
+                plt.clf()
+                plt.imshow(data),interpolation='nearest')
+                #plt.colorbar()
+                plt.xticks([])
+                plt.yticks([])
+                plt.title()
+                plt.pause(0.5)
+    
     
     def datasave(self,*args):
         
@@ -474,7 +530,7 @@ class Model(object):
                                            'value_range': [1,self.q,None]}} 
                                      
 
-            self.model = self.model_params[model[0].lower()]['model']
+            self.model = self.model_params[model[0].lower()]['value']
                         
             
             # List of range of possible spin values, depending on model
@@ -483,11 +539,11 @@ class Model(object):
                                    self.model_params[self.model.__name__]['value_range'][1]+1) 
                                if x not in 
                                np.atleast_1d(
-                                  [self.model_params[self.model.__name__]['value_range'][2])]]
+                                  [self.model_params[self.model.__name__]['value_range'][2]])]
             
             # Define Model Energy and Order Parameter
-            self.site_energy = self.model_params[self.model.__name__][1]
-            self.order = self.model_params[self.model.__name__][2]
+            self.site_energy = self.model_params[self.model.__name__]['energy']
+            self.order = self.model_params[self.model.__name__]['order']
 
                     
         
@@ -576,8 +632,8 @@ class Lattice(object):
 
         # Prepare arrays for Lattice functions
 
-        # Calculate array of sites
-        self.state_sites = np.arange(self.Nspins)
+        # Define array of sites
+        self.sites = np.arange(self.Nspins)
         
         # L^i for i = 1:d array
         self.L_i = np.power(self.L,np.arange(self.d,dtype=self.dtype))
@@ -625,7 +681,7 @@ class Lattice(object):
         #                 ( previous method Time-intensive for large L)
         
         if site==None:
-            site = self.state_sites
+            site = self.sites
         
         sitepos = self.position(site)[:,np.newaxis]
         
