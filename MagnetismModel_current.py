@@ -451,7 +451,7 @@ class system(object):
     
     def plot_sites(self,data,plot_title):
                 plt.clf()
-                plt.imshow(data),interpolation='nearest')
+                plt.imshow(data,interpolation='nearest')
                 #plt.colorbar()
                 plt.xticks([])
                 plt.yticks([])
