@@ -45,21 +45,21 @@ class Model(object):
 
             self.model = self.model_params[model[0].lower()]['value']
                         
+            self.state_range = self.state_ranges()
             
-            # List of range of possible spin values, depending on model
-            self.state_range = [x for x in 
-                               range(self.model_params[self.model.__name__]['value_range'][0],
-                                   self.model_params[self.model.__name__]['value_range'][1]+1) 
-                               if x not in 
-                               np.atleast_1d(
-                                  [self.model_params[self.model.__name__]['value_range'][2]])]
             
             # Define Model Energy and Order Parameter
             self.site_energy = self.model_params[self.model.__name__]['energy']
             self.order = self.model_params[self.model.__name__]['order']
 
                     
-        
+    def state_ranges(self,xNone=None,xmin=float('inf'),xmax=-float('inf')):
+        if xNone == None:
+            xNone = np.atleast_1d([self.model_params[self.model.__name__]['value_range'][2]])
+        # List of range of possible spin values, depending on model
+        return [x for x in range(min([xmin,self.model_params[self.model.__name__]['value_range'][0]]),
+                                   max([self.model_params[self.model.__name__]['value_range'][1]+1,xmax])) 
+                               if x not in xNone]
 
     def state_gen(self,n0=None):
         # Model dependent generator of spin values
@@ -85,7 +85,7 @@ class Model(object):
         return s
     
     def potts(self,s):
-        return (np.exp(2j*np.divide(np.multiply(np.pi,s),self.q)))
+        return s #(np.exp(2j*np.divide(np.multiply(np.pi,s),self.q)))
 
     # Model Energy
     def ising_energy(self,*args):
