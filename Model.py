@@ -89,10 +89,17 @@ class Model(object):
 
     # Model Energy
     def ising_energy(self,*args):
-        return args[0]*args[1]
+        try:
+            return args[0]*args[1]
+        except IndexError:
+            return args[0]
     
     def potts_energy(self,*args):
-        return delta_f(args[0],args[1])
+        try:
+            return delta_f(args[0],args[1])
+        except IndexError:
+            return delta_f(args[0],np.zeros(np.shape(args[0])))
+        
 
     # Model Order Parameter
     def ising_order(self,s):

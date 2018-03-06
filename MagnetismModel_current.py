@@ -5,14 +5,20 @@ Created on Tue Dec 26 22:56:21 2017
 @author: Matt
 """
 import numpy as np
-import sympy as sp
-import scipy as sc
-from inspect import signature
+#import sympy as sp
+#import scipy as sc
+#from inspect import signature
+
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 import time
 import datetime
 import os
+
+from Lattice import Lattice
+from Model import Model
 
 def listmultichange(x,i,a=lambda b:b):
     # Return a list x after changing all jth elements by a function a[n](x[j])
@@ -204,6 +210,7 @@ class system(object):
         self.update_algs = {'metropolis': self.metropolis, 'wolff': self.wolff}
         self.algorithm = update[3]
         self.animate = update[4]
+        f, self.axis = plt.subplots(1, 2)
         self.MCUpdatealg = self.update_algs[self.algorithm]
 
         # Initilize list of observations values
@@ -226,6 +233,7 @@ class system(object):
         # Perform Monte Carlo Updates for various Temperatures
         if self.mcupdate:
             t3 = time.clock()
+            
             for t in self.Tlist:
                 self.T = t
                 self.MCUpdate()
@@ -250,7 +258,7 @@ class system(object):
         self.bond_prob = self.m.model_params[
                 self.m.model.__name__]['bond_prob'](self.T)
         
-        
+
         for i in range(self.Neqb):
             self.MCUpdatealg(ncluster)
             
@@ -266,15 +274,14 @@ class system(object):
             #print(self.observables)
                         
             if self.animate and i == self.Nmeas-1:
-                plot_title = '%d^%d %s model, m = %f ---- q = %d, T = %.3f'%(self.L,self.d,caps(self.m.model.__name__),
+                plot_title = '%d^%d %s model, m = %f \n q = %d, T = %.3f'%(self.L,self.d,caps(self.m.model.__name__),
                             signed_val(self.order())/self.Nspins,
                             #self.correlations[-1][0],
                             self.q,
                             self.T)
-                data = signed_val(np.copy(self.sites)).reshape(self.L,self.L)
-                self.plot_sites(data,plot_title)
-        # Plot Corellation length
-        #plt.plot()
+                # Plot Sites 
+                self.plot_sites(self.sites_clusters.reshape(self.L,self.L),self.m.state_ranges(xmax=self.m.q+2),'Cluster',self.axis[1])
+                self.plot_sites(self.sites.reshape(self.L,self.L),self.m.state_ranges(xmax=self.m.q+2),plot_title,self.axis[0])
             
     def metropolis(self,ncluster=1):
         # Randomly alter random spin sites and accept spin alterations
@@ -320,9 +327,40 @@ class system(object):
 #            print(self.sites0)
 #            print('')
             return
-            
-        
     def wolff(self,ncluster=1):
+    
+        # Create list of unique clusters and their values
+        self.clusters = []
+        self.cluster_values = []
+        
+        
+        # Create Cluster Array and Choose Random Site
+        for i in range(self.l.Nspins):
+            
+            isite = np.random.randint(self.l.Nspins)
+            self.cluster_sites = []
+            self.cluster_rejections = []
+            self.cluster_value = self.m.state_sites(ncluster,self.sites[isite])
+            self.cluster_value0 = self.sites[isite]
+        
+            # Perform cluster algorithm to find indices in cluster
+            self.cluster(isite)
+            
+            # Flip spins in cluster to new value
+            self.sites[self.cluster_sites] = self.cluster_value        
+            
+            self.clusters.append(self.cluster_sites)
+            
+            # Plot Created Cluster
+            self.sites_clusters = np.zeros(np.shape(self.sites))
+            self.sites_clusters[:] = np.nan
+#            for c in self.clusters:
+            self.sites_clusters[self.cluster_sites] = self.sites[self.cluster_sites]
+            
+            
+        return        
+        
+    def wolff1(self,ncluster=1):
         
 #        # Create list of unique clusters and their values
 #        self.clusters = []
@@ -358,7 +396,7 @@ class system(object):
                     self.sites[c] = self.cluster_value
                     if self.cluster_values in self.cluster_values:
                         
-                    break
+                        break
                 else:
                     self.cluster_sites.append(isite)
             
@@ -376,26 +414,28 @@ class system(object):
         return
 
 
-    def cluster_edge(self):
+    def cluster_edge(self,clusters):
         self.edges = []
-        for c in self.clusters:
+        for c in clusters:
              self.edges.append([i for i in c if len([j for j in c if j in self.l.neighbour_sites[0][i]]) < len(self.l.neighbour_sites[0][i])])
-                
-
+        return
+    
     def cluster(self,i):
         self.cluster_sites.append(i)
-        if len(self.cluster_sites) < int(0.8*self.Nspins):
-            J = (j for j in self.l.neighbour_sites[0][i] if (j not in self.cluster_sites) and (self.sites[j] == self.cluster_value0) )
+        if len(self.cluster_sites) < int(0.95*self.l.Nspins):
+            J = (j for j in self.l.neighbour_sites[0][i] if (j not in self.cluster_sites) and (self.sites[j] == self.cluster_value0) and (j not in self.cluster_rejections))
             for j in J:
                 if self.bond_prob > np.random.rand():
                         self.cluster(j)
+                else:
+                    self.cluster_rejections.append(j)
         return
 
 
-    def neighbours(self,r=1):
+    def neighbours(self,sites,neighbour_sites,r=1):
         # Return spins of r-distance neighbours for all spin sites
-        return np.array([index(self.sites,self.l.neighbour_sites[r-1][i]) 
-                                            for i in range(self.Nspins)])
+        return np.array([index(sites,neighbour_sites[r-1][i]) 
+                                            for i in range(len(sites))])
         
     def temperature(self):
         return self.T
@@ -414,7 +454,7 @@ class system(object):
         # Calculate spin energy function S(sites):
 #        e_sites = self.m.site_energy(np.copy(self.sites))
         
-        return (-self.m.orderparam[0]*np.sum(self.sites)) + (-(1/2)*np.sum([
+        return (-self.m.orderparam[0]*np.sum(self.m.site_energy(self.sites))) + (-(1/2)*np.sum([
                 self.m.orderparam[i]*self.m.site_energy(self.sites[:,np.newaxis],
                 self.sites[self.l.neighbour_sites[i-1]]) 
                 for i in range(1,len(self.m.orderparam))]))
@@ -449,15 +489,38 @@ class system(object):
             self.Tc = None
         
     
-    def plot_sites(self,data,plot_title):
-                plt.clf()
-                plt.imshow(data,interpolation='nearest')
-                #plt.colorbar()
-                plt.xticks([])
-                plt.yticks([])
-                plt.title()
-                plt.pause(0.5)
+    def plot_sites(self,data,sitevalues=None,plot_title='Spin Configurations',ax=None):
+                
+        # Create color map of fixed colors
+    #                cmap = colors.ListedColormap(['red', 'white','black']) , norm=norm
+    #                bounds=[-1,0,1,2]
+    #                norm = colors.BoundaryNorm(bounds,cmap.N)
+    #                sitevalues = self.m.state_ranges(xNone=[],xmin=0,xmax=self.m.q+2)
+            
+        n_sitevalues = len(sitevalues)
+        cmap=plt.cm.get_cmap('bone',n_sitevalues)
+        cmap.set_bad(color='magenta')             
     
+        norm = colors.BoundaryNorm(sitevalues, ncolors=n_sitevalues)
+        
+        
+        if ax == None:
+            f,ax = plt.subplots()
+        plt.sca(ax)
+        ax.clear()
+        plot = plt.imshow(np.real(data),cmap=cmap,norm=norm,interpolation='nearest')
+    #                plt.clim(min(sitevalues)-1, min(sitevalues)+1)
+        #cbar.set_ticklabels(self.m.state_range)
+        plt.sca(ax)
+        plt.xticks([])
+        plt.yticks([])
+        plt.title(plot_title)
+        cbar = plt.colorbar(plot,cax=make_axes_locatable(
+                ax).append_axes('right', size='5%', pad=0.05),
+                label='q value')
+        cbar.set_ticks(np.array(sitevalues)+0.5)
+        cbar.set_ticklabels(np.array(sitevalues))
+        plt.pause(0.5)
     
     def datasave(self,*args):
         
@@ -499,210 +562,6 @@ class system(object):
             file.close()
         return
     
-class Model(object):
-    
-    # Define a Model class for spin model with: 
-    # Lattice Model Type: Model Name and Max Spin Value q
-    
-    def __init__(self,model=['ising',1],orderparam = [0,1]):
-            # Define Models dictionary for various spin models, with
-            # [ Individual spin calculation function, 
-            #   Spin Upper, Lower, and Excluded Values]
-            
-            # Define spin value model and q (~max spin value) parameters
-            # (i.e: Ising(s)-> s, Potts(s) -> exp(i2pi s/q)  )
-            self.q = model[1]
-            self.orderparam = orderparam
-            
-            self.model_params = {'ising': {'value': self.ising,
-                                           'energy': self.ising_energy,
-                                           'order': self.ising_order,
-                                           'bond_prob': 
-                                               lambda T: 
-                                            1- np.exp(-2/T*self.orderparam[1]),
-                                           'value_range': [-self.q,self.q,0]},
-                                 'potts': {'value': self.potts,
-                                           'energy': self.potts_energy,
-                                           'order': self.potts_order,
-                                           'bond_prob': 
-                                               lambda T: 
-                                            1- np.exp(-1/T*self.orderparam[1]),
-                                           'value_range': [1,self.q,None]}} 
-                                     
-
-            self.model = self.model_params[model[0].lower()]['value']
-                        
-            
-            # List of range of possible spin values, depending on model
-            self.state_range = [x for x in 
-                               range(self.model_params[self.model.__name__]['value_range'][0],
-                                   self.model_params[self.model.__name__]['value_range'][1]+1) 
-                               if x not in 
-                               np.atleast_1d(
-                                  [self.model_params[self.model.__name__]['value_range'][2]])]
-            
-            # Define Model Energy and Order Parameter
-            self.site_energy = self.model_params[self.model.__name__]['energy']
-            self.order = self.model_params[self.model.__name__]['order']
-
-                    
-        
-
-    def state_gen(self,n0=None):
-        # Model dependent generator of spin values
-        if n0 is None:
-            return np.random.choice(self.state_range[:])
-        else:
-             return np.random.choice(self.state_range[:].remove(n0))
-             
-    def state_sites(self,N=1,n0=None):
-        # Return array of N random spins, per possible state_range spin values
-        # excluding the possible n0 spin
-        # Model dependent generator of spin values      
-        if np.all(n0 is None):
-            return self.model(np.random.choice(self.state_range,N))
-        else:
-            n0 = np.array(n0)
-            return self.model(np.array([np.random.choice(
-                                              [x for x in self.state_range 
-                                               if x != np.atleast_1d(n0)[i]]) 
-                                               for i in range(N)]))                               
-    # Site Values                                 
-    def ising(self,s):
-        return s
-    
-    def potts(self,s):
-        return (np.exp(2j*np.divide(np.multiply(np.pi,s),self.q)))
-
-    # Model Energy
-    def ising_energy(self,*args):
-        return args[0]*args[1]
-    
-    def potts_energy(self,*args):
-        return delta_f(args[0],args[1])
-
-    # Model Order Parameter
-    def ising_order(self,s):
-        return np.sum(s)
-    
-    def potts_order(self,s):
-        return np.abs(np.sum(s))
-
-
-
-#            
-#            sr = np.copy(self.state_range) 
-#            n = empty
-#            for n00 in n0:
-#                np.remove(sr,n00)
-#            np.remove(sr,)
-#            n0 = np.array(n0)
-#            n_n0 = n==n0
-#            print(n_n0)
-#            while np.all(n_n0):
-#                print(n_n0)
-#                n[n_n0] = np.random.choice(self.state_range,n[n_n0].size)
-#                n_n0 = n==n0
-#            return n
-##        n0 = n0 if isinstance(n0,list) or isinstance(n0,np.ndarray) else [n0]
-#        try:
-#             return np.array([self.model(
-#                          np.random.choice(self.state_range[:].remove(n0[i])))
-#                             for i in range(N)])
-#        except ValueError:
-#             return np.array([self.model(np.random.choice(self.state_range))
-#                              for i in range(N)])
-        #return np.array([self.model(self.state_gen(n0)) for i in range(N)])
-            
-class Lattice(object):
-    
-    # Define a Lattice class for lattice sites configurations with:
-    # Lattice Length L, Lattice Dimension d
-    
-    def __init__(self,L=6,d=2):
-        # Define parameters of system        
-        self.L = L
-        self.d = d
-        self.Nspins = L**d
-        
-        if self.Nspins > 2**32:
-            self.dtype = np.int64
-        else:
-            self.dtype=np.int32
-
-        # Prepare arrays for Lattice functions
-
-        # Define array of sites
-        self.sites = np.arange(self.Nspins)
-        
-        # L^i for i = 1:d array
-        self.L_i = np.power(self.L,np.arange(self.d,dtype=self.dtype))
-        
-        # r = [0....ri...0] for i = 1:d array
-        self.I = np.identity(self.d)
-        self.R = np.arange(1,np.ceil(self.L/2),dtype=self.dtype)
-        #self.Rn = np.concatenate((self.R,-self.R))
-#        self.Rn = np.array([(x,-x) for x in self.R ])
-#        print(self.Rn)
-#        self.Rnp = np.kron(self.Rn,self.I).reshape((-1,self.d))
-        #print(self.Rnp)
-        
-        # Calculate array of arrays of r-distance neighbour sites,
-        # for each site, for r = 1 : L/2 
-        # i.e) self.neighbour_sites = np.array([[self.neighboursites(i,r) 
-        #                                 for i in range(self.Nspins)]
-        #                                 for r in range(1,
-        #                                             int(np.ceil(self.L/2)))])
-        self.neighbour_sites = self.neighboursites(None,None)
-        #print(self.neighbour_sites.reshape((self.Nspins,-1,2*self.d)),'F')
-        #print(self.neighbour_sites)
-        #.reshape((len(site),-1,4))
-
-        
-    def position(self,site):
-        # Return position coordinates in d-dimensional L^d lattice 
-        # from given linear site position in 1d Nspins^2 length array
-        # i.e) [int(site/(self.L**(i))) % self.L for i in range(self.d)]
-        return np.mod(((np.atleast_1d(site)[:,np.newaxis]/self.L_i)).
-                        astype(self.dtype),self.L)
-    
-    def site(self,position):
-        # Return linear site position in 1d Nspins^2 length array 
-        # from given position coordinates in d-dimensional L^d lattice
-        # i.e) sum(position[i]*self.L**i for i in range(self.d))
-        return (np.dot(np.atleast_2d(position),self.L_i)).astype(self.dtype)
-    
-    def neighboursites(self,site=None,r=1):
-        # Return array of neighbour spin sites 
-        # for a given site and r-distance neighbours
-        # i.e) np.array([self.site(np.put(self.position(site),i,
-        #                 lambda x: np.mod(x + p*r,self.L))) 
-        #                 for i in range(self.d)for p in [1,-1]]) 
-        #                 ( previous method Time-intensive for large L)
-        
-        if site==None:
-            site = self.sites
-        
-        sitepos = self.position(site)[:,np.newaxis]
-        
-        if r==None:
-            Rrange = self.R
-        elif isinstance(r,list):
-            Rrange = r
-        else:
-            Rrange = [r]
-                            
-        return np.stack((np.concatenate(
-                            (self.site(np.mod(sitepos+R*self.I,self.L)),
-                             self.site(np.mod(sitepos-R*self.I,self.L))),1)
-                                for R in Rrange))          
-#        return 
-#        np.stack((self.site(np.mod(sitepos+R*self.I,self.L))) for R in Rrange) 
-
-            
-        #  rvals = np.diag(np.delete(np.arange(-self.L,self.L+1),0))
-        #  self.rsites = np.kron(rvals,np.identity(self.d))
-        #  print(self.rsites)
 
 if __name__ == "__main__":
     #pass
