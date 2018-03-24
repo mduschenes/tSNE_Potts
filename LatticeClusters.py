@@ -81,7 +81,7 @@ class system(object):
                 self.sites_clusters[self.cluster_sites] = self.sites[
                                                             self.cluster_sites]
 
-                if (animate and np.size(self.T)==1) or i == self.l.Nspins-1:
+                if (animate and (True or np.size(self.T)==1)) or i == self.l.Nspins-1:
                     if animate_clusters:
                         title_cluster = 'Cluster' if j == 0 else ''
                         self.plot_sites(
