@@ -18,7 +18,7 @@ class Lattice(object):
         self.d = d
         self.Nspins = L**d
         
-        if self.Nspins > 2**32:
+        if self.Nspins > 2**32-1:
             self.dtype = np.int64
         else:
             self.dtype=np.int32
@@ -65,7 +65,7 @@ class Lattice(object):
         # i.e) sum(position[i]*self.L**i for i in range(self.d))
         return (np.dot(np.atleast_2d(position),self.L_i)).astype(self.dtype)
     
-    def neighboursites(self,site=None,r=1):
+    def neighboursites(self,sites=None,r=1):
         # Return array of neighbour spin sites 
         # for a given site and r-distance neighbours
         # i.e) np.array([self.site(np.put(self.position(site),i,
@@ -73,10 +73,10 @@ class Lattice(object):
         #                 for i in range(self.d)for p in [1,-1]]) 
         #                 ( previous method Time-intensive for large L)
         
-        if site==None:
-            site = self.sites
+        if sites==None:
+            sites = self.sites
         
-        sitepos = self.position(site)[:,np.newaxis]
+        sitepos = self.position(sites)[:,np.newaxis]
         
         if r==None:
             Rrange = self.R
@@ -88,7 +88,12 @@ class Lattice(object):
         return np.stack((np.concatenate(
                             (self.site(np.mod(sitepos+R*self.I,self.L)),
                              self.site(np.mod(sitepos-R*self.I,self.L))),1)
-                                for R in Rrange))          
+                                for R in Rrange)) 
+        
+    def neighbours(self,r=1,sites=None):
+        # Return spins of r-distance neighbours for all spin sites
+        return np.array([np.index(self.sites,self.neighbour_sites[r-1][i]) 
+                                    for i in range(len(self.sites))])
 #        return 
 #        np.stack((self.site(np.mod(sitepos+R*self.I,self.L))) for R in Rrange) 
 
