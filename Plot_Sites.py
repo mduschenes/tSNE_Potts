@@ -18,10 +18,19 @@ matplotlib.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
 
 bw_cmap = colors.ListedColormap(['black', 'white'])
 
-from ModelFunctions import choose_f, list_f
+from ModelFunctions import choose_f
+
+
+class Plot_Obs(object):
+    def __init__(self):
+        pass
+
+
+
+
 
 class Plot_Sites(object):
-        def __init__(self,animate=[True,True,True],
+        def __init__(self,animate=True,
                           plot_rows=1,plot_cols=1,
                           plot_titles=None,data_process= lambda data: data,
                           plot_range=None):
@@ -43,7 +52,6 @@ class Plot_Sites(object):
                 else:
                     self.titles = plot_titles
                 
-                self.data = [None]*plot_cols
                 
                 self.data_process = data_process
                 self.plot_range = np.append(plot_range,plot_range[-1]+1)
@@ -59,9 +67,9 @@ class Plot_Sites(object):
         
         
         
-        def plot_sites(self,plot_row,plot_col,plot_iter=''):               
+        def plot_sites(self,data,plot_row=1,plot_col=1,plot_iter=''):               
             ax = self.ax[plot_row,plot_col]
-            data = self.data_process(self.data[plot_col])
+            data = self.data_process(data)
             
             plot_label = []
             i_title = [[plot_col,plot_row,0],

@@ -17,7 +17,7 @@ from ModelFunctions import flatten
 
 class MonteCarloUpdate(object):
     
-    def __init__(self,sites,neighbour_sites,observables_f,T,d,
+    def __init__(self,sites,neighbour_sites,observables_f,T,modelprops,
                       update,transition,animate):
         # Perform Monte Carlo Updates for nclusters of sites and Plot Data
         
@@ -38,15 +38,16 @@ class MonteCarloUpdate(object):
         self.sites = sites
         self.neighbour_sites = neighbour_sites
         
+        self.modelprops = modelprops
         self.Nspins = np.size(self.sites)
-        self.d = d
+        self.d = modelprops['d']
         
         self.T = np.atleast_1d(T).tolist()
         self.observables_f = observables_f
         self.observables = []
         
         # Define Transition Probability and Possible Site Values
-        self. prob_transition = transition[0]
+        self. prob_transitions = transition[0]
         self.state_sites = transition[1]
         
         
@@ -55,29 +56,25 @@ class MonteCarloUpdate(object):
         # Number of measurement updates.
         # Monte Carlo update alogrithms
         self.mcupdate = update[0]
-        self.Neqb = int((1/3)*self.Nspins) if update[1]==None else update[1]
-        self.Nmeas = int(2*self.Nspins) if update[2]==None else update[2]
+        self.Neqb = int((1)*self.Nspins) if update[1]==None else update[1]
+        self.Nmeas = int(10*self.Nspins) if update[2]==None else update[2]
         self.Ncluster = update[3]
 
 
         self.update_algs = {'metropolis': self.metropolis, 'wolff': self.wolff}
-        self.algorithm = update[-1]
-        self.MCUpdate_alg = self.update_algs[self.algorithm]
-              
 
         
         # Initialize Plotting
-        self.plot_range = animate[-2]
-        self.plot_file = animate[-1]
         self.animate = animate[0:-2]
+        plot_range = animate[-2]
         plot_titles = [['Spin Configurations','Cluster','Edge'] ,
                                           lambda i: r'$t_{MC}$: %d'%i,
                                           lambda i: r'T = %0.1f'%self.T[i]]
-        data_process = lambda d: self.sites_region(d).reshape(
+        data_process = lambda data: self.sites_region(data).reshape(
                                   [int(np.power(self.Nspins,1/self.d))]*self.d)
         
         self.plotf = Plot_Sites(self.animate,np.size(self.T),sum(self.animate),
-                                     plot_titles,data_process,self.plot_range)
+                                     plot_titles,data_process,plot_range)
 
         return
                     
@@ -86,17 +83,22 @@ class MonteCarloUpdate(object):
             
             
             
-    def MonteCarloAlgorithm(self):
+    def MCAlg(self,algorithm):
         # Perform Monte Carlo Update Algorithm and Plot Spin Sites
         
+        self.MCUpdate_alg = self.update_algs[algorithm]
+        
+        self.prob_transition = self.prob_transitions[algorithm]
         
         t0 = time.clock()
-
+            
+        observable = []
+        
         for i_t,t in enumerate(self.T):
             
             self.t = t
             
-            t1 = time.clock()
+            #t1 = time.clock()
         
             for i_iter in range(self.Neqb):
                 self.MCUpdate_alg()
@@ -110,38 +112,39 @@ class MonteCarloUpdate(object):
                 if self.animate[0] and ((False or np.size(self.T)==1) or ( 
                                                      i_iter == self.Nspins-1)):
                         
-                    self.plotf.data = [self.sites,self.cluster_sites,
+                    site_data = [self.sites,self.cluster_sites,
                                        self.cluster_sites]
                     
                     for i_a,a in reversed(list(enumerate(self.animate))): 
                         if a:
-                            self.plotf.plot_sites(i_t,i_a,i_iter)
+                            self.plotf.plot_sites(site_data[i_a],i_t,i_a,i_iter)
                         
                 # Update Observables Array
                 if 0 % self.Nmeas/int(np.sqrt(self.Nspins)) == 0 or True:
-                    self.observables.append(flatten(self.observables_f(
+                    observable.append(flatten(self.observables_f(
                             self.sites,self.neighbour_sites,self.t)))
                                 
     
-            print('T = %0.1f   %0.5f' %(t,time.clock()-t1))
-
+            #print('T = %0.1f   %0.5f' %(t,time.clock()-t1))
+        self.observables.append(observable)
 
 
       
         # Calculate Total Runtime for system class
-        print('final order: '+str(
-               (self.observables_f(self.sites,self.neighbour_sites,self.t)[2]/
-                                                                 self.Nspins)))
-        print('system class runtime: '+str(time.clock()-t0)) 
-        
+#        print('final order: '+str(
+#               (self.observables_f(self.sites,self.neighbour_sites,self.t)[2]/
+#                                                                 self.Nspins)))
+        print('%s runtime: %0.5f'%(algorithm,time.clock()-t0)) 
+#        
         # Pause after last Iteration
         if i_t == len(self.T)-1:
                     # Save Data Plots
             if self.animate[0]: 
-                self.plotf.plot_save(self.plot_file)  
+                self.plotf.plot_save(''.join(
+                       [self.modelprops[t] for t in ['data_dir','data_file']]))  
                 self.plotf.plot_show(10)
         
-        return self.observables
+        return
      
         
         

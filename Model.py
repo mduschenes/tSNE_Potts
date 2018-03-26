@@ -7,7 +7,7 @@ Created on Mon Feb 19 20:23:39 2018
 
 import numpy as np
 
-from ModelFunctions import delta_f,flatten
+from ModelFunctions import delta_f, get_attr
 
 
 
@@ -17,7 +17,7 @@ class Model(object):
     # Define a Model class for spin model with: 
     # Lattice Model Type: Model Name and Max Spin Value q
     
-    def __init__(self,model=['ising',1],orderparam = [0,1],d=2):
+    def __init__(self,model=['ising',1,[0,1]],d=2):
             # Define Models dictionary for various spin models, with
             # [ Individual spin calculation function, 
             #   Spin Upper, Lower, and Excluded Values]
@@ -25,7 +25,7 @@ class Model(object):
             # Define spin value model and q (~max spin value) parameters
             # (i.e: Ising(s)-> s, Potts(s) -> exp(i2pi s/q)  )
             self.q = model[1]
-            self.orderparam = orderparam
+            self.orderparam = model[2]
             self.d = d
             
             self.model_params = {'ising': {'value': self.ising,
@@ -64,8 +64,8 @@ class Model(object):
                           self.order_param]
             #self.observables_data = lambda:list(map(lambda f,g= lambda x:x : g(f())
             #                                        ,self.observables_functions))
-            self.observables_sizes = lambda s,n,T: [np.size(f(s,n,T)) 
-                            for f in self.observables_functions]
+            self.observables_prop = lambda s,n,T,attr: [ get_attr(f,attr,'size',1,*(s,n,T))
+                                           for f in self.observables_functions]
             
             
             self.observables_data = lambda s,n,T: [f(s,n,T) 
@@ -85,7 +85,7 @@ class Model(object):
                                     self.model.__name__]['value_range'][1]+1])) 
                                if x not in xNone]
 
-    def state_gen(self,n0=None):
+    def state_gen(self,N=1,n0=None):
         # Model dependent generator of spin values
         if n0 is None:
             return np.random.choice(self.state_range[:])
@@ -101,11 +101,16 @@ class Model(object):
             return np.array([self.state_values[i] for i in np.random.choice(self.state_range,N)])
         else:
             n0 = np.array(n0)
-            return np.array([self.state_values[j] for j in np.array(
-                                              [np.random.choice(
+            return np.array([self.state_values[j] for j in np.random.choice(
                                               [x for x in self.state_range 
-                                               if x != np.atleast_1d(n0)[i]]) 
-                                               for i in range(N)])])        
+                                               if not (x in np.atleast_1d(n0)) 
+                                               ],N)])        
+        
+        
+#        if x != np.atleast_1d(n0)[i]]) 
+#                                               for i in range(N)])])        
+#        
+        
         
 #        if np.all(n0 is None):
 #            return self.model(np.random.choice(self.state_range,N))
@@ -122,7 +127,7 @@ class Model(object):
         return s
     
     def potts(self,s):
-        return s #(np.exp(2j*np.divide(np.multiply(np.pi,s),self.q)))
+        return s 
 
     # Model Energy
     def ising_energy(self,*args):
@@ -143,7 +148,7 @@ class Model(object):
         return np.sum(s)
     
     def potts_order(self,s):
-        return np.abs(np.sum(s))
+        return np.abs(np.sum((np.exp(2j*np.divide(np.multiply(np.pi,s),self.q)))))
 
     
     

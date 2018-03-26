@@ -30,19 +30,19 @@ class system(object):
     #                                 Number of initial updates Neqb,
     #                                 Number of Measurement Updates Nmeas
     #                                 Number of Clusters Ncluster
-    #                                 Monte Carlo Update Algorithm
+    # 
     # DataSave: Boolean
     # Animate: True
     
-    def __init__(self,L=6,d=2,T=3, model=['potts',4],
-                 orderparam=[0,1],
-                 update = [True,None,None,1,'wolff'],
+    def __init__(self,L=10,d=2,T=3, model=['potts',4,[0,1]],
+                 update = [True,None,None,1],
                  datasave = True,
-                 animate = [True,True,True]):
-        
+                 animate = [False,True,True]):
+        #print(L,d,T)
         # Initialize model class, lattice class
-        self.m = Model(model,orderparam,d)
+        self.m = Model(model,d)
         self.l = Lattice(L,d)
+
         
         # Define system parameters of:
         # Temperature, Size, Dimension, Number of Spins, 
@@ -54,7 +54,14 @@ class system(object):
         self.Nspins = self.l.Nspins
         self.q = self.m.q
 
-       
+        self.modelprops = {'L':self.L,'d':self.d,'q':self.q,
+                           'model':self.m.model.__name__,'algorithm':'',
+                           'data_dir': '%s_Data'%(caps(self.m.model.__name__)),
+                           'data_file': '/%s_d%d_L%d__%s' %(
+                                          caps(self.m.model.__name__),
+                                          self.d,self.L,
+                                          datetime.datetime.now().strftime(
+                                                           '%Y-%m-%d-%H-%M')) }
         
         # Initialize numpy array with random spin at each site
         self.sites = self.m.state_sites(self.Nspins)
@@ -67,9 +74,7 @@ class system(object):
         
         # Save Observables data
         self.observables = []
-        self.save = datasave
-        self.datasave(save=False)
-        
+        self.save = datasave        
 
 
 
@@ -77,77 +82,103 @@ class system(object):
         
         # Perform Monte Carlo Updates for various Temperatures
         # Update, Transition, Animate Properties
-        self.update = update
-        p_trans = {'metropolis': self.m.energy,'wolff':self.m.model_params[
+        animate.extend(self.m.state_range)
+        prob_trans = {'metropolis': self.m.energy,'wolff':self.m.model_params[
                                 self.m.model.__name__]['bond_prob']}
-        self.transition = [p_trans[self.update[-1]],self.m.state_sites]
-        self.animate = animate
-        self.animate.extend((self.m.state_range, self.dataName)) 
+        transition = [prob_trans,self.m.state_sites]
         
+        
+        # Initialize Monte Carlo Updating
         self.MC = MonteCarloUpdate(self.sites,self.l.neighbour_sites,
-                         self.m.observables_data,self.T,self.d,
-                         self.update,self.transition,self.animate)
+                         self.m.observables_data,self.T,self.modelprops,
+                         update,transition,animate)
         
 
 
-    def MonteCarlo(self):
+    def MonteCarlo(self,algorithm = ['metropolis','wolff'],n_iter=1):
  
         t0 = time.clock()
-
-        observables = self.MC.MonteCarloAlgorithm()
-                    
-        # Save Observables Data 
-        self.datasave(self.save,observables,
-                      lambda : 'runtime '+str(time.clock()-t0))     
-      
-
+        
+        algorithm = np.atleast_1d(algorithm)
+        n_alg = np.size(algorithm)
+        
+        if n_iter == 1 and n_alg > 1:
+            n_iter = n_alg
+        
+        for i in range(n_iter):
+            
+            self.modelprops['algorithm']= algorithm[i%n_alg]
+            self.MC.MCAlg(algorithm[i%n_alg])     
+    
+            # Save Observables Data 
+        
+        self.observables = self.MC.observables
+        
+        self.data_save(self.save,self.observables,
+                       self.m.observables_prop(
+                        self.sites,self.l.neighbour_sites,self.t,'__name__'),
+                       self.m.observables_prop(
+                            self.sites,self.l.neighbour_sites,self.t,'size'),
+                       n_iter, 
+                       [self.modelprops['data_dir'],
+                            self.modelprops['data_file']],
+                       lambda i: '%s runtime: %0.5f'%(
+                                       algorithm[i%n_alg],time.clock()-t0))
     
 
     
    
-    def datasave(self,save,observables=None,*comments):
-        dataDir = '%s_Data' %(caps(self.m.model.__name__))
-        self.dataName         = '%s/%s_d%d_L%d__%s' %(
-                        dataDir,caps(self.m.model.__name__),
-                        self.d,self.L,
-                        datetime.datetime.now().strftime(
-                                                '%Y-%m-%d-%H-%M'))
-
+    def data_save(self,save,data=None,headers='data',cols=1,nfiles=1,
+                                      data_path=None,*comments):
+    
+        # Write Data to File Directory
+        if data_path == None:
+            data_dir = os.getcwd()
+            data_file = data_dir+'/DataSet'
+        else:
+            data_dir = data_path[0]
+            data_file = ''.join(data_path)
+    
+        # Data Structure of Data Headers, and Number of Collumns per Header
+        headers = np.atleast_1d(headers)
+        cols = np.atleast_1d(cols)
+        
         
         if save == True:
             # Open and write observables to a file in a specific directory
-            if not observables :
-                if not(os.path.isdir(dataDir)):
-                        os.mkdir(dataDir)
+            if not data :
+                if not(os.path.isdir(data_dir)):
+                        os.mkdir(data_dir)
                 return
             
-
-            # Make observables headers for file
-            file = open(self.dataName+'.txt', 'w')
-            headers = []
             
-            # Write Observables to File
-            obs_sizes = self.m.observables_sizes(
-                    self.sites,self.l.neighbour_sites,self.t)
-            for i,f in enumerate(self.m.observables_functions):
-                for j in range(obs_sizes[i]):
-                    headers.append(f.__name__+'_'+str(j+1) 
-                                    if obs_sizes[i] > 1
-                                    else f.__name__)
-            file.write('\t'.join(headers) + '\n')
-            
-            # Convert lists of lists of observables to array
-            for data in [list(flatten(x)) for x in observables]:
-                dataline = ''
-                for d in data:
-                        dataline += '%0.8f \t' %(float(d))
-                dataline += '\n'
-                file.write(dataline)
-            if comments:
-                for c in comments:
-                    file.write(str(c())+'\n')
-            
-            file.close()
+            for n in range(nfiles):
+                # Make observables headers for file
+                file = open(data_file+('_%d'%n if nfiles>1 else '')+'.txt','w')
+                header = []
+                
+                # Write Observables to File
+                
+                
+                for i,h in enumerate(headers):
+                    for j in range(cols[i]):
+                        header.append(h+'_'+str(j+1) 
+                                        if cols[i] > 1
+                                        else h)
+                file.write('\t'.join(header) + '\n')
+                
+                # Convert lists of lists of observables to array
+                for data_n in [list(flatten(x)) for x in data[n]]:
+                    dataline = ''
+                    for d in data_n:
+                            dataline += '%0.8f \t' %(float(d))
+                    dataline += '\n'
+                    file.write(dataline)
+                if comments:
+                    for c in comments:
+                        file.write(str(c(n))+'\n')
+                
+                file.close()
         return
     
 
@@ -155,4 +186,4 @@ if __name__ == "__main__":
     T = [5,2.5,2,1.5,1,0.5]
     T0 = 0.5
     s = system(T=T)
-    s.MonteCarlo()
+    s.MonteCarlo(n_iter=4)

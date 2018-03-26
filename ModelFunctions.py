@@ -11,6 +11,29 @@ Created on Sat Mar 24 15:54:40 2018
 import numpy as np
 
 
+#def self_ref(f):
+#    f.__defaults__ = f.__defaults__[:-1] + (f,)
+#    return f
+#
+#
+#@self_ref
+#def foo(self,x):
+#    self.y = 0
+#    return x + self.y
+#
+#x = 2
+#foo(x)
+
+def get_attr(f,attr,exception,f0,*args):
+    try:
+        if attr == exception:
+            return getattr(f(*args),attr)
+        else:
+            return getattr(f,attr)
+        
+    except AttributeError:
+        return f0 
+
 def delta_f(x,y,f=np.multiply):
     return f(x,y)[x==y]
 
