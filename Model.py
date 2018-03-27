@@ -17,7 +17,7 @@ class Model(object):
     # Define a Model class for spin model with: 
     # Lattice Model Type: Model Name and Max Spin Value q
     
-    def __init__(self,model=['ising',1,[0,1]],d=2):
+    def __init__(self,model=['potts',4,[0,1]],d=2):
             # Define Models dictionary for various spin models, with
             # [ Individual spin calculation function, 
             #   Spin Upper, Lower, and Excluded Values]
@@ -44,18 +44,17 @@ class Model(object):
                                            'value_range': [1,self.q,None]}} 
                                      
 
-            # Define Model Name        
+            # Define Model
             self.model = self.model_params[model[0].lower()]['value']
             
             # Define Range of Possible Spin Values and Lookup Table of Values                        
             self.state_range = self.state_ranges()
-            self.state_values = dict(zip(self.state_range, self.model(self.state_range)))
-            
+            self.state_values = self.model(self.state_range)
+                     
             
             # Define Model Energy and Order Parameter
             self.site_energy = self.model_params[self.model.__name__]['energy']
             self.order = self.model_params[self.model.__name__]['order']
-            
             
             
             # Define Observables
@@ -64,7 +63,7 @@ class Model(object):
                           self.order_param]
             #self.observables_data = lambda:list(map(lambda f,g= lambda x:x : g(f())
             #                                        ,self.observables_functions))
-            self.observables_prop = lambda s,n,T,attr: [ get_attr(f,attr,'size',1,*(s,n,T))
+            self.observables_prop = lambda s,n,T,attr: [get_attr(f,attr,'size',1,*(s,n,T))
                                            for f in self.observables_functions]
             
             
@@ -73,55 +72,29 @@ class Model(object):
             
             
             return
-            
-    def state_ranges(self,xNone=None,xmin=float('inf'),xmax=-float('inf')):
-        if xNone == None:
-            xNone = np.atleast_1d([self.model_params[self.model.__name__][
-                                                            'value_range'][2]])
-        # List of range of possible spin values, depending on model
-        return [x for x in range(min([xmin,self.model_params[
-                                      self.model.__name__]['value_range'][0]]),
-                                 max([xmax,self.model_params[
-                                    self.model.__name__]['value_range'][1]+1])) 
-                               if x not in xNone]
+   
 
-    def state_gen(self,N=1,n0=None):
-        # Model dependent generator of spin values
-        if n0 is None:
-            return np.random.choice(self.state_range[:])
-        else:
-             return np.random.choice(self.state_range[:].remove(n0))
+         
+    def state_ranges(self,xNone=None):
+        
+        value_range = self.model_params[self.model.__name__]['value_range']        
+        if xNone == None:
+            xNone = np.atleast_1d(value_range[2])
+        # List of range of possible spin values, depending on model
+        return np.array([x for x in range(value_range[0],value_range[1]+1) 
+                               if x not in xNone])
+
              
     def state_sites(self,N=1,n0=None):
         # Return array of N random spins, per possible state_range spin values
         # excluding the possible n0 spin
         # Model dependent generator of spin values      
         
-        if np.all(n0 is None):
-            return np.array([self.state_values[i] for i in np.random.choice(self.state_range,N)])
-        else:
-            n0 = np.array(n0)
-            return np.array([self.state_values[j] for j in np.random.choice(
-                                              [x for x in self.state_range 
-                                               if not (x in np.atleast_1d(n0)) 
-                                               ],N)])        
-        
-        
-#        if x != np.atleast_1d(n0)[i]]) 
-#                                               for i in range(N)])])        
-#        
-        
-        
-#        if np.all(n0 is None):
-#            return self.model(np.random.choice(self.state_range,N))
-#        else:
-#            n0 = np.array(n0)
-#            return self.model(np.array([np.random.choice(
-#                                              [x for x in self.state_range 
-#                                               if x != np.atleast_1d(n0)[i]]) 
-#                                               for i in range(N)]))                               
-    
-   
+        return np.random.choice(self.state_values[self.state_values != n0],N)
+        #dict(zip(self.state_range, ([x,self.model(x)] for x in self.state_range)))
+            #dict_map(self.state_values,s,1)
+
+
     # Site Values                                 
     def ising(self,s):
         return s
@@ -144,13 +117,13 @@ class Model(object):
         
 
     # Model Order Parameter
-    def ising_order(self,s):
+    def ising_order(self,s): 
         return np.sum(s)
     
     def potts_order(self,s):
-        return np.abs(np.sum((np.exp(2j*np.divide(np.multiply(np.pi,s),self.q)))))
+        return np.sum(s)#np.exp(2j*np.pi*s/self.q))
 
-    
+
     
     
     # Model Observables
@@ -212,6 +185,20 @@ class Model(object):
         else: # self.d == 3:
             Tc = None
         return Tc
+
+
+
+
+
+if __name__ == "__main__":
+    m1 = model=['potts',6,[0,1]]
+    m2 = model=['ising',2,[0,1]]
+    m = Model(m1)
+
+
+
+
+
 
 
 

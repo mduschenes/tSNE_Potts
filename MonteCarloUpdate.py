@@ -47,7 +47,7 @@ class MonteCarloUpdate(object):
         self.observables = []
         
         # Define Transition Probability and Possible Site Values
-        self. prob_transitions = transition[0]
+        self. prob_updates = transition[0]
         self.state_sites = transition[1]
         
         
@@ -65,8 +65,8 @@ class MonteCarloUpdate(object):
 
         
         # Initialize Plotting
-        self.animate = animate[0:-2]
-        plot_range = animate[-2]
+        self.animate = animate[0:-1]
+        plot_range = animate[-1]
         plot_titles = [['Spin Configurations','Cluster','Edge'] ,
                                           lambda i: r'$t_{MC}$: %d'%i,
                                           lambda i: r'T = %0.1f'%self.T[i]]
@@ -83,16 +83,19 @@ class MonteCarloUpdate(object):
             
             
             
-    def MCAlg(self,algorithm):
+    def MCalg(self,algorithm):
         # Perform Monte Carlo Update Algorithm and Plot Spin Sites
         
         self.MCUpdate_alg = self.update_algs[algorithm]
         
-        self.prob_transition = self.prob_transitions[algorithm]
+        self.prob_update = self.prob_updates[algorithm]
         
         t0 = time.clock()
-            
+        
+        # Create Observables, Clusters, and Edges Arrays
         observable = []
+        self.clusters = []
+        self.cluster_edges = []
         
         for i_t,t in enumerate(self.T):
             
@@ -142,7 +145,7 @@ class MonteCarloUpdate(object):
             if self.animate[0]: 
                 self.plotf.plot_save(''.join(
                        [self.modelprops[t] for t in ['data_dir','data_file']]))  
-                self.plotf.plot_show(10)
+                self.plotf.plot_show(1)
         
         return
      
@@ -152,64 +155,31 @@ class MonteCarloUpdate(object):
         # Randomly alter random spin sites and accept spin alterations
         # if energetically favourable or probabilistically likely
         for i in range(self.Nspins):
-            E0 = self.prob_transition(self.sites,self.neighbour_sites,self.t)
-            sites0 = np.copy(self.sites)
+            E0 = self.prob_update(self.sites,self.neighbour_sites,self.t)
             
-#            print(self.sites)
-#            print(self.sites0)
-#            print('')
-            isites = [np.random.randint(self.Nspins) for j in 
-                      range(self.Ncluster)]
-            self.sites[isites] = self.state_sites(self.Ncluster,sites0[isites])
-#            print(self.sites)
-#            print(sites0)
-#            print('')
-            
-#            for isite in isites:
-#                print(self.sites[isite])
-#                self.sites[isite] = self.m.state_sites(1,sites0[isite])
-#                print(self.sites[isite])
-                #print(sites0[isite])
-            dE = self.prob_transition(self.sites,self.neighbour_sites,self.t)-(
-                                                                            E0)
-#            dE = np.sign(np.real(dE))*np.abs(dE)
+            isites = np.random.randint(0,self.Nspins,self.Ncluster)
+            sites0 = np.copy(self.sites[isites])
+            self.sites[isites] = self.state_sites(self.Ncluster,sites0)
+
+            dE = self.prob_update(self.sites,self.neighbour_sites,self.t)- E0
+
             if dE > 0:
                 if np.exp(-dE/self.t) < np.random.random():
-#                    print('change sites back')
-                    #for isite in isites:
-                        #print(self.sites[isite])
-                    self.sites[isites] = np.copy(sites0[isites])
-#                else:
-                    
-                    #print('dE>0 but no change')
-#            else:
-#                pass
-                #print('dE < 0')
-                        #print(self.sites[isite])
-            #print(self.sites[isite])
-            #print(dE)
-            #print(np.all(self.sites[isites]==sites0[isites]))
-            #print('')
-#            print(self.sites)
-#            print(self.sites0)
-#            print('')
+                    self.sites[isites] = np.copy(sites0)
+                else:
+                    self.cluster_sites = isites
+                    self.clusters.append(isites)
+            else:
+                self.cluster_sites = isites
+                self.clusters.append(isites)
+
             return
     
     
     
     def wolff(self):
-    
-        # Create list of unique clusters and their values
-        self.clusters = []
-        self.cluster_edges = []
-        
-        
         
         # Create Cluster Array and Choose Random Site
-
-        # Initialize Plot Class
- 
-
         isite = np.random.randint(self.Nspins)
         self.cluster_sites = []
         self.cluster_rejections = []
@@ -250,7 +220,7 @@ class MonteCarloUpdate(object):
                                     (self.sites[j] == self.cluster_value0) and 
                                     (j not in self.cluster_rejections))
             for j in J:
-                if self.prob_transition(self.t) > np.random.rand():
+                if self.prob_update(self.t) > np.random.rand():
                         self.cluster(j)
                 else:
                     self.cluster_rejections.append(j)

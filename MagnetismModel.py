@@ -82,7 +82,7 @@ class system(object):
         
         # Perform Monte Carlo Updates for various Temperatures
         # Update, Transition, Animate Properties
-        animate.extend(self.m.state_range)
+        animate.append(self.m.state_range)
         prob_trans = {'metropolis': self.m.energy,'wolff':self.m.model_params[
                                 self.m.model.__name__]['bond_prob']}
         transition = [prob_trans,self.m.state_sites]
@@ -108,7 +108,7 @@ class system(object):
         for i in range(n_iter):
             
             self.modelprops['algorithm']= algorithm[i%n_alg]
-            self.MC.MCAlg(algorithm[i%n_alg])     
+            self.MC.MCalg(algorithm[i%n_alg])     
     
             # Save Observables Data 
         

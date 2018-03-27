@@ -24,6 +24,11 @@ import numpy as np
 #x = 2
 #foo(x)
 
+def dict_map(dicti,keys,j):
+    return np.array(list(map(lambda i,j=j: (dicti.get(i))[j],keys)))
+
+
+
 def get_attr(f,attr,exception,f0,*args):
     try:
         if attr == exception:
