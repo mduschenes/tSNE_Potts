@@ -1,31 +1,26 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Feb 20 14:18:39 2018
-
 @author: Matt
 """
 
 import numpy as np
-import time
 
-#from ModelFunctions import caps,flatten,signed_val,list_f,delta_f
-
-
-from Plot_Sites import Plot_Sites
-from ModelFunctions import flatten
+from Plot_Data import Plot_Data
+from ModelFunctions import flatten, caps
 
 
 class MonteCarloUpdate(object):
     
-    def __init__(self,sites,neighbour_sites,observables_f,T,modelprops,
-                      update,transition,animate):
+    def __init__(self,sites,neighbour_sites,model_props,
+                      update,animate):
         # Perform Monte Carlo Updates for nclusters of sites and Plot Data
         
         #  Monte Carlo Update Parameters: Perform Monte Carlo Update Boolean
         #                                 Number of initial updates Neqb,
         #                                 Number of Measurement Updates Nmeas
+        #                                 Measurement Update Frequency Nmeas_f
         #                                 Number of Clusters Ncluster
-        #                                 Monte Carlo Update Algorithm
         # State Transition Parameters:
         #                                 Transition Probability prob_transiton
         #                                 Transition Values site_states
@@ -38,17 +33,13 @@ class MonteCarloUpdate(object):
         self.sites = sites
         self.neighbour_sites = neighbour_sites
         
-        self.modelprops = modelprops
+        self.model_props = model_props
         self.Nspins = np.size(self.sites)
-        self.d = modelprops['d']
+        self.d = model_props['d']
         
-        self.T = np.atleast_1d(T).tolist()
-        self.observables_f = observables_f
-        self.observables = []
+        self.T = np.atleast_1d(self.model_props['T']).tolist()
+        self.t = self.T[0]
         
-        # Define Transition Probability and Possible Site Values
-        self. prob_updates = transition[0]
-        self.state_sites = transition[1]
         
         
         # Define Monte Carlo Update Parameters:
@@ -56,154 +47,195 @@ class MonteCarloUpdate(object):
         # Number of measurement updates.
         # Monte Carlo update alogrithms
         self.mcupdate = update[0]
-        self.Neqb = int((1)*self.Nspins) if update[1]==None else update[1]
-        self.Nmeas = int(10*self.Nspins) if update[2]==None else update[2]
-        self.Ncluster = update[3]
+        self.Neqb = int(((1) if update[1]==None else update[1])*self.Nspins)
+        self.Nmeas = int(((1) if update[2]==None else update[2])*self.Nspins)
+        self.Nmeas_f = int(((1) if update[3]==None else update[3])*self.Nspins)
+        self.Ncluster = update[4]
 
-
+        # Define Update Algorithms and State Generator
         self.update_algs = {'metropolis': self.metropolis, 'wolff': self.wolff}
+        self.state_gen = self.model_props['state_gen']
+
 
         
-        # Initialize Plotting
-        self.animate = animate[0:-1]
-        plot_range = animate[-1]
-        plot_titles = [['Spin Configurations','Cluster','Edge'] ,
-                                          lambda i: r'$t_{MC}$: %d'%i,
-                                          lambda i: r'T = %0.1f'%self.T[i]]
-        data_process = lambda data: self.sites_region(data).reshape(
-                                  [int(np.power(self.Nspins,1/self.d))]*self.d)
+        # Initialize Plotting and plot_sites class
+        self.animate = animate
+        plot_range = self.model_props['state_range']
+
         
-        self.plotf = Plot_Sites(self.animate,np.size(self.T),sum(self.animate),
-                                     plot_titles,data_process,plot_range)
+        site_titles = [lambda i:['Spin Configurations'+' - '+
+                                 caps(self.model_props['model'])+' - '+
+                                 caps(self.model_props['algorithm']),
+                                 'Cluster','Edge'][i],
+                       lambda i: r'$t_{MC}$: %d'%i,
+                       lambda i: r'T = %0.1f'%self.T[i],
+                       lambda i: 'Spin Values']
+#        
+#        # titles object is 4 functions, which will act based on 
+#        plot_labels = []
+#        i_title = lambda col,row,num,cols,rows: [[col,row,0],
+#               [num,row,rows-1],
+#               [row,col,0],[0,col,cols-1]]
+#    plot_labels.append(choose_f(t,i_title[i_t]
+#    
+#    
+#    
+#        lambda col,row,num,cols,rows: list(map(lambda i_t,t: i_title(col,row,num,cols,rows),'')),enumerate(site_titles)))
+            
+    
+    
+    
+    
+        data_plot_shape = [int(np.power(self.Nspins,1/self.model_props['d']))]*self.model_props['d']
+        data_process = lambda data: self.sites_region(
+                                                data).reshape(data_plot_shape)
+                                  
+        
+        self.plot_sites = Plot_Data(animate = self.animate,
+                                    plot_rows = np.size(self.T),
+                                    plot_cols = sum(self.animate),
+                                    plot_titles = site_titles, 
+                                    data_process = data_process,
+                                    plot_range = plot_range,
+                                    plot_type = 'sites')
 
         return
                     
         
+    
+    
+    
             
             
             
             
-    def MCalg(self,algorithm):
+    def MCAlg(self,algorithm='wolff',new_figure=False):
         # Perform Monte Carlo Update Algorithm and Plot Spin Sites
         
+        
+        self.model_props['alogorithm']=algorithm
         self.MCUpdate_alg = self.update_algs[algorithm]
         
-        self.prob_update = self.prob_updates[algorithm]
+        self.prob_update = lambda : self.model_props['prob_trans'][algorithm](
+                                        self.sites,self.neighbour_sites,self.t)
         
-        t0 = time.clock()
+           
+        self.observables = []
+
         
-        # Create Observables, Clusters, and Edges Arrays
-        observable = []
-        self.clusters = []
-        self.cluster_edges = []
         
+        # Perform Monte Carlo at temperatures t = T
         for i_t,t in enumerate(self.T):
             
-            self.t = t
             
-            #t1 = time.clock()
-        
-            for i_iter in range(self.Neqb):
+        # Create Observable, Cluster, and Edges Array
+            observable = []
+            self.clusters = []
+            self.cluster_values = []
+            self.cluster_edges = []
+            
+            
+            self.t = self.T[i_t]
+            
+       
+            # Perform Equilibration Monte Carlo steps initially
+            for i_mc in range(self.Neqb):
+                self.MCUpdate_alg()
+
+
+            
+            # Perform Measurement Monte Carlo Steps
+            for i_mc in range(self.Nmeas):
+    
+                
                 self.MCUpdate_alg()
                 
-            for i_iter in range(self.Nmeas):
-    
-    
-                self.MCUpdate_alg()
-    
-                
-                if self.animate[0] and ((False or np.size(self.T)==1) or ( 
-                                                     i_iter == self.Nspins-1)):
+                # Plot Sites Data
+                if self.animate[0] and i_mc == self.Nmeas-1: # (np.size(self.T)==1)
                         
                     site_data = [self.sites,self.cluster_sites,
                                        self.cluster_sites]
                     
                     for i_a,a in reversed(list(enumerate(self.animate))): 
                         if a:
-                            self.plotf.plot_sites(site_data[i_a],i_t,i_a,i_iter)
+                            self.plot_sites.plot_functions['sites'](
+                            site_data[i_a],[i_t, i_a, i_mc],new_figure,-1,'sites',None)
                         
-                # Update Observables Array
-                if 0 % self.Nmeas/int(np.sqrt(self.Nspins)) == 0 or True:
-                    observable.append(flatten(self.observables_f(
+                        
+                # Update Observables Array every Monte Carlo Step: i_mc=nNspins
+                if i_mc % self.Nmeas_f == 0:
+                    observable.append(flatten(self.model_props['observables'](
                             self.sites,self.neighbour_sites,self.t)))
-                                
-    
-            #print('T = %0.1f   %0.5f' %(t,time.clock()-t1))
-        self.observables.append(observable)
-
-
-      
-        # Calculate Total Runtime for system class
-#        print('final order: '+str(
-#               (self.observables_f(self.sites,self.neighbour_sites,self.t)[2]/
-#                                                                 self.Nspins)))
-        print('%s runtime: %0.5f'%(algorithm,time.clock()-t0)) 
-#        
-        # Pause after last Iteration
-        if i_t == len(self.T)-1:
-                    # Save Data Plots
-            if self.animate[0]: 
-                self.plotf.plot_save(''.join(
-                       [self.modelprops[t] for t in ['data_dir','data_file']]))  
-                self.plotf.plot_show(1)
+                    # Print a progress ticker              
+                    #sys.stdout.write('.'); sys.stdout.flush();  
+            
+            
+            
+            self.observables.append(observable)
+                
         
         return
      
         
-        
+    # Update Algorithms
     def metropolis(self):
         # Randomly alter random spin sites and accept spin alterations
         # if energetically favourable or probabilistically likely
-        for i in range(self.Nspins):
-            E0 = self.prob_update(self.sites,self.neighbour_sites,self.t)
-            
-            isites = np.random.randint(0,self.Nspins,self.Ncluster)
-            sites0 = np.copy(self.sites[isites])
-            self.sites[isites] = self.state_sites(self.Ncluster,sites0)
 
-            dE = self.prob_update(self.sites,self.neighbour_sites,self.t)- E0
+        # Calculate Energy and Generate Random Spin Site
+        E0 = self.prob_update()
+        sites0 = np.copy(self.sites)
 
-            if dE > 0:
-                if np.exp(-dE/self.t) < np.random.random():
-                    self.sites[isites] = np.copy(sites0)
-                else:
-                    self.cluster_sites = isites
-                    self.clusters.append(isites)
-            else:
-                self.cluster_sites = isites
-                self.clusters.append(isites)
-
-            return
-    
-    
-    
-    def wolff(self):
+        isite = [np.random.randint(self.Nspins) for j in 
+                  range(self.Ncluster)]
         
+        self.sites[isite] = self.state_gen(self.Ncluster,sites0[isite])
+        
+        self.cluster_sites = isite
+        self.clusters.append(isite)
+        self.cluster_value = np.copy(self.sites[isite])
+
+        # Calculate Change in Energy and decide to Accept/Reject Spin Flip
+        dE = self.prob_update()-E0
+        if dE > 0:
+            if np.exp(-dE/self.t) < np.random.random():
+                self.sites = sites0
+                self.cluster_value = [np.nan]
+                
+        
+        
+        self.cluster_values.append(self.cluster_value)
+        
+        return
+    
+    
+    def wolff(self):      
         # Create Cluster Array and Choose Random Site
+ 
         isite = np.random.randint(self.Nspins)
         self.cluster_sites = []
         self.cluster_rejections = []
-        self.cluster_value = self.state_sites(self.Ncluster,
+        self.cluster_value = self.state_gen(self.Ncluster,
                                                 self.sites[isite])
-        self.cluster_value0 = self.sites[isite]
+        self.cluster_value0 = np.copy(self.sites[isite])
     
         # Perform cluster algorithm to find indices in cluster
         self.cluster(isite)
         
         # Flip spins in cluster to new value
-        self.sites[self.cluster_sites] = self.cluster_value        
+        self.sites[self.cluster_sites] = np.copy(self.cluster_value)
         
         self.clusters.append(self.cluster_sites)
-        
-        
+        self.cluster_values.append(self.cluster_value)
+
         # Find Edges of Cluster
-        self.edges(self.cluster_sites)
-        #print(np.size(self.edges))
-        # Plot Sites, Updated Cluster, and Updated Cluster Edges
-                
+        #self.edges(self.cluster_sites)
+        
+        return
+        
                
     
-    
+    # Cluster Functions
     def edges(self,cluster):
         for c in np.atleast_1d(cluster):
              self.cluster_edges.append([i for i in np.atleast_1d(c) if len(
@@ -214,17 +246,19 @@ class MonteCarloUpdate(object):
     
     def cluster(self,i):
         self.cluster_sites.append(i)
-        if len(self.cluster_sites) < int(0.95*self.Nspins):
-            J = (j for j in self.neighbour_sites[0][i] if (
-                                    j not in self.cluster_sites) and 
-                                    (self.sites[j] == self.cluster_value0) and 
-                                    (j not in self.cluster_rejections))
-            for j in J:
-                if self.prob_update(self.t) > np.random.rand():
+        #if len(self.cluster_sites) < int(0.95*self.Nspins):
+        J = (j for j in self.neighbour_sites[0][i] if (
+                                j not in self.cluster_sites) and 
+                                (self.sites[j] in self.cluster_value0) and 
+                                (j not in self.cluster_rejections))
+        for j in J:
+                if self.prob_update() > np.random.rand():
                         self.cluster(j)
                 else:
                     self.cluster_rejections.append(j)
         return
+    
+    
 
     def sites_region(self,sites0):
         if  np.array_equiv(sites0,self.sites):
@@ -233,7 +267,7 @@ class MonteCarloUpdate(object):
             region = np.zeros(np.shape(self.sites))
             region[:] = np.nan
             region[sites0] = self.sites[sites0]
-            return region
+            return np.array(region)
     
     
     

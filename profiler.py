@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Jan  1 01:08:22 2018
-
 @author: Matt
 """
 
@@ -69,22 +68,23 @@ class profiler(object):
         p.strip_dirs().sort_stats('cumulative').print_stats()
         
 class profiler_graph(object):
-    def __init__(self,module):
+    def __init__(self,module,num=''):
         from pycallgraph import PyCallGraph
         from pycallgraph.output import GraphvizOutput
 
-        with PyCallGraph(output=GraphvizOutput()):
+        with PyCallGraph(output=GraphvizOutput(output_file = 'pycallgraph_%s.png'%num)):
             module()
-            
+
+num = 0
 if __name__ == "__main__":
     T = [5,2.5,2,1.5,1,0.5]
     T0 = 0.5
     L=6
     d=2
+    num +=1
     
     from MagnetismModel import system
     
-    profiler_graph(system(L,d,T).MonteCarlo)
+    profiler_graph(system(L,d,T0).MonteCarlo,num)
     
     #profiler('MagnetismModel.system','MonteCarlo',L,d,T)
-        

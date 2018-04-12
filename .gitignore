@@ -1,3 +1,13 @@
+# t-SNE Project Ignore Data Files
+# ignore all Data files in the doc/ directory and any of its subdirectories
+
+*Data/
+
+OLD*/
+
+
+
+
 # Windows image file caches
 Thumbs.db
 ehthumbs.db
