@@ -66,7 +66,8 @@ class neural_net(object):
 
     def training(self,data_params = 
                      {'data_files': ['x_train','y_train','x_test','y_test'],
-                      'data_types': ['x_train','y_train','x_test','y_test'],
+                      'data_types_train': ['x_train','y_train'],
+                      'data_types_test': ['x_test','y_test'],
                       'data_format': 'npz',
                       'data_dir': 'dataset/',
                       'one_hot': False
@@ -77,8 +78,15 @@ class neural_net(object):
     
         
         # Import Data by Data Type
+        if not(data_params['data_types_train'] and 
+               data_params['data_types_test']):
+            
+            data_params['data_types'] = ['x_train','y_train','x_test','y_test']
         
-        data_params['data_types'] = ['x_train','y_train','x_test','y_test']     
+        else:
+            
+            data_params['data_types'] = (data_params['data_types_train'] +
+                                         data_params['data_types_test'])
         
 
         data, data_size = data_transfer().importer(data_params)
@@ -139,50 +147,56 @@ class neural_net(object):
 #                              0.96, staircase=True)
 #        
         # Training Output with Learning Rate Alpha
-        train_step = self.nn_params['neuron_func']['optimize'](alpha_learn,cost)
-        test_acc = train_acc
+        train_step = self.nn_params[
+                                   'neuron_func']['optimize'](alpha_learn,cost)
+
         
         # Initialize all tensorflow variables
         sess.run(tf.global_variables_initializer())
         
+        
         # Initialize Results Dictionaries
-        results_keys = ['cost','train_acc', 'test_acc', 'y_est']
+        results_keys_train = ['cost','train_acc']
+        results_keys_test =  ['test_acc', 'y_est']
+        results_keys = results_keys_train + results_keys_test
         
-        results_func = {key: lambda *args: sess_run(
-                                            locals().get(key,train_acc),*args) 
+        loc = locals()
+        loc= {key:loc[key] for key in results_keys}
+
+        results_func = {key: lambda *args: sess_run(loc[key],*args) 
                                             for key in results_keys}
+
         results = {key: [] for key in results_keys}
-        
-        
-        for key,val in results.items():
-                        val.append(results_func[key]())
-        
-        print(results_func)
-        print(results)
-        
+                        
         
         # Ability to save and restore all the variables
         #saver = tf.train.Saver(max_to_keep=self.nn_params['n_epochs'])  
         
 
-
+    
 
         if train:
+            
+            print('Training...')
+            epoch_range = np.arange(self.nn_params['n_epochs'])
+            dataset_range = np.arange(self.nn_params['n_dataset_train'])
+            batch = {}
             # Train Model over n_epochs with Stochastic Gradient Descent 
-            for epoch in range(self.nn_params['n_epochs']):
+            for epoch in epoch_range:
                            
                 # Divide training data into batches for training 
                 # with Stochastic Gradient Descent
-                for i_batch_train in range(self.nn_params['n_dataset_train']):
+                for _ in dataset_range:
                     
                     # Choose Random Batch of data
-                    shuffled = [data['x_train'],data['y_train']]
-                    np.random.shuffle(shuffled)
+                    np.random.shuffle(dataset_range)
                     
-                    batch_x = shuffled[0][0:self.nn_params['n_batch_train'],:]
-                    batch_y = shuffled[1][0:self.nn_params['n_batch_train'],:]
+                    for key in data_params['data_types_train']:
+                        batch[key] = data[key][dataset_range,:][
+                                           0:self.nn_params['n_batch_train'],:]
                     
-                    sess_run(train_step,batch_x,batch_y)
+                    sess_run(train_step,[data[key] 
+                                  for key in data_params['data_types_train']])
                     
                 
                 
@@ -194,25 +208,35 @@ class neural_net(object):
     #                results['cost'].append(sess_run(cost,[batch_x,batch_y]))
     #                results['train_acc'].append(sess_run(y_acc,[batch_x,batch_y]))
                     for key,val in results.items():
-                        val.append(results_func[key]([batch_x,batch_y]))
-                                
-                    self.data_process(results,save=False,plot=True,
-                                      **{'x1': x1_grid, 'x2': x2_grid,
-                                       'x_train': data['x_train'],
-                                       'y_est':y_est,'f': sess_run,'K': K})
+                        if key in results_keys_train:
+                            val.append(results_func[key]([data[k] 
+                            for k in data_params['data_types_train']]))
+                    
+                    
+                    print('Epoch: %d'% epoch +
+                          'Testing Accuracy: '+str(results['train_acc'][-1])+
+                          '\n') 
+                    
+#                    self.data_process(results,save=False,plot=True,
+#                                      **{'x1': x1_grid, 'x2': x2_grid,
+#                                       'x_train': data['x_train'],
+#                                       'y_est':y_est,'f': sess_run,'K': K})
                                     
                     if test:
                         #t_acc = sess_run(y_acc,[data['x_test'],data['y_test']])
-                        t_acc = results_func['test_acc']([data['x_test'],data['y_test']])
+                        t_acc = results_func['test_acc'](
+                                [data['x_test'],data['y_test']])
                         results['test_acc'].append(t_acc)
-                        print('Epoch: %d'% epoch +'Label Accuracy: %0.6f'%(t_acc)+'\n')    
+                        print('Epoch: %d'% epoch +
+                              'Testing Accuracy: %0.6f'%(t_acc) + '\n')    
 
         
             # Save and Plot Accuracy and Error Data
-            self.data_process(results,save=False,plot=False)
+            #self.data_process(results,save=False,plot=False)
         
         if test:
-            self.testing('y_est',[data['x_test'],data['y_test']])
+            self.testing('y_est',
+                         [data[key] for key in data_params['data_types_test']])
 
 
         data_params['results'] = results
@@ -433,11 +457,12 @@ if __name__ == '__main__':
                   }
     
     data_params =    {'data_files': [x_train,y_train],
-                      'data_types': ['x_train','y_train'],
+                      'data_types_train': ['x_train','y_train'],
+                      'data_types_test': ['x_test','y_test'],
                       'data_format': 'values',
                       'data_dir': 'dataset/',
                       'one_hot': True
                      }
 
     # Run Neural Network
-    nn = neural_net(network_params).training(data_params)
+    nn = neural_net(network_params).training(data_params,train=True)
