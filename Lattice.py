@@ -12,7 +12,7 @@ class Lattice(object):
     # Define a Lattice class for lattice sites configurations with:
     # Lattice Length L, Lattice Dimension d
     
-    def __init__(self,L=6,d=2):
+    def __init__(self,L=6,d=3):
         # Define parameters of system        
         self.L = L
         self.d = d
@@ -101,3 +101,6 @@ class Lattice(object):
         #  rvals = np.diag(np.delete(np.arange(-self.L,self.L+1),0))
         #  self.rsites = np.kron(rvals,np.identity(self.d))
         #  print(self.rsites)
+        
+if __name__ == '__main__':
+    l = Lattice

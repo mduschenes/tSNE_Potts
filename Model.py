@@ -30,14 +30,14 @@ class Model(object):
                                        'order': self.ising_order,
                                        'bond_prob': 
                                            lambda s,n,T: 
-                                        1- np.exp(-2/T*self.orderparam[1]),
+                                        1- np.exp(-2*self.orderparam[1]/T),
                                        'value_range': [-self.q,self.q,0]},
                              'potts': {'value': self.potts,
                                        'energy': self.potts_energy,
                                        'order': self.potts_order,
                                        'bond_prob': 
                                            lambda s,n,T: 
-                                        1- np.exp(-1/T*self.orderparam[1]),
+                                        1- np.exp(-1*self.orderparam[1]/T),
                                        'value_range': [1,self.q,None]}} 
                                  
 

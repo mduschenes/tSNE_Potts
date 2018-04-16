@@ -5,11 +5,11 @@
 
 OLD*/
 **/OLD*/
-**/dataset*/
+**/*dataset*/
 
 *.ipynb
 
-
+**/__pycache__
 
 # Windows image file caches
 Thumbs.db

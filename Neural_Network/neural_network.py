@@ -5,370 +5,439 @@ Created on Tue Jan 23 11:04:42 2018
 @author: Matt
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+#from __future__ import absolute_import
+#from __future__ import division
+#from __future__ import print_function
 
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import os
 
-from mutual_information import MUT_INFO
+seed=1234
+np.random.seed(seed)
+tf.set_random_seed(seed)
+
+#from mutual_information import MUT_INFO
+from data_transfer import data_transfer
+
+
+#network_params = {'n_neuron': [None,10,7,5,4,3,None],'alpha_learn': 0.5, 
+#                  
+#                  'neuron_func':{
+#                       'layer': tf.tanh,
+#                       'output': tf.sigmoid,
+#                       'cost': {
+#                         'cross_entropy': lambda y_label,y_est, eps= 10**(-6): 
+#                                         tf.reduce_mean(-tf.reduce_sum(
+#                                             y_label*tf.log0(y_est+eps) +
+#                                          (1.0-y_label)*tf.log(1.0-y_est +eps),
+#                                          axis=1)),
+#                          'mse': lambda y_label,y_est: (1/2)*tf.reduce_mean(
+#                                  tf.reduce_sum(tf.square(y_est-y_label),
+#                                  axis=1)),
+#                          'entropy_logits': lambda y_label,y_est: 
+#                              tf.nn.sigmoid_cross_entropy_with_logits(
+#                                      labels=y_label, logits=y_est)},
+#                    'optimize': lambda a,c: tf.train.GradientDescentOptimizer(s).minimize(c)
+#                             },
+#                           
+#                  'n_epochs': 100,
+#                  'n_batch_train': 1/20, 'n_epochs_meas': 1/20,
+#                  }
+#                           
+#data_params  =       {'data_files': ['x_train','y_train','x_test','y_test'],
+#                      'data_types': ['x_train','y_train','x_test','y_test'],
+#                      'data_format': 'npz',
+#                      'data_dir': 'dataset/',
+#                      'one_hot': False
+#                     }
 
 
 class neural_net(object):
-    def __init__(self,n_neuron = [10,7,5,4,3],
-                      alpha_learn = 0.5,neuron_activation=None,
-                      n_epochs=None,n_batch_train=None,n_dataset_train=None,
-                      dataset_file=None):
+    
+    def __init__(self,nn_params):
+                
+        # Define Neural Network Properties Dictionary
+        self.nn_params = nn_params  
+       
+        return
         
-        # Define Layers
 
-        # Array of Number of Neurons per Layer, 
-        # excluding input and ouptut layers
+    def training(self,data_params = 
+                     {'data_files': ['x_train','y_train','x_test','y_test'],
+                      'data_types': ['x_train','y_train','x_test','y_test'],
+                      'data_format': 'npz',
+                      'data_dir': 'dataset/',
+                      'one_hot': False
+                     },
+                      train = False,
+                      test = False,
+                      cost_f = 'cross_entropy'):
+    
         
-        self.n_neuron = n_neuron
-        self.alpha_learn = alpha_learn
-        self.n_layers = len(n_neuron)     # Number of HIDDEN layers
+        # Import Data by Data Type
         
-        # Define Neuron Activation Functions as 
-        # [Neuron Function, Output Function, Cross Entropy Function]
-        if neuron_activation == None:
-            self.neuron_activation = [tf.tanh,
-                                      lambda x,y:
-                                      tf.nn.sigmoid_cross_entropy_with_logits(
-                                              labels=x, logits=y),
-                                      tf.sigmoid]
-        else:
-            self.neuron_activation = neuron_activation
+        data_params['data_types'] = ['x_train','y_train','x_test','y_test']     
         
+
+        data, data_size = data_transfer().importer(data_params)
+        
+        
+        if not any('test' in key for key in data.keys()):
+            test = False
+        
+#        print(data)
+#        print(data_size)
+        
+        # Define Number of Neurons at Input and Output
+        self.nn_params['n_dataset_train'],self.nn_params['n_neuron'][0] = (
+                                                          data_size['x_train'])
+        self.nn_params['n_neuron'][-1] = data_size['y_train'][1]
+        self.nn_params['n_dataset_test'] = data_size.get('x_test',[None])[0]
         
         # Define Training Parameters
-        self.n_epochs = n_epochs       # Number of epochs to train
-        
-        
-        # Define directories 
-        self.data_folder = "dataset/"
-        self.dataset_file = ["configs.npy","labels.npy","labels64.npy"]
-        self.save_folder = ["model_data/accuracy_data/",
-                            "model_data/self.session_data/"]
-        
-        for i,f in enumerate(self.save_folder):
-            self.save_folder[i] = self.data_folder + f
-            if not os.path.exists(self.save_folder[i]):
-                # os.remove(data_folder+f)
-                os.makedirs(self.save_folder[i])
-    
-
-        self.session_file = lambda i="": (self.save_folder[1]+
-                                             "network_model_{}".format(i))
-        
-        
-        # Train Neural Network Data with 
-        # Number of SGD Batch Size and Training Dataset Size
-        np.random.seed(111)
-        #self.training(n_batch_train,n_dataset_train)
-        
-        return
-        
-
-
-    def training(self,n_batch_train,n_dataset_train):
+        self.nn_params['n_batch_train'] = int(self.nn_params['n_batch_train']*
+                                             self.nn_params['n_dataset_train'])
+        self.nn_params['n_epochs_meas'] = int(self.nn_params['n_epochs']*
+                                              self.nn_params['n_epochs_meas'])
     
         
-        def training_parameters(n_batch_train,n_dataset_train):
-            
-            # Define Number of Neurons at Input and Output
-            self.n_neuron.insert(0,self.n_x)
-            self.n_neuron.append(self.n_y)
-            
-            # Define Number of training Epochs
-            if self.n_epochs == None: 
-                self.n_epochs = int(np.size(self.x,0)/10)
-            # Define SGD Batch Size
-            if n_batch_train == None:   # Batch size for SGD
-                n_batch_train = int(np.size(self.x,0)/100)
-            
-            # Define size of training data set
-            if n_dataset_train == None:
-                n_dataset_train = int(np.size(self.x,0)*85/100) 
-            
-            return n_batch_train, n_dataset_train
-        
-        
-        # Import Data and get Data Parameters
-        self.data_import()
-        
-        n_batch_train, n_dataset_train =  training_parameters(
-                                                 n_batch_train,n_dataset_train)
+    
         # Initialize Layers
-        self.layers()
+        y_est,x_,y_ = self.layers()
         
-         # Initialize arrays to collect accuracy and error data during training
-        y_cross_entropy  = np.zeros(self.n_epochs)
-        y_train_accuracy = np.zeros(self.n_epochs)
+        # Initialize arrays to collect accuracy and error data during training
+#        y_cost  = np.empty(self.nn_params['n_epochs'])
+#        y_train_accuracy = np.zeros(self.nn_params['n_epochs'])
+#        y_test_accuracy = np.zeros(int(self.nn_params['n_epochs']/
+#                                        self.nn_params['n_epochs_meas']))
         
-        test_trials = 10
-        y_test_accuracy = np.zeros(int(self.n_epochs/test_trials))
+        # Initalize Tensorflow session
+        sess = tf.Session()
         
-        y_predictions = tf.equal(tf.argmax(
-                self.neuron_activation[2](self.y_est),1), tf.argmax(self.y_,1))
-        y_accuracy = tf.reduce_mean(tf.cast(y_predictions, tf.float32))
-              
+        # Session Run Function
+        sess_run = lambda f,x=[data['x_train'],data['y_train']]: sess.run(
+                f,feed_dict = {xi:x for xi,x in zip([x_,y_],x)})
+               
+        # Initialize Accuracy Functions
+        y_predictions = tf.equal(tf.argmax(y_est,axis=1),tf.argmax(y_,axis=1))
         
-        # Define Cross Entropy Cost Function      
-        self.cross_entropy = tf.reduce_mean(self.neuron_activation[2](
-                                              self.y_,self.y_est))
+        train_acc = tf.reduce_mean(tf.cast(y_predictions, tf.float32))
+        test_acc = train_acc         
         
+        # Define Cost Function      
+        cost = tf.reduce_mean(
+                self.nn_params['neuron_func']['cost'][cost_f](y_,y_est))
+        
+                       
         # Define Learning Rate Corrections
-        self.global_step = tf.Variable(0, trainable=False)
-        self.alpha_learn = tf.train.exponential_decay(self.alpha_learn,
-                              self.global_step, self.n_epochs,
-                              0.96, staircase=True)
-        self.train_step = tf.train.GradientDescentOptimizer(
-                                      self.alpha_learn).minimize(
-                                              self.cross_entropy)
+        #global_step = tf.Variable(0, trainable=False)
+        alpha_learn = self.nn_params['alpha_learn']
+#        tf.train.exponential_decay(self.nn_params['apha_learn'],
+#                              global_step, self.nn_params['n_epochs'],
+#                              0.96, staircase=True)
+#        
+        # Training Output with Learning Rate Alpha
+        train_step = self.nn_params['neuron_func']['optimize'](alpha_learn,cost)
+        test_acc = train_acc
         
-        # Training Output with learning rate alpha
-        self.y_step = tf.train.GradientDescentOptimizer(
-                self.alpha_learn).minimize(self.cross_entropy)
+        # Initialize all tensorflow variables
+        sess.run(tf.global_variables_initializer())
+        
+        # Initialize Results Dictionaries
+        results_keys = ['cost','train_acc', 'test_acc', 'y_est']
+        
+        results_func = {key: lambda *args: sess_run(
+                                            locals().get(key,train_acc),*args) 
+                                            for key in results_keys}
+        results = {key: [] for key in results_keys}
         
         
-        # Initalize Tensorflow self.session
-        self.sess = tf.Interactiveself.session()
-        tf.global_variables_initializer().run()
+        for key,val in results.items():
+                        val.append(results_func[key]())
+        
+        print(results_func)
+        print(results)
+        
         
         # Ability to save and restore all the variables
-        self.saver = tf.train.Saver(max_to_keep=self.n_epochs)  
+        #saver = tf.train.Saver(max_to_keep=self.nn_params['n_epochs'])  
         
-        
-        # Train Model with random subset of data set over self.n_epochs
-            
-        for j in range(self.n_epochs):
-            
-            # Initilialize random subset of  n_dataset_train elements of data
-            # for training versus testing (~ 85% of dataset)
-            i_train = np.random.choice(range(n_batch_train),n_dataset_train)
-            i_test = [i for i in range(n_batch_train) if i not in i_train]
-            
-            x_train = self.x[i_train]
-            y_train = self.y[i_train]
-            
-            x_test = self.x[i_test]
-            y_test = self.y[i_test]
-            
-            # Divide training data into batches for training 
-            # with Stochastic Gradient Descent
-            for i in range(0,n_dataset_train,n_batch_train):
-                batch_x = x_train[i:i+n_batch_train,:]
-                batch_y = y_train[i:i+n_batch_train,:]
-                self.sess.run(self.y_step,
-                              feed_dict={self.x_:batch_x, self.y_:batch_y}) 
-                
-            # Record Training Cross Entropy and Training Accuracy
-            y_cross_entropy[j]  = self.sess.run(self.cross_entropy,
-                                feed_dict={self.x_: batch_x, self.y_: batch_y})
-            y_train_accuracy[j] = y_accuracy.eval(
-                                feed_dict={self.x_: batch_x, self.y_: batch_y})
 
-            # Print Test Data Accuracy
-            if j % int(self.n_epochs/test_trials) == 0:
-                y_test_accuracy[int(j/test_trials-1)] = self.sess.run(
-                        y_accuracy, feed_dict={self.x_:x_test, self.y_:y_test})
-                print('Epoch: ',j)
-                print('Label Accuracy: ',y_test_accuracy[int(j/test_trials-1)])    
-                print('\n')
+
+
+        if train:
+            # Train Model over n_epochs with Stochastic Gradient Descent 
+            for epoch in range(self.nn_params['n_epochs']):
+                           
+                # Divide training data into batches for training 
+                # with Stochastic Gradient Descent
+                for i_batch_train in range(self.nn_params['n_dataset_train']):
+                    
+                    # Choose Random Batch of data
+                    shuffled = [data['x_train'],data['y_train']]
+                    np.random.shuffle(shuffled)
+                    
+                    batch_x = shuffled[0][0:self.nn_params['n_batch_train'],:]
+                    batch_y = shuffled[1][0:self.nn_params['n_batch_train'],:]
+                    
+                    sess_run(train_step,batch_x,batch_y)
+                    
                 
+                
+                    
+                if epoch+1 % self.nn_params['n_epochs_meas']:
+                    
+                    # Record Training Cross Entropy and Training Accuracy
+    #                
+    #                results['cost'].append(sess_run(cost,[batch_x,batch_y]))
+    #                results['train_acc'].append(sess_run(y_acc,[batch_x,batch_y]))
+                    for key,val in results.items():
+                        val.append(results_func[key]([batch_x,batch_y]))
+                                
+                    self.data_process(results,save=False,plot=True,
+                                      **{'x1': x1_grid, 'x2': x2_grid,
+                                       'x_train': data['x_train'],
+                                       'y_est':y_est,'f': sess_run,'K': K})
+                                    
+                    if test:
+                        #t_acc = sess_run(y_acc,[data['x_test'],data['y_test']])
+                        t_acc = results_func['test_acc']([data['x_test'],data['y_test']])
+                        results['test_acc'].append(t_acc)
+                        print('Epoch: %d'% epoch +'Label Accuracy: %0.6f'%(t_acc)+'\n')    
+
         
-        # Save and Plot Accuracy and Error Data
-        self.results = [y_train_accuracy, y_test_accuracy, y_cross_entropy]
-        self.data_process(self.n_epochs,save=False,plot=False)
+            # Save and Plot Accuracy and Error Data
+            self.data_process(results,save=False,plot=False)
+        
+        if test:
+            self.testing('y_est',[data['x_test'],data['y_test']])
+
+
+        data_params['results'] = results
+        data_params['results_func'] = results_func
+
+        self.data_params = data_params
         
         # Calculate Mutual Information from Loaded Data
-        I,I_file = self.info_plane(plot=False)
+        #I,I_file = self.info_plane(plot=False)
 
         
-        return
+    def testing(self,data_params,keys=None,*data):
+        
+        if data_params is None:
+            data_params = self.data_params
+        
+        if keys is None:
+            keys = data_params['results'].keys()
+        
+        items = zip(keys,data_params['results'].values())
+        
+        for key,val in items:
+            val.append(data_params['results_func'][key](*data))
+        
     
-    
-    
-    def layers(self):
+    def layers(self,sigma=0.1):
         
         def neuron_var(shape,sigma=0.1):
             initial = tf.truncated_normal(shape,stddev=sigma)
             return tf.Variable(initial)        
         
         
+        # Define Numbers In + Out + Hidden Layers
+        self.nn_params['n_layers'] = np.size(self.nn_params['n_neuron'])    
+        
         # Initialize Weights, Biases and Input/Output Placeholders
-        self.x_ = tf.placeholder(tf.float32,[None,self.n_x])
-        self.y_ = tf.placeholder(tf.float32, [None,self.n_y])
+        x_ = tf.placeholder(tf.float32, [None,self.nn_params['n_neuron'][0] ])
+        y_ = tf.placeholder(tf.float32, [None,self.nn_params['n_neuron'][-1]])
         
-        W = [None]*(self.n_layers+1)
-        b = [None]*(self.n_layers+1)
-        self.T = [None]*(self.n_layers+2)
+        W = [None]*(self.nn_params['n_layers']-1)
+        b = [None]*(self.nn_params['n_layers']-1)
+        T = [None]*(self.nn_params['n_layers'])
         
-        self.T[0] = self.x_
+        # Define Input
+        T[0] = x_
         
-        # Pass data through Layers
-        for i in range(self.n_layers+1):
-            Wshape = [self.n_neuron[i],self.n_neuron[i+1]]
-            bshape = [self.n_neuron[i+1]]
-            
-            W[i] = neuron_var(Wshape)
-            b[i] = neuron_var(bshape)
+        # Create Neuron Parameters in Layers
+        for i in range(self.nn_params['n_layers']-1):
+            Wshape = [self.nn_params['n_neuron'][i],
+                      self.nn_params['n_neuron'][i+1]]
+            bshape = [self.nn_params['n_neuron'][i+1]]
+        
+            W[i] = neuron_var(Wshape,sigma)
+            b[i] = neuron_var(bshape,sigma)
             
             # Calculate Activation function for ith layer
-            if i != self.n_layers:
-                self.T[i+1] = self.neuron_activation[0](
-                                              tf.matmul(self.T[i],W[i]) + b[i])
+            if i != self.nn_params['n_layers']:
+                T[i+1] = self.nn_params['neuron_func']['layer'](
+                                              tf.matmul(T[i],W[i]) + b[i])
             else:
                 # Cross Entropy performs activation on output
-                self.T[i+1] = tf.matmul(self.T[i],W[i]) + b[i] 
+                T[i+1] = self.nn_params['neuron_func']['output'](
+                                              tf.matmul(T[i],W[i]) + b[i])
+        
         
         # Define Ouput
-        self.y_est = self.T[-1]
+        y_est = T[-1]
         
-        return
-    
-    
-
-
-    
-    def data_import(self,datatype = 'text',trainingdata=True):
-        # Import Data
-        
-        def one_hot(x,n=None):
-            x = x.astype(np.int32)
-            if n==None:
-                n = int(max(x)+1)
-            y = np.zeros([len(x),n],dtype=np.int32)
-            for i in range(n):
-                p = np.zeros(n)
-                np.put(p,i,1)
-                y[x==i,:] = p
-            return y
-        
-        
-        def textimport():
-
-#            datafile = """C:/Users/Matt/Google Drive/PSI/PSI Essay/
-#                PSI Essay Python Code/MachineLearning/
-#                Tensorflow/mnist/config_labels.txt""" if \
-#                                                datafile == None else datafile
-#                        # Import Data in collumn 0 and Labels in collumn 1
-#            datapoints = np.loadtxt(datafile,dtype=str,usecols=0)
-#            data = np.array([[int(i) for i in x] for x in datapoints])
-#            datalabels = np.loadtxt(datafile,dtype=int,usecols=1)
-            
-            # Import x data
-            self.x = np.load(self.dataset_file[0])
-
-            # Import x labels
-            self.y = one_hot(np.load(self.dataset_file[1]))
-            
-            # Define Number of Datasets, Size of x and y datapoints
-            self.n_dataset,self.n_x = np.shape(self.x)
-            self.n_y = np.size(self.y,1)
-            
-            return
-        
-        def mnistimport():
-#            datafile = "MNIST_data/" if datafile == None else datafile
-#                
-#            self.x = datafile #input_data.read_data_sets(
-#            datafile,one_hot=True)
-#             
-#            if self.n_epochs == None: 
-#                self.n_epochs = int(np.size(self.x,0)/4)
-#            if self.n_batch_train == None:
-#                self.n_batch_train = int(np.size(self.x,0)/100)
-#             
-            return
-        
-        data_import_dict = {'text':textimport,'mnist':mnistimport}
-        
-        data_import_dict[datatype]()
-        
-        
-        return
-    
-    
-        # Plot Information Plane
-    def info_plane(self, n_bins = 1000,plot=False):
-        # Plot Mutual Information for each Layer from saved epoch data
-        
-        # Initialize Mutual Information
-        m = MUT_INFO(n_bins=n_bins, dataset_file=self.dataset_file)
-        I = np.empty([self.n_layers-1,2,self.n_epochs])
-        
-        # Plotting Properties
-        colormap = plt.cm.gist_ncar
-        plt.gca().set_color_cycle([colormap(i) 
-                                for i in np.linspace(0, 0.9, self.n_epochs)])
-        
-        # Perform MI calculation [I(X,T), I(Y,T)] for each layer per epoch
-        for epoch in range(self.n_epochs):
-            # Import each epoch self.session file
-            saver_epoch = tf.train.import_meta_graph(
-                    self.session_file(epoch+1)+'.meta')
-            saver_epoch.restore(
-                    tf.Session(),self.session_file(epoch+1)+'.ckpt')    
-            
-            for i,T_layer in enumerate(self.T[1:]):
-                I[i,:,epoch] = m.mut_info(
-                        T_layer.eval(feed_dict={self.x_: self.x}))
-            
-        # Save Data
-        file_name = self.data_folder+(
-                               '{}epochs_Mut_Info_XT_YT'.format(self.n_epochs))
-        np.savez_compressed(file_name, a=I)
-        
-        # Plot Information Plane
-        if plot:
-            for epoch in range(self.n_epochs):
-                if epoch == 0:
-                    plt.plot(I[:,0,epoch],I[:,1,epoch],
-                             '-*',label='Layer: '+str(i))
-                    plt.legend(loc=2,numpoints=1,prop={'size': 6})
-                else:
-                    plt.plot(I[:,0,epoch],I[:,1,epoch],'-*')
-    
-            plt.show()
-        
-        return I,file_name+'{}epochs_Mut_Info_XT_YT'.format(self.n_epochs)
+        return y_est,x_,y_
     
     
     
-    def data_process(self,save=True,plot=True):
+    def data_process(self,data,save=False,plot=True,**kwargs):
+        
+        
+        n_data = np.size(data)
         
         # Save or Load Data and Plot Data
-        result_names = ['train_acc','test_acc','err_list']
-        file_names = lambda i:'{}epochs_'.format(self.n_epochs)+result_names[i]
-        n_results = len(self.results)
+        file_names = lambda value: '{}epochs_'.format(n_data) + value
         
         
-        for i in range(n_results):
+        if plot:
+            fig, ax = plt.subplots(n_data+1)
+            i = 0
+        
+        
+        for key,val in data.items():
+            
             if save:    
-                np.savez_compressed(file_names(i),a=self.results[i])
-            elif not self.results:
-                self.results[i] = np.load(file_names(i))['a']
+                np.savez_compressed(file_names(key),a=val)
+            elif not val:
+                val = np.load(file_names(key))['a']
         
             if plot:
-                plt.figure(figsize=(15,4))
                 
-                for i in range(len(self.results)):
-                    plt.subplot(1,3,1)
-                    plt.plot(np.arange(len(self.results[i])),
-                                           self.results[i], color='r')
-                    plt.title(result_names[i])
-                    plt.ylabel(result_names[i])
-                    plt.xlabel('Epoch')
+                plt.sca(ax[i])
+                plt.plot(np.arange(np.size(val)),val, color='r')
+                plt.title(key)
+                plt.ylabel(key)
+                plt.xlabel('Epoch')
+                
+                i += 1
+        
+        if plot and kwargs:
+            
+            y_estimate = np.argmax(kwargs['f'](kwargs['y_est'],np.c_[kwargs['x1'].ravel(), kwargs['x2'].ravel()]), axis=1).reshape(kwargs['x1'].shape)
+            
+            plt.sca(ax[i])
+            plt.contourf(kwargs['x1'], kwargs['x2'], y_estimate, kwargs['K'], alpha=0.8)
+            plt.scatter(kwargs['x_train'][:, 0], kwargs['x_train'][:, 1], c=kwargs['y_train'], s=40)
+            plt.xlim(x1_grid.min(), x1_grid.max())
+            plt.ylim(x2_grid.min(), x2_grid.max())
+            plt.xlabel('x1')
+            plt.ylabel('x2')
         
 
 
 
+    
+#    def updatePlot(self,x_train,y_train,y_est,f,results):
+#    
+#          
+#        y_estimate = np.argmax(f(y_est,np.c_[x1_grid.ravel(), x2_grid.ravel()]), axis=1)
+#    
+#        plt.clf()
+#    
+#    
+#        ### Plot the classifier: ###
+#        plt.subplot(121)
+#        plt.contourf(x1_grid, x2_grid, y_estimate.reshape(x1_grid.shape), K, alpha=0.8)
+#        plt.scatter(x_train[:, 0], x_train[:, 1], c=y_train, s=40)
+#        plt.xlim(x1_grid.min(), x1_grid.max())
+#        plt.ylim(x2_grid.min(), x2_grid.max())
+#        plt.xlabel('x1')
+#        plt.ylabel('x2')
+#    
+#        ### Plot the cost function during training: ###
+#        plt.subplot((2,2,i))
+#        plt.plot(np.arange(np.size(cost)),cost,'o-')
+#        plt.xlabel('Epoch')
+#        plt.ylabel('Training cost')
+#    
+#        ### Plot the training accuracy: ###
+#        plt.subplot(224)
+#        plt.plot(np.arange(np.size(acc)),acc,'o-')
+#        plt.xlabel('Epoch')
+#        plt.ylabel('Training accuracy')
+#        
+#        plt.pause(0.1)
+#        plt.show()
+        
     
 
 if __name__ == '__main__':
-    nn = neural_net()
+    
+    # Specify Plotting Parameters
+    plt.ion() # turn on interactive mode (for plotting)
+
+    #Specify font sizes for plots:
+    plt.rcParams['axes.labelsize']  = 10
+    plt.rcParams['legend.fontsize'] = 10
+    plt.rcParams['xtick.labelsize'] = 8
+    plt.rcParams['ytick.labelsize'] = 8
+    
+    
+    # K Branch Data Set
+    N = 50 # number of points per branch
+    K = 3  # number of branches
+    
+    N_train = N*K # total number of points in the training set
+    x_train = np.zeros((N_train,2)) # matrix containing the 2-dimensional datapoints
+    y_train = np.zeros((N_train,1), dtype='uint8') # labels (not in one-hot representation)
+    
+    mag_noise = 0.05  # controls how much noise gets added to the data
+    dTheta    = 4    # difference in theta in each branch
+    
+    ### Data generation: ###
+    for j in range(K):
+      ix = range(N*j,N*(j+1))
+      r = np.linspace(0.01,1,N) # radius
+      t = np.linspace(j*(2*np.pi)/K,j*(2*np.pi)/K + dTheta,N) + np.random.randn(N)*mag_noise # theta
+      x_train[ix] = np.c_[r*np.cos(t), r*np.sin(t)]
+      y_train[ix] = j
+            
+    
+    ### Generate coordinates covering the whole plane: ###
+    padding = 0.1
+    spacing = 0.02
+    x1_min, x1_max = x_train[:, 0].min() - padding, x_train[:, 0].max() + padding
+    x2_min, x2_max = x_train[:, 1].min() - padding, x_train[:, 1].max() + padding
+    x1_grid, x2_grid = np.meshgrid(np.arange(x1_min, x1_max, spacing),
+                         np.arange(x2_min, x2_max, spacing))
+    
+    
+    
+    network_params = {'n_neuron': [None,4,None],'alpha_learn': 0.5, 
+                  
+                  'neuron_func':{
+                       'layer':  tf.nn.sigmoid,
+                       'output': tf.nn.sigmoid,
+                       'cost': {
+                         'cross_entropy': lambda y_label,y_est, eps= 10**(-6): 
+                                         tf.reduce_mean(-tf.reduce_sum(
+                                             y_label*tf.log(y_est+eps) +
+                                          (1.0-y_label)*tf.log(1.0-y_est +eps),
+                                          axis=1)),
+                          'mse': lambda y_label,y_est: (1/2)*tf.reduce_mean(
+                                  tf.reduce_sum(tf.square(y_est-y_label),
+                                  axis=1)),
+                          'entropy_logits': lambda y_label,y_est: 
+                              tf.nn.sigmoid_cross_entropy_with_logits(
+                                      labels=y_label, logits=y_est)},
+                    'optimize': lambda a,c: tf.train.GradientDescentOptimizer(a).minimize(c)
+                             },
+                           
+                  'n_epochs': 100,
+                  'n_batch_train': 1/20, 'n_epochs_meas': 1/20,
+                  }
+    
+    data_params =    {'data_files': [x_train,y_train],
+                      'data_types': ['x_train','y_train'],
+                      'data_format': 'values',
+                      'data_dir': 'dataset/',
+                      'one_hot': True
+                     }
+
+    # Run Neural Network
+    nn = neural_net(network_params).training(data_params)
