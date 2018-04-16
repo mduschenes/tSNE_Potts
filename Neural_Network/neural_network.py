@@ -86,7 +86,7 @@ class neural_net(object):
         else:
             
             data_params['data_types'] = (data_params['data_types_train'] +
-                                         data_params['data_types_test'])
+                                        data_params['data_types_test'])
         
 
         data, data_size = data_transfer().importer(data_params)
@@ -124,10 +124,7 @@ class neural_net(object):
         # Initalize Tensorflow session
         sess = tf.Session()
         
-        # Session Run Function
-        sess_run = lambda f,x=[data['x_train'],data['y_train']]: sess.run(
-                f,feed_dict = {xi:x for xi,x in zip([x_,y_],x)})
-               
+                       
         # Initialize Accuracy Functions
         y_predictions = tf.equal(tf.argmax(y_est,axis=1),tf.argmax(y_,axis=1))
         
@@ -158,14 +155,29 @@ class neural_net(object):
         # Initialize Results Dictionaries
         results_keys_train = ['cost','train_acc']
         results_keys_test =  ['test_acc', 'y_est']
-        results_keys = results_keys_train + results_keys_test
+        results_keys = list(set(results_keys_train + results_keys_test))
+        
+        
+        # Session Run Function
+        sess_run = lambda f,x = [data[k] for k in
+                                 data_params['data_types_train']]: sess.run(
+                                 f,feed_dict = {k:v for k,v in zip([x_,y_],x)})
+        
         
         loc = locals()
         loc= {key:loc[key] for key in results_keys}
 
-        results_func = {key: lambda *args: sess_run(loc[key],*args) 
-                                            for key in results_keys}
-
+        results_func = {key: lambda args: sess_run(func,args) 
+                                            for key,func in loc.items()}
+#        results = {key: [] for key in results_keys}
+#
+#        for _ in range(3):
+#            for key,val in results.items():
+#                            if key in results_keys_train:
+#                                print(key,val)
+#                                val.append(results_func[key]([data[k] 
+#                                for k in data_params['data_types_train']]))
+    
         results = {key: [] for key in results_keys}
                         
         
@@ -190,12 +202,9 @@ class neural_net(object):
                     
                     # Choose Random Batch of data
                     np.random.shuffle(dataset_range)
-                    
-                    for key in data_params['data_types_train']:
-                        batch[key] = data[key][dataset_range,:][
+                                            
+                    sess_run(train_step,[data[key][dataset_range,:][
                                            0:self.nn_params['n_batch_train'],:]
-                    
-                    sess_run(train_step,[data[key] 
                                   for key in data_params['data_types_train']])
                     
                 
@@ -209,13 +218,21 @@ class neural_net(object):
     #                results['train_acc'].append(sess_run(y_acc,[batch_x,batch_y]))
                     for key,val in results.items():
                         if key in results_keys_train:
+                            #print(key,val)
                             val.append(results_func[key]([data[k] 
                             for k in data_params['data_types_train']]))
+                            #print(val)
                     
                     
-                    print('Epoch: %d'% epoch +
-                          'Testing Accuracy: '+str(results['train_acc'][-1])+
-                          '\n') 
+                    print('Epoch: %d'% epoch) 
+#                          + '\n'
+#                          'Testing Accuracy: '+str(results['train_acc'][-1])+
+#                          '\n')
+#                    print(sess_run(train_acc,[data[k] 
+#                            for k in data_params['data_types_train']]))
+#                    print('Epoch: %d'% epoch +
+#                          '\n Cost: '+str(results['cost'][-1])+
+#                          '\n') 
                     
 #                    self.data_process(results,save=False,plot=True,
 #                                      **{'x1': x1_grid, 'x2': x2_grid,
@@ -236,9 +253,11 @@ class neural_net(object):
         
         if test:
             self.testing('y_est',
-                         [data[key] for key in data_params['data_types_test']])
+                         [data[key] for key in data_params['data_types_test']],
+                         data_params)
 
-
+    
+        # Make Results Class variable for later testing with final network
         data_params['results'] = results
         data_params['results_func'] = results_func
 
@@ -248,7 +267,7 @@ class neural_net(object):
         #I,I_file = self.info_plane(plot=False)
 
         
-    def testing(self,data_params,keys=None,*data):
+    def testing(self,keys=None,data=None,data_params=None):
         
         if data_params is None:
             data_params = self.data_params
@@ -259,7 +278,9 @@ class neural_net(object):
         items = zip(keys,data_params['results'].values())
         
         for key,val in items:
-            val.append(data_params['results_func'][key](*data))
+            val.append(data_params['results_func'][key](data))
+            
+        return
         
     
     def layers(self,sigma=0.1):
@@ -410,7 +431,7 @@ if __name__ == '__main__':
     x_train = np.zeros((N_train,2)) # matrix containing the 2-dimensional datapoints
     y_train = np.zeros((N_train,1), dtype='uint8') # labels (not in one-hot representation)
     
-    mag_noise = 0.05  # controls how much noise gets added to the data
+    mag_noise = 0.5  # controls how much noise gets added to the data
     dTheta    = 4    # difference in theta in each branch
     
     ### Data generation: ###
