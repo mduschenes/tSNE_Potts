@@ -5,6 +5,7 @@ Created on Sun Apr 15 11:35:04 2018
 @author: Matt
 """
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 
@@ -22,11 +23,22 @@ data_params = {'data_files': ['x_train','y_train','x_test','y_test'],
 
 
 
-class data_transfer(object):
+class Data_Process(object):
     
     
         def __init__(self):
             pass 
+        
+        def process(self,data,data_params,save=False,plot=False,**kwargs):
+            
+            if save:
+                self.exporter(data,data_params)
+            
+            if plot:
+                self.plotter(data,plot,**kwargs)    
+            
+            return
+        
         
         # Import Data
         def importer(self,data_params = {
@@ -73,19 +85,85 @@ class data_transfer(object):
         
         
         # Export Data
-        def exporter(self,data,data_params={'data_types': [''],'data_dir':''}):
+        def exporter(self,data,data_params={'data_types': [''],'data_dir':''},
+                     file_names = None):
 
             # Data Dictionary
             data_params['data_files'] = data
+            n_data = np.size(data)
+            
+            # File Names
+            if file_names is None:
+                file_names = lambda value: '{}epochs_'.format(n_data) + value
+            elif not callable(file_names):
+                g = np.atleast_1d(file_names)
+                file_names = lambda k: g[k]
+            
             data_params = self.dict_check(data_params,
                                          ['data_types','data_files'],None)
 
             for k,v in data.items():
-                np.savez_compressed(data_params['data_dir']+k,a=v) 
+                np.savez_compressed(data_params['data_dir']+file_names(k),a=v) 
             return
-            
-              
+       
         
+        def plotter(self,data=[],plot=True,**kwargs):
+
+            
+            
+            if plot:
+                for key,val in data.items():
+                    
+                    if not val:
+                        try:
+                            val_dict,_ = self.importer(data_params = {
+                                'data_files': [key],
+                                'data_types': [key],
+                                'data_format': 'npz',
+                                'data_dir': 'dataset/',
+                                'one_hot': False})
+                            val = val_dict[key]
+                    
+                        except FileNotFoundError:
+                            continue
+                        
+                        
+                        self.fig.sca(self.ax[key])
+                        #self.ax[key].clear()
+                        
+                        plot = plt.plot(np.arange(np.size(val)),val, color='r')
+                        plt.title('')
+                        plt.ylabel(key)
+                        plt.xlabel('Epoch')
+                        
+                        plt.show()
+                        plt.pause(1)
+
+                if kwargs:
+                    y_estimate = np.argmax(kwargs['f'](kwargs['y_est'],[np.c_[kwargs['x1'].ravel(), kwargs['x2'].ravel()]]), axis=1).reshape(kwargs['x1'].shape)
+                                        
+                    self.fig.sca(self.ax[kwargs['plot_title']])
+                    self.ax[kwargs['plot_title']].clear()
+                        
+                    plt.contourf(kwargs['x1'], kwargs['x2'], y_estimate, kwargs['K'], alpha=0.8)
+                    plt.scatter(kwargs['x_train'][:, 0], kwargs['x_train'][:, 1], c=kwargs['y_train'], s=40)
+                    plt.xlim(kwargs['x1'].min(), kwargs['x1'].max())
+                    plt.ylim(kwargs['x2'].min(), kwargs['x2'].max())
+                    plt.xlabel('x1')
+                    plt.ylabel('x2')
+                    
+                    plt.pause(0.5)
+                  
+                    
+        def figure_axes(self,keys):
+            
+            plt.close()
+
+            self.fig, ax = plt.subplots(np.size(keys))
+        
+            self.ax = dict(zip(keys,ax))
+            
+            return
         
         # Check if variable is dictionary
         def dict_check(self,data_params,
@@ -151,5 +229,6 @@ class data_transfer(object):
         
         
         
+        
 if __name__ == "__main__":
-    d = data_transfer
+    d = Data_Process

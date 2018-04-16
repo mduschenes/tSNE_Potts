@@ -10,16 +10,15 @@ Created on Tue Jan 23 11:04:42 2018
 #from __future__ import print_function
 
 import numpy as np
-import matplotlib.pyplot as plt
 import tensorflow as tf
-import os
+import sys
 
 seed=1234
 np.random.seed(seed)
 tf.set_random_seed(seed)
 
 #from mutual_information import MUT_INFO
-from data_transfer import data_transfer
+from data_process import Data_Process
 
 
 #network_params = {'n_neuron': [None,10,7,5,4,3,None],'alpha_learn': 0.5, 
@@ -64,6 +63,10 @@ class neural_net(object):
         return
         
 
+
+
+
+
     def training(self,data_params = 
                      {'data_files': ['x_train','y_train','x_test','y_test'],
                       'data_types_train': ['x_train','y_train'],
@@ -74,10 +77,11 @@ class neural_net(object):
                      },
                       train = False,
                       test = False,
-                      cost_f = 'cross_entropy'):
+                      cost_f = 'mse',
+                      **plot_args):
     
         
-        # Import Data by Data Type
+        # Define Data Types
         if not(data_params['data_types_train'] and 
                data_params['data_types_test']):
             
@@ -89,7 +93,11 @@ class neural_net(object):
                                         data_params['data_types_test'])
         
 
-        data, data_size = data_transfer().importer(data_params)
+
+
+        # Import Data
+        Data_Proc = Data_Process()
+        data, data_size = Data_Proc.importer(data_params)
         
         
         if not any('test' in key for key in data.keys()):
@@ -161,14 +169,14 @@ class neural_net(object):
         # Session Run Function
         sess_run = lambda f,x = [data[k] for k in
                                  data_params['data_types_train']]: sess.run(
-                                 f,feed_dict = {k:v for k,v in zip([x_,y_],x)})
-        
-        
+                                 f,feed_dict = {k:v for k,v in zip([x_,y_],x)})       
         loc = locals()
         loc= {key:loc[key] for key in results_keys}
 
+
         results_func = {key: lambda args: sess_run(func,args) 
                                             for key,func in loc.items()}
+        
 #        results = {key: [] for key in results_keys}
 #
 #        for _ in range(3):
@@ -183,16 +191,18 @@ class neural_net(object):
         
         # Ability to save and restore all the variables
         #saver = tf.train.Saver(max_to_keep=self.nn_params['n_epochs'])  
+        plot_args['f']= sess_run
+        plot_args['plot_title'] = 'data_set'
+        Data_Proc.figure_axes(keys = results_keys + [plot_args['plot_title']])
         
-
-    
 
         if train:
             
             print('Training...')
             epoch_range = np.arange(self.nn_params['n_epochs'])
             dataset_range = np.arange(self.nn_params['n_dataset_train'])
-            batch = {}
+            batch_range = np.arange(self.nn_params['n_epochs_meas'])
+            
             # Train Model over n_epochs with Stochastic Gradient Descent 
             for epoch in epoch_range:
                            
@@ -206,33 +216,24 @@ class neural_net(object):
                     sess_run(train_step,[data[key][dataset_range,:][
                                            0:self.nn_params['n_batch_train'],:]
                                   for key in data_params['data_types_train']])
-                    
                 
-                
-                    
-                if epoch+1 % self.nn_params['n_epochs_meas']:
+            
+            
+                if epoch+1 % self.nn_params['n_epochs_meas'] == 0 or True:
                     
                     # Record Training Cross Entropy and Training Accuracy
-    #                
-    #                results['cost'].append(sess_run(cost,[batch_x,batch_y]))
-    #                results['train_acc'].append(sess_run(y_acc,[batch_x,batch_y]))
+
                     for key,val in results.items():
                         if key in results_keys_train:
                             #print(key,val)
                             val.append(results_func[key]([data[k] 
-                            for k in data_params['data_types_train']]))
-                            #print(val)
+                                    for k in data_params['data_types_train']]))                    
                     
-                    
-                    print('Epoch: %d'% epoch) 
-#                          + '\n'
+#                    print('Epoch: %d'% epoch + 
+#                          '\n'
 #                          'Testing Accuracy: '+str(results['train_acc'][-1])+
 #                          '\n')
-#                    print(sess_run(train_acc,[data[k] 
-#                            for k in data_params['data_types_train']]))
-#                    print('Epoch: %d'% epoch +
-#                          '\n Cost: '+str(results['cost'][-1])+
-#                          '\n') 
+
                     
 #                    self.data_process(results,save=False,plot=True,
 #                                      **{'x1': x1_grid, 'x2': x2_grid,
@@ -244,12 +245,27 @@ class neural_net(object):
                         t_acc = results_func['test_acc'](
                                 [data['x_test'],data['y_test']])
                         results['test_acc'].append(t_acc)
-                        print('Epoch: %d'% epoch +
-                              'Testing Accuracy: %0.6f'%(t_acc) + '\n')    
 
+#                    sys.stdout.write('Epoch: %d'% epoch)# +
+##                          'Testing Accuracy: %0.6f'%(t_acc) + '\n')
+#                    sys.stdout.flush() 
+
+                        
+#                        sys.stdout.write('Epoch: %d'% epoch +
+#                              'Testing Accuracy: %0.6f'%(t_acc) + '\n')
+#                        sys.stdout.flush() 
+                        
         
-            # Save and Plot Accuracy and Error Data
-            #self.data_process(results,save=False,plot=False)
+                    # Save and Plot Accuracy and Error Data
+                    #self.data_process(results,save=False,plot=True)
+            
+                    plot_args['y_est']= y_est
+                    
+                    Data_Proc.process(results,data_params,
+                                    save=False,plot=True
+                                     )#,**plot_args)
+            
+            
         
         if test:
             self.testing('y_est',
@@ -282,6 +298,7 @@ class neural_net(object):
             
         return
         
+    
     
     def layers(self,sigma=0.1):
         
@@ -330,48 +347,7 @@ class neural_net(object):
     
     
     
-    def data_process(self,data,save=False,plot=True,**kwargs):
-        
-        
-        n_data = np.size(data)
-        
-        # Save or Load Data and Plot Data
-        file_names = lambda value: '{}epochs_'.format(n_data) + value
-        
-        
-        if plot:
-            fig, ax = plt.subplots(n_data+1)
-            i = 0
-        
-        
-        for key,val in data.items():
-            
-            if save:    
-                np.savez_compressed(file_names(key),a=val)
-            elif not val:
-                val = np.load(file_names(key))['a']
-        
-            if plot:
-                
-                plt.sca(ax[i])
-                plt.plot(np.arange(np.size(val)),val, color='r')
-                plt.title(key)
-                plt.ylabel(key)
-                plt.xlabel('Epoch')
-                
-                i += 1
-        
-        if plot and kwargs:
-            
-            y_estimate = np.argmax(kwargs['f'](kwargs['y_est'],np.c_[kwargs['x1'].ravel(), kwargs['x2'].ravel()]), axis=1).reshape(kwargs['x1'].shape)
-            
-            plt.sca(ax[i])
-            plt.contourf(kwargs['x1'], kwargs['x2'], y_estimate, kwargs['K'], alpha=0.8)
-            plt.scatter(kwargs['x_train'][:, 0], kwargs['x_train'][:, 1], c=kwargs['y_train'], s=40)
-            plt.xlim(x1_grid.min(), x1_grid.max())
-            plt.ylim(x2_grid.min(), x2_grid.max())
-            plt.xlabel('x1')
-            plt.ylabel('x2')
+    
         
 
 
@@ -414,13 +390,13 @@ class neural_net(object):
 if __name__ == '__main__':
     
     # Specify Plotting Parameters
-    plt.ion() # turn on interactive mode (for plotting)
-
-    #Specify font sizes for plots:
-    plt.rcParams['axes.labelsize']  = 10
-    plt.rcParams['legend.fontsize'] = 10
-    plt.rcParams['xtick.labelsize'] = 8
-    plt.rcParams['ytick.labelsize'] = 8
+#    plt.ion() # turn on interactive mode (for plotting)
+#
+#    #Specify font sizes for plots:
+#    plt.rcParams['axes.labelsize']  = 10
+#    plt.rcParams['legend.fontsize'] = 10
+#    plt.rcParams['xtick.labelsize'] = 8
+#    plt.rcParams['ytick.labelsize'] = 8
     
     
     # K Branch Data Set
@@ -431,7 +407,7 @@ if __name__ == '__main__':
     x_train = np.zeros((N_train,2)) # matrix containing the 2-dimensional datapoints
     y_train = np.zeros((N_train,1), dtype='uint8') # labels (not in one-hot representation)
     
-    mag_noise = 0.5  # controls how much noise gets added to the data
+    mag_noise = 0.05  # controls how much noise gets added to the data
     dTheta    = 4    # difference in theta in each branch
     
     ### Data generation: ###
@@ -453,24 +429,27 @@ if __name__ == '__main__':
     
     
     
-    network_params = {'n_neuron': [None,4,None],'alpha_learn': 0.5, 
+    network_params = {'n_neuron': [None,5,None],'alpha_learn': 0.6, 
                   
                   'neuron_func':{
                        'layer':  tf.nn.sigmoid,
                        'output': tf.nn.sigmoid,
                        'cost': {
-                         'cross_entropy': lambda y_label,y_est, eps= 10**(-6): 
-                                         tf.reduce_mean(-tf.reduce_sum(
-                                             y_label*tf.log(y_est+eps) +
-                                          (1.0-y_label)*tf.log(1.0-y_est +eps),
-                                          axis=1)),
-                          'mse': lambda y_label,y_est: (1/2)*tf.reduce_mean(
-                                  tf.reduce_sum(tf.square(y_est-y_label),
-                                  axis=1)),
+                         'cross_entropy': lambda y_label,y_est,eps= 10**(-8): 
+                                         -tf.reduce_sum(
+                                         y_label*tf.log(y_est+eps) +
+                                         (1.0-y_label)*tf.log(1.0-y_est +eps)),
+                                                 
+                          'mse': lambda y_label,y_est: (1/2)*(
+                                  tf.reduce_sum(tf.square(y_est-y_label))),
+                          
                           'entropy_logits': lambda y_label,y_est: 
-                              tf.nn.sigmoid_cross_entropy_with_logits(
-                                      labels=y_label, logits=y_est)},
-                    'optimize': lambda a,c: tf.train.GradientDescentOptimizer(a).minimize(c)
+                                  tf.nn.sigmoid_cross_entropy_with_logits(
+                                                  labels=y_label, logits=y_est)
+                                },
+                                      
+                    'optimize': lambda a,c: tf.train.GradientDescentOptimizer(
+                                                                 a).minimize(c)
                              },
                            
                   'n_epochs': 100,
@@ -486,4 +465,8 @@ if __name__ == '__main__':
                      }
 
     # Run Neural Network
-    nn = neural_net(network_params).training(data_params,train=True)
+    nn = neural_net(network_params)
+    nn.training(data_params,train=True,**{'x1': x1_grid, 'x2': x2_grid,
+                                       'x_train': x_train,
+                                       'y_train': y_train,
+                                       'K': K})
