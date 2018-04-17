@@ -1,6 +1,8 @@
 # t-SNE Project Ignore Data Files
 # ignore all Data files in the doc/ directory and any of its subdirectories
 
+
+# Specific Files
 *Data/
 
 OLD*/
@@ -10,6 +12,9 @@ OLD*/
 *.ipynb
 
 **/__pycache__
+
+
+**/pycall*
 
 # Windows image file caches
 Thumbs.db

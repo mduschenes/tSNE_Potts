@@ -11,11 +11,18 @@ Created on Tue Jan 23 11:04:42 2018
 
 import numpy as np
 import tensorflow as tf
-import sys
+import time
 
 seed=1234
 np.random.seed(seed)
 tf.set_random_seed(seed)
+
+times = [time.clock()]
+def timer(timeit=False,m=''):
+    if timeit:
+        times.append(time.clock())
+        print(m,times[-1]-times[-2])
+
 
 #from mutual_information import MUT_INFO
 from data_process import Data_Process
@@ -75,11 +82,12 @@ class neural_net(object):
                       'data_dir': 'dataset/',
                       'one_hot': False
                      },
-                      train = False,
-                      test = False,
-                      cost_f = 'mse',
+                     train = True, test = False, timeit = True, cost_f = 'mse',
                       **plot_args):
     
+        # Initialize Network Data and Parameters
+        
+        timer(timeit,'Neural Network Starting...')
         
         # Define Data Types
         if not(data_params['data_types_train'] and 
@@ -99,12 +107,11 @@ class neural_net(object):
         Data_Proc = Data_Process()
         data, data_size = Data_Proc.importer(data_params)
         
+        timer(timeit,'Data Imported...')
         
         if not any('test' in key for key in data.keys()):
             test = False
         
-#        print(data)
-#        print(data_size)
         
         # Define Number of Neurons at Input and Output
         self.nn_params['n_dataset_train'],self.nn_params['n_neuron'][0] = (
@@ -123,11 +130,10 @@ class neural_net(object):
         # Initialize Layers
         y_est,x_,y_ = self.layers()
         
+        timer(timeit,'Layers Initialized...')
+        
+        
         # Initialize arrays to collect accuracy and error data during training
-#        y_cost  = np.empty(self.nn_params['n_epochs'])
-#        y_train_accuracy = np.zeros(self.nn_params['n_epochs'])
-#        y_test_accuracy = np.zeros(int(self.nn_params['n_epochs']/
-#                                        self.nn_params['n_epochs_meas']))
         
         # Initalize Tensorflow session
         sess = tf.Session()
@@ -156,9 +162,7 @@ class neural_net(object):
                                    'neuron_func']['optimize'](alpha_learn,cost)
 
         
-        # Initialize all tensorflow variables
-        sess.run(tf.global_variables_initializer())
-        
+       
         
         # Initialize Results Dictionaries
         results_keys_train = ['cost','train_acc']
@@ -170,38 +174,35 @@ class neural_net(object):
         sess_run = lambda f,x = [data[k] for k in
                                  data_params['data_types_train']]: sess.run(
                                  f,feed_dict = {k:v for k,v in zip([x_,y_],x)})       
-        loc = locals()
+        loc = vars()
         loc= {key:loc[key] for key in results_keys}
 
 
         results_func = {key: lambda args: sess_run(func,args) 
                                             for key,func in loc.items()}
         
-#        results = {key: [] for key in results_keys}
-#
-#        for _ in range(3):
-#            for key,val in results.items():
-#                            if key in results_keys_train:
-#                                print(key,val)
-#                                val.append(results_func[key]([data[k] 
-#                                for k in data_params['data_types_train']]))
+
     
         results = {key: [] for key in results_keys}
-                        
+        
+        timer(timeit,'Results Declared...')
         
         # Ability to save and restore all the variables
         #saver = tf.train.Saver(max_to_keep=self.nn_params['n_epochs'])  
         plot_args['f']= sess_run
-        plot_args['plot_title'] = 'data_set'
-        Data_Proc.figure_axes(keys = results_keys + [plot_args['plot_title']])
+        plot_args['']=None
+        Data_Proc.plot_close()
+
+        # Initialize all tensorflow variables
+        sess.run(tf.global_variables_initializer())
         
+        timer(timeit,'Training...')
 
         if train:
             
-            print('Training...')
             epoch_range = np.arange(self.nn_params['n_epochs'])
             dataset_range = np.arange(self.nn_params['n_dataset_train'])
-            batch_range = np.arange(self.nn_params['n_epochs_meas'])
+            #batch_range = np.arange(self.nn_params['n_epochs_meas'])
             
             # Train Model over n_epochs with Stochastic Gradient Descent 
             for epoch in epoch_range:
@@ -263,7 +264,7 @@ class neural_net(object):
                     
                     Data_Proc.process(results,data_params,
                                     save=False,plot=True
-                                     )#,**plot_args)
+                                     ,**plot_args)
             
             
         
@@ -344,61 +345,11 @@ class neural_net(object):
         y_est = T[-1]
         
         return y_est,x_,y_
-    
-    
-    
-    
-        
 
 
 
     
-#    def updatePlot(self,x_train,y_train,y_est,f,results):
-#    
-#          
-#        y_estimate = np.argmax(f(y_est,np.c_[x1_grid.ravel(), x2_grid.ravel()]), axis=1)
-#    
-#        plt.clf()
-#    
-#    
-#        ### Plot the classifier: ###
-#        plt.subplot(121)
-#        plt.contourf(x1_grid, x2_grid, y_estimate.reshape(x1_grid.shape), K, alpha=0.8)
-#        plt.scatter(x_train[:, 0], x_train[:, 1], c=y_train, s=40)
-#        plt.xlim(x1_grid.min(), x1_grid.max())
-#        plt.ylim(x2_grid.min(), x2_grid.max())
-#        plt.xlabel('x1')
-#        plt.ylabel('x2')
-#    
-#        ### Plot the cost function during training: ###
-#        plt.subplot((2,2,i))
-#        plt.plot(np.arange(np.size(cost)),cost,'o-')
-#        plt.xlabel('Epoch')
-#        plt.ylabel('Training cost')
-#    
-#        ### Plot the training accuracy: ###
-#        plt.subplot(224)
-#        plt.plot(np.arange(np.size(acc)),acc,'o-')
-#        plt.xlabel('Epoch')
-#        plt.ylabel('Training accuracy')
-#        
-#        plt.pause(0.1)
-#        plt.show()
-        
-    
-
-if __name__ == '__main__':
-    
-    # Specify Plotting Parameters
-#    plt.ion() # turn on interactive mode (for plotting)
-#
-#    #Specify font sizes for plots:
-#    plt.rcParams['axes.labelsize']  = 10
-#    plt.rcParams['legend.fontsize'] = 10
-#    plt.rcParams['xtick.labelsize'] = 8
-#    plt.rcParams['ytick.labelsize'] = 8
-    
-    
+def foo():    
     # K Branch Data Set
     N = 50 # number of points per branch
     K = 3  # number of branches
@@ -407,7 +358,7 @@ if __name__ == '__main__':
     x_train = np.zeros((N_train,2)) # matrix containing the 2-dimensional datapoints
     y_train = np.zeros((N_train,1), dtype='uint8') # labels (not in one-hot representation)
     
-    mag_noise = 0.05  # controls how much noise gets added to the data
+    mag_noise = 0  # controls how much noise gets added to the data
     dTheta    = 4    # difference in theta in each branch
     
     ### Data generation: ###
@@ -429,7 +380,7 @@ if __name__ == '__main__':
     
     
     
-    network_params = {'n_neuron': [None,5,None],'alpha_learn': 0.6, 
+    network_params = {'n_neuron': [None,4,None],'alpha_learn': 0.6, 
                   
                   'neuron_func':{
                        'layer':  tf.nn.sigmoid,
@@ -452,7 +403,7 @@ if __name__ == '__main__':
                                                                  a).minimize(c)
                              },
                            
-                  'n_epochs': 100,
+                  'n_epochs':100 ,
                   'n_batch_train': 1/20, 'n_epochs_meas': 1/20,
                   }
     
@@ -466,7 +417,10 @@ if __name__ == '__main__':
 
     # Run Neural Network
     nn = neural_net(network_params)
-    nn.training(data_params,train=True,**{'x1': x1_grid, 'x2': x2_grid,
+    nn.training(data_params,**{'x1': x1_grid, 'x2': x2_grid,
                                        'x_train': x_train,
                                        'y_train': y_train,
                                        'K': K})
+    return nn.data_params
+if __name__ == '__main__':
+    d = foo()

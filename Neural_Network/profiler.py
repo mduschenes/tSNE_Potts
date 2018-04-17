@@ -76,7 +76,12 @@ class profiler_graph(object):
             module()
 
 num = 0
+from neural_network import foo
 if __name__ == "__main__":
+    
+    profiler_graph(foo,3)
+    
+    
 #    T = [5,2.5,2,1.5,1,0.5]
 #    T0 = 0.5
 #    L=6
@@ -87,6 +92,4 @@ if __name__ == "__main__":
 #    
 #    profiler_graph(system(L,d,T0).MonteCarlo,num)
     
-    from neural network import foo
-    profiler_graph(foo,3)
     #profiler('MagnetismModel.system','MonteCarlo',L,d,T)

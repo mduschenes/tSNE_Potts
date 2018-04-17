@@ -27,6 +27,8 @@ class Data_Process(object):
     
     
         def __init__(self):
+            self.fig = {}
+            self.ax = {}
             pass 
         
         def process(self,data,data_params,save=False,plot=False,**kwargs):
@@ -49,27 +51,25 @@ class Data_Process(object):
                         'one_hot': False}):
             
             # Data Dictionary
-            data_params = self.dict_check(data_params,
-                                         ['data_types','data_files'],1)
-            
+            data_params = self.dict_check(data_params,'data_files')            
             
             # Import Data
-            if data_params['data_format'] == 'values':
-                data = data_params['data_files']
+            if data_params.get('data_format','values') == 'values':
+                data = self.dict_check(data_params['data_files'],data_params['data_types'])
             
-            elif data_params['data_format'] == 'npz':
+            elif data_params.get('data_format',None) == 'npz':
                 data = {k: np.load(data_params['data_dir']+v+'.'+
                                    data_params['data_format'])['a'] 
                                   for k,v in data_params['data_files'].items()}
             
-            elif data_params['data_format'] == 'txt':
+            elif data_params.get('data_format',None) == 'txt':
                 data = {k: np.loadtxt(data_params['data_dir']+v+'.'+
                                      data_params['data_format']) 
                                   for k,v in data_params['data_files'].items()}
             
             
             # Convert Labels to one-hot Labels
-            if data_params['one_hot']:
+            if data_params.get('one_hot',False):
                 for k in data.keys(): 
                     if ('y_' in k or 'label_' in k):
                         data[k] = self.one_hot(data[k])
@@ -85,65 +85,61 @@ class Data_Process(object):
         
         
         # Export Data
-        def exporter(self,data,data_params={'data_types': [''],'data_dir':''},
+        def exporter(self,data,data_params={'data_dir':'dataset/'},
                      file_names = None):
-
-            # Data Dictionary
-            data_params['data_files'] = data
-            n_data = np.size(data)
-            
+           
             # File Names
             if file_names is None:
-                file_names = lambda value: '{}epochs_'.format(n_data) + value
+                file_names = lambda value: '%depochs_%s'%(np.size(data),value)
             elif not callable(file_names):
                 g = np.atleast_1d(file_names)
                 file_names = lambda k: g[k]
             
-            data_params = self.dict_check(data_params,
-                                         ['data_types','data_files'],None)
+            data = self.dict_check(data,'')
 
             for k,v in data.items():
-                np.savez_compressed(data_params['data_dir']+file_names(k),a=v) 
+                np.savez_compressed(data_params.get('data_dir','dataset/') + 
+                                                    file_names(k),a=v) 
             return
        
         
         def plotter(self,data=[],plot=True,**kwargs):
-
-            
             
             if plot:
+                
+                # Check Data is Dictionary
+                data = self.dict_check(data,'data_files')
+                               
+                self.figure_axes(list([k for k in data.keys() if data.get(k)])+
+                                 [kwargs.get('',None)])
+                
+                
                 for key,val in data.items():
+                
                     
                     if not val:
-                        try:
-                            val_dict,_ = self.importer(data_params = {
-                                'data_files': [key],
-                                'data_types': [key],
-                                'data_format': 'npz',
-                                'data_dir': 'dataset/',
-                                'one_hot': False})
-                            val = val_dict[key]
+                        continue
                     
-                        except FileNotFoundError:
-                            continue
+                    try:
+                        plt.figure(self.fig[key].number)
+                    except:
+                        self.figure_axes(list([k for k in data.keys() 
+                                       if data.get(k)])+ [kwargs.get('','')])
+                        plt.figure(self.fig[key].number)
                         
+                    self.fig[key].sca(self.ax[key])
+                    plot = plt.plot(np.arange(np.size(val)),val, color='r')
+                    plt.title('')
+                    plt.ylabel(key)
+                    plt.xlabel('Epoch')
                         
-                        self.fig.sca(self.ax[key])
-                        #self.ax[key].clear()
-                        
-                        plot = plt.plot(np.arange(np.size(val)),val, color='r')
-                        plt.title('')
-                        plt.ylabel(key)
-                        plt.xlabel('Epoch')
-                        
-                        plt.show()
-                        plt.pause(1)
+                    plt.pause(0.01)
 
                 if kwargs:
                     y_estimate = np.argmax(kwargs['f'](kwargs['y_est'],[np.c_[kwargs['x1'].ravel(), kwargs['x2'].ravel()]]), axis=1).reshape(kwargs['x1'].shape)
                                         
-                    self.fig.sca(self.ax[kwargs['plot_title']])
-                    self.ax[kwargs['plot_title']].clear()
+                    self.fig[kwargs.get('','')].sca(self.ax[kwargs.get('','')])
+                    self.ax[kwargs.get('','')].clear()
                         
                     plt.contourf(kwargs['x1'], kwargs['x2'], y_estimate, kwargs['K'], alpha=0.8)
                     plt.scatter(kwargs['x_train'][:, 0], kwargs['x_train'][:, 1], c=kwargs['y_train'], s=40)
@@ -152,33 +148,38 @@ class Data_Process(object):
                     plt.xlabel('x1')
                     plt.ylabel('x2')
                     
-                    plt.pause(0.5)
-                  
+                    plt.pause(0.2)
+        
+        
+        def plot_close(self):
+            plt.close('all')   
+            self.ax = {}
+            self.fig ={}
+            return
                     
         def figure_axes(self,keys):
             
-            plt.close()
-
-            self.fig, ax = plt.subplots(np.size(keys))
-        
-            self.ax = dict(zip(keys,ax))
+            keys = [k for k in np.atleast_1d(keys) if k not in self.ax.keys()]
+            
+            if keys:
+           
+                fig, ax = plt.subplots(np.size(keys))
+            
+                for k,a in zip(keys,ax):
+                    self.ax[k] = a
+                    self.fig[k] = fig
             
             return
         
         # Check if variable is dictionary
-        def dict_check(self,data_params,
-                      keys = ['data_types','data_files'],key_i=None):
+        def dict_check(self,dictionary,key):
+                        
+            # Check if dict is a dictionary
+            if not isinstance(dictionary,dict):
+                return dict(zip(key,dictionary))
+            else:
+                return dictionary
             
-            # Check if keys[key_i] exists, otherwise replace with other key
-            if not isinstance(data_params[keys[key_i]], dict):
-                if key_i and data_params[keys[key_i]] is None:
-                    data_params[keys[key_i]] = data_params[keys[1-key_i]]
-                                        
-                
-                data_params[keys[1]] = dict(zip(data_params[keys[0]],
-                                                    data_params[keys[1]]))
-                
-            return data_params
         
         
         
@@ -231,4 +232,4 @@ class Data_Process(object):
         
         
 if __name__ == "__main__":
-    d = Data_Process
+    d = Data_Process()
