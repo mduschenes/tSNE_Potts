@@ -54,11 +54,17 @@ class Data_Process(object):
             # Data Dictionary
             data_params = self.dict_check(data_params,'data_files')            
             
+            if not data_params.get('data_types'):
+                data_params['data_types'] = np.arange(
+                        np.size(data_params)).tolist
+            
+            data_params['data_files'] = self.dict_check(
+                        data_params['data_files'],data_params['data_types'])
+            
+            
             # Import Data
             if data_params.get('data_format','values') == 'values':
-                data = {k:v for k,v in 
-                        self.dict_check(data_params['data_files'],
-                                        data_params['data_types']).items() 
+                data = {k:v for k,v in data_params['data_files'].items() 
                         if v is not None}
             
             elif data_params.get('data_format',None) == 'npz':
@@ -136,6 +142,7 @@ class Data_Process(object):
                                    if data.get(k)])+ [kwargs.get('','')])
                     plt.figure(self.fig[key].number)
                 
+
                 self.fig[key].sca(self.ax[key])
 
                 plt.plot(domain[key],val,'-*',color='r')
