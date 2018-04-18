@@ -31,13 +31,14 @@ class Data_Process(object):
             self.ax = {}
             pass 
         
-        def process(self,data,data_params,save=False,plot=False,**kwargs):
+        def process(self,data,domain,data_params,
+                    save=False,plot=False,**kwargs):
             
             if save:
                 self.exporter(data,data_params)
             
             if plot:
-                self.plotter(data,plot,**kwargs)    
+                self.plotter(data,domain,**kwargs)    
             
             return
         
@@ -55,17 +56,22 @@ class Data_Process(object):
             
             # Import Data
             if data_params.get('data_format','values') == 'values':
-                data = self.dict_check(data_params['data_files'],data_params['data_types'])
+                data = {k:v for k,v in 
+                        self.dict_check(data_params['data_files'],
+                                        data_params['data_types']).items() 
+                        if v is not None}
             
             elif data_params.get('data_format',None) == 'npz':
                 data = {k: np.load(data_params['data_dir']+v+'.'+
                                    data_params['data_format'])['a'] 
-                                  for k,v in data_params['data_files'].items()}
+                                  for k,v in data_params['data_files'].items()
+                                  if v is not None}
             
             elif data_params.get('data_format',None) == 'txt':
                 data = {k: np.loadtxt(data_params['data_dir']+v+'.'+
                                      data_params['data_format']) 
-                                  for k,v in data_params['data_files'].items()}
+                                  for k,v in data_params['data_files'].items()
+                                  if v is not None}
             
             
             # Convert Labels to one-hot Labels
@@ -103,53 +109,48 @@ class Data_Process(object):
             return
        
         
-        def plotter(self,data=[],plot=True,**kwargs):
-            
-            if plot:
-                
-                # Check Data is Dictionary
-                data = self.dict_check(data,'data_files')
-                               
-                self.figure_axes(list([k for k in data.keys() if data.get(k)])+
-                                 [kwargs.get('',None)])
-                
-                
-                for key,val in data.items():
-                
-                    
-                    if not val:
-                        continue
-                    
-                    try:
-                        plt.figure(self.fig[key].number)
-                    except:
-                        self.figure_axes(list([k for k in data.keys() 
-                                       if data.get(k)])+ [kwargs.get('','')])
-                        plt.figure(self.fig[key].number)
-                        
-                    self.fig[key].sca(self.ax[key])
-                    plot = plt.plot(np.arange(np.size(val)),val, color='r')
-                    plt.title('')
-                    plt.ylabel(key)
-                    plt.xlabel('Epoch')
-                        
-                    plt.pause(0.01)
-
-                if kwargs:
-                    y_estimate = np.argmax(kwargs['f'](kwargs['y_est'],[np.c_[kwargs['x1'].ravel(), kwargs['x2'].ravel()]]), axis=1).reshape(kwargs['x1'].shape)
-                                        
-                    self.fig[kwargs.get('','')].sca(self.ax[kwargs.get('','')])
-                    self.ax[kwargs.get('','')].clear()
-                        
-                    plt.contourf(kwargs['x1'], kwargs['x2'], y_estimate, kwargs['K'], alpha=0.8)
-                    plt.scatter(kwargs['x_train'][:, 0], kwargs['x_train'][:, 1], c=kwargs['y_train'], s=40)
-                    plt.xlim(kwargs['x1'].min(), kwargs['x1'].max())
-                    plt.ylim(kwargs['x2'].min(), kwargs['x2'].max())
-                    plt.xlabel('x1')
-                    plt.ylabel('x2')
-                    
-                    plt.pause(0.2)
+        def plotter(self,data,domain,**kwargs):
         
+            # Check Data is Dictionary
+            data = self.dict_check(data,'data_files')
+
+
+            if kwargs.get('plot_f'):   
+                keys = [k for k in data.keys() if data.get(k)]+ ['key_plot_f']
+            else:
+                keys = list([k for k in data.keys() if data.get(k)])
+            
+            self.figure_axes(keys)
+            
+            
+            for key,val in data.items():
+            
+                
+                if not val:
+                    continue
+                
+                try:
+                    plt.figure(self.fig[key].number)
+                except:
+                    self.figure_axes(list([k for k in data.keys() 
+                                   if data.get(k)])+ [kwargs.get('','')])
+                    plt.figure(self.fig[key].number)
+                
+                self.fig[key].sca(self.ax[key])
+
+                plt.plot(domain[key],val,'-*',color='r')
+                plt.title('')
+                plt.ylabel(key)
+                plt.xlabel('Epoch')
+                
+                plt.pause(0.01)
+                
+
+            if kwargs.get('plot_f'):
+                kwargs['plot_f'](fig = self.fig['key_plot_f'],
+                                 ax = self.ax['key_plot_f'])
+                
+    
         
         def plot_close(self):
             plt.close('all')   

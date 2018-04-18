@@ -9,23 +9,32 @@ Created on Tue Jan 23 11:04:42 2018
 #from __future__ import division
 #from __future__ import print_function
 
+from data_process import Data_Process
+from network_datasets import spiral_dataset
+
 import numpy as np
 import tensorflow as tf
 import time
+
+tf.reset_default_graph()
 
 seed=1234
 np.random.seed(seed)
 tf.set_random_seed(seed)
 
+
 times = [time.clock()]
-def timer(timeit=False,m=''):
+def display(printit=False,timeit=False,m=''):
     if timeit:
         times.append(time.clock())
-        print(m,times[-1]-times[-2])
+        if printit:
+            print(m,times[-1]-times[-2])
+    elif printit:
+        print(m)
+
 
 
 #from mutual_information import MUT_INFO
-from data_process import Data_Process
 
 
 #network_params = {'n_neuron': [None,10,7,5,4,3,None],'alpha_learn': 0.5, 
@@ -68,10 +77,6 @@ class neural_net(object):
         self.nn_params = nn_params  
        
         return
-        
-
-
-
 
 
     def training(self,data_params = 
@@ -82,12 +87,12 @@ class neural_net(object):
                       'data_dir': 'dataset/',
                       'one_hot': False
                      },
-                     train = True, test = False, timeit = True, cost_f = 'mse',
-                      **plot_args):
+                     train = True, test = False, timeit = True, printit=True,
+                     cost_f = 'cross_entropy', **plot_args):
     
         # Initialize Network Data and Parameters
         
-        timer(timeit,'Neural Network Starting...')
+        display(printit,timeit,'Neural Network Starting...')
         
         # Define Data Types
         if not(data_params['data_types_train'] and 
@@ -105,9 +110,10 @@ class neural_net(object):
 
         # Import Data
         Data_Proc = Data_Process()
+        Data_Proc.plot_close()
         data, data_size = Data_Proc.importer(data_params)
         
-        timer(timeit,'Data Imported...')
+        display(printit,timeit,'Data Imported...')
         
         if not any('test' in key for key in data.keys()):
             test = False
@@ -124,26 +130,24 @@ class neural_net(object):
                                              self.nn_params['n_dataset_train'])
         self.nn_params['n_epochs_meas'] = int(self.nn_params['n_epochs']*
                                               self.nn_params['n_epochs_meas'])
-    
+        data_params['n_epochs_meas'] = self.nn_params['n_epochs_meas']
         
     
         # Initialize Layers
         y_est,x_,y_ = self.layers()
         
-        timer(timeit,'Layers Initialized...')
+        display(printit,timeit,'Layers Initialized...')
         
-        
-        # Initialize arrays to collect accuracy and error data during training
-        
+               
         # Initalize Tensorflow session
         sess = tf.Session()
         
                        
-        # Initialize Accuracy Functions
+        # Initialize Accuracy and Cost Functions
         y_predictions = tf.equal(tf.argmax(y_est,axis=1),tf.argmax(y_,axis=1))
         
         train_acc = tf.reduce_mean(tf.cast(y_predictions, tf.float32))
-        test_acc = train_acc         
+        test_acc =  tf.reduce_mean(tf.cast(y_predictions, tf.float32))
         
         # Define Cost Function      
         cost = tf.reduce_mean(
@@ -161,50 +165,59 @@ class neural_net(object):
         train_step = self.nn_params[
                                    'neuron_func']['optimize'](alpha_learn,cost)
 
-        
+        # Session Run Function
+        sess_run = lambda var,data_: sess.run(var,feed_dict = {k:v for
+                                              k,v in zip([x_,y_],data_)}) 
        
         
         # Initialize Results Dictionaries
-        results_keys_train = ['cost','train_acc']
+        results_keys_train = ['train_acc','cost']
         results_keys_test =  ['test_acc', 'y_est']
-        results_keys = list(set(results_keys_train + results_keys_test))
+        results_keys = results_keys_train + results_keys_test
         
-        
-        # Session Run Function
-        sess_run = lambda f,x = [data[k] for k in
-                                 data_params['data_types_train']]: sess.run(
-                                 f,feed_dict = {k:v for k,v in zip([x_,y_],x)})       
         loc = vars()
-        loc= {key:loc[key] for key in results_keys}
-
-
-        results_func = {key: lambda args: sess_run(func,args) 
-                                            for key,func in loc.items()}
         
-
-    
+        loc= {key:loc.get(key) for key in results_keys 
+                               if loc.get(key) is not None}
+        
+        results_keys = loc.keys()
+        
+        train_params = [data[k] for k in data_params['data_types_train']]
+        results_func = {key: lambda args = train_params : sess_run(func,args) 
+                                                   for key,func in loc.items()}
+        
         results = {key: [] for key in results_keys}
         
-        timer(timeit,'Results Declared...')
+        
+        
+        
+        display(printit,timeit,'Results Declared...')
         
         # Ability to save and restore all the variables
         #saver = tf.train.Saver(max_to_keep=self.nn_params['n_epochs'])  
-        plot_args['f']= sess_run
-        plot_args['']=None
-        Data_Proc.plot_close()
+        
+        # Optional Plot of Labels
+        if plot_args.get('y_estimate'):
+            plot_args['plot_f'] = lambda **x: plot_args['y_estimate'](
+                                                          [sess_run,y_est],**x)
 
         # Initialize all tensorflow variables
         sess.run(tf.global_variables_initializer())
         
-        timer(timeit,'Training...')
-
+        display(printit,timeit,'Training...')
+        
         if train:
             
             epoch_range = np.arange(self.nn_params['n_epochs'])
             dataset_range = np.arange(self.nn_params['n_dataset_train'])
+            domain = lambda e=self.nn_params['n_epochs']:  {
+                          key: list(range(0,e,self.nn_params['n_epochs_meas']))
+                          for key in results_keys}
+            
+
             #batch_range = np.arange(self.nn_params['n_epochs_meas'])
             
-            # Train Model over n_epochs with Stochastic Gradient Descent 
+            # Train Model over n_epochs with Gradient Descent 
             for epoch in epoch_range:
                            
                 # Divide training data into batches for training 
@@ -220,84 +233,68 @@ class neural_net(object):
                 
             
             
-                if epoch+1 % self.nn_params['n_epochs_meas'] == 0 or True:
+                if (epoch+1) % self.nn_params['n_epochs_meas'] == 0:
                     
-                    # Record Training Cross Entropy and Training Accuracy
-
+                    # Record Training Results: Cost and Training Accuracy
                     for key,val in results.items():
                         if key in results_keys_train:
                             #print(key,val)
-                            val.append(results_func[key]([data[k] 
-                                    for k in data_params['data_types_train']]))                    
+                            val.append(results_func[key]())                    
                     
-#                    print('Epoch: %d'% epoch + 
-#                          '\n'
-#                          'Testing Accuracy: '+str(results['train_acc'][-1])+
-#                          '\n')
+                    # Display Results
+                    display(printit,False,'Epoch: %d'% epoch + 
+                          '\n'+
+                          'Testing Accuracy: '+str(results['train_acc'][-1])+
+                          '\n'+
+                          'Cost:             '+str(results['cost'][-1]))
 
-                    
+                    display(printit,False,loc)
 #                    self.data_process(results,save=False,plot=True,
 #                                      **{'x1': x1_grid, 'x2': x2_grid,
 #                                       'x_train': data['x_train'],
 #                                       'y_est':y_est,'f': sess_run,'K': K})
-                                    
+                    
+                    # Record Testing Results: y_est and Testing Accuracy        
                     if test:
-                        #t_acc = sess_run(y_acc,[data['x_test'],data['y_test']])
-                        t_acc = results_func['test_acc'](
-                                [data['x_test'],data['y_test']])
-                        results['test_acc'].append(t_acc)
+                        for key,val in results.items():
+                            if key in results_keys_test:
+                                #print(key,val)
+                                val.append(results_func[key](
+                                [k for k in data_params['data_types_test']]))
 
 #                    sys.stdout.write('Epoch: %d'% epoch)# +
 ##                          'Testing Accuracy: %0.6f'%(t_acc) + '\n')
 #                    sys.stdout.flush() 
-
-                        
-#                        sys.stdout.write('Epoch: %d'% epoch +
-#                              'Testing Accuracy: %0.6f'%(t_acc) + '\n')
-#                        sys.stdout.flush() 
-                        
-        
-                    # Save and Plot Accuracy and Error Data
-                    #self.data_process(results,save=False,plot=True)
             
-                    plot_args['y_est']= y_est
-                    
-                    Data_Proc.process(results,data_params,
+                    # Save and Plot Data
+                    Data_Proc.process(results,domain(epoch),data_params,
                                     save=False,plot=True
                                      ,**plot_args)
             
             
         
         if test:
-            self.testing('y_est',
+            self.testing({key: results[key] for key in results_keys_test},
                          [data[key] for key in data_params['data_types_test']],
-                         data_params)
+                         data_params['results_func'])
 
     
         # Make Results Class variable for later testing with final network
-        data_params['results'] = results
-        data_params['results_func'] = results_func
+        data_params['results'] = results.copy
+        data_params['results_func'] = results_func.copy
 
-        self.data_params = data_params
+        self.data_params = data_params.copy
         
         # Calculate Mutual Information from Loaded Data
         #I,I_file = self.info_plane(plot=False)
 
         
-    def testing(self,keys=None,data=None,data_params=None):
+    def testing(self,results,data,data_func):
         
-        if data_params is None:
-            data_params = self.data_params
-        
-        if keys is None:
-            keys = data_params['results'].keys()
-        
-        items = zip(keys,data_params['results'].values())
-        
-        for key,val in items:
-            val.append(data_params['results_func'][key](data))
+        for key,val in results.items():
+            val.append(data_func.get(key,lambda x: x)(data))
             
-        return
+        return results
         
     
     
@@ -347,40 +344,16 @@ class neural_net(object):
         return y_est,x_,y_
 
 
-
-    
-def foo():    
-    # K Branch Data Set
-    N = 50 # number of points per branch
-    K = 3  # number of branches
-    
-    N_train = N*K # total number of points in the training set
-    x_train = np.zeros((N_train,2)) # matrix containing the 2-dimensional datapoints
-    y_train = np.zeros((N_train,1), dtype='uint8') # labels (not in one-hot representation)
-    
-    mag_noise = 0  # controls how much noise gets added to the data
-    dTheta    = 4    # difference in theta in each branch
-    
-    ### Data generation: ###
-    for j in range(K):
-      ix = range(N*j,N*(j+1))
-      r = np.linspace(0.01,1,N) # radius
-      t = np.linspace(j*(2*np.pi)/K,j*(2*np.pi)/K + dTheta,N) + np.random.randn(N)*mag_noise # theta
-      x_train[ix] = np.c_[r*np.cos(t), r*np.sin(t)]
-      y_train[ix] = j
-            
-    
-    ### Generate coordinates covering the whole plane: ###
-    padding = 0.1
-    spacing = 0.02
-    x1_min, x1_max = x_train[:, 0].min() - padding, x_train[:, 0].max() + padding
-    x2_min, x2_max = x_train[:, 1].min() - padding, x_train[:, 1].max() + padding
-    x1_grid, x2_grid = np.meshgrid(np.arange(x1_min, x1_max, spacing),
-                         np.arange(x2_min, x2_max, spacing))
+if __name__ == '__main__':
     
     
+    x_train,y_train,plot_data = spiral_dataset()
+    x_test = None
+    y_test = None
+    kwargs = {'y_estimate': plot_data}
+    kwargs = {}
     
-    network_params = {'n_neuron': [None,4,None],'alpha_learn': 0.6, 
+    network_params = {'n_neuron': [None,10,None],'alpha_learn': 0.6, 
                   
                   'neuron_func':{
                        'layer':  tf.nn.sigmoid,
@@ -389,10 +362,12 @@ def foo():
                          'cross_entropy': lambda y_label,y_est,eps= 10**(-8): 
                                          -tf.reduce_sum(
                                          y_label*tf.log(y_est+eps) +
-                                         (1.0-y_label)*tf.log(1.0-y_est +eps)),
+                                         (1.0-y_label)*tf.log(1.0-y_est +eps),
+                                         axis=1),
                                                  
                           'mse': lambda y_label,y_est: (1/2)*(
-                                  tf.reduce_sum(tf.square(y_est-y_label))),
+                                        tf.reduce_sum(tf.square(y_est-y_label),
+                                        axis=1)),
                           
                           'entropy_logits': lambda y_label,y_est: 
                                   tf.nn.sigmoid_cross_entropy_with_logits(
@@ -407,20 +382,19 @@ def foo():
                   'n_batch_train': 1/20, 'n_epochs_meas': 1/20,
                   }
     
-    data_params =    {'data_files': [x_train,y_train],
+    data_params =    {'data_files': [x_train,y_train,x_test,y_test],
                       'data_types_train': ['x_train','y_train'],
                       'data_types_test': ['x_test','y_test'],
                       'data_format': 'values',
                       'data_dir': 'dataset/',
                       'one_hot': True
                      }
-
+    
+    
     # Run Neural Network
+    
+    
     nn = neural_net(network_params)
-    nn.training(data_params,**{'x1': x1_grid, 'x2': x2_grid,
-                                       'x_train': x_train,
-                                       'y_train': y_train,
-                                       'K': K})
-    return nn.data_params
-if __name__ == '__main__':
-    d = foo()
+    nn.training(data_params,cost_f='mse',printit=True,timeit=True,**kwargs)
+    
+    
