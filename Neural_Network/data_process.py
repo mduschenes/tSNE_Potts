@@ -6,7 +6,7 @@ Created on Sun Apr 15 11:35:04 2018
 """
 import numpy as np
 import matplotlib.pyplot as plt
-
+import os.path
 
 
 
@@ -121,6 +121,8 @@ class Data_Process(object):
             data = self.dict_check(data,'data_files')
 
 
+            
+            # Create new Figures/Axes if not existing based on data keys
             if kwargs.get('plot_f'):   
                 keys = [k for k in data.keys() if data.get(k)]+ ['key_plot_f']
             else:
@@ -128,7 +130,7 @@ class Data_Process(object):
             
             self.figure_axes(keys)
             
-            
+            # Plot for each data key
             for key,val in data.items():
             
                 
@@ -145,14 +147,15 @@ class Data_Process(object):
 
                 self.fig[key].sca(self.ax[key])
 
-                plt.plot(domain[key],val,'-*',color='r')
+                plt.plot(domain[key],val,'-o',color='r')
                 plt.title('')
                 plt.ylabel(key)
                 plt.xlabel('Epoch')
                 
                 plt.pause(0.01)
                 
-
+            
+            # Plot Speicial Plot (possibly)
             if kwargs.get('plot_f'):
                 kwargs['plot_f'](fig = self.fig['key_plot_f'],
                                  ax = self.ax['key_plot_f'])
@@ -164,7 +167,38 @@ class Data_Process(object):
             self.ax = {}
             self.fig ={}
             return
-                    
+        
+        def plot_save(self,file_dir='',label='',file_format='.pdf'):
+            
+            for ifig in plt.get_fignums():
+                
+                # Find Attributes Plotted
+                keys = [k for k,v in self.fig.items() if v.number == ifig]
+                
+                # Set Current Figure
+                plt.figure(ifig)                
+                fig = plt.gcf()
+                
+                # Change Plot Size for Saving                
+                plot_size = fig.get_size_inches()
+                fig.set_size_inches((8.5, 11))
+
+                # Set File Name and ensure no Overwriting
+                file = ''.join([file_dir,label,'_'.join(keys)])
+                
+                i = 0
+                while os.path.isfile(file+file_format):
+                    file += '_%d'%i
+                    i+=1
+
+                # Save Figure as File_Format
+                plt.savefig(file+file_format,dpi=500)
+                fig.set_size_inches(plot_size) 
+            
+            return
+        
+        
+        
         def figure_axes(self,keys):
             
             keys = [k for k in np.atleast_1d(keys) if k not in self.ax.keys()]

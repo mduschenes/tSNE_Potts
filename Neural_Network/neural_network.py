@@ -10,7 +10,6 @@ Created on Tue Jan 23 11:04:42 2018
 #from __future__ import print_function
 
 from data_process import Data_Process
-from network_datasets import spiral_dataset
 
 import numpy as np
 import tensorflow as tf
@@ -28,7 +27,7 @@ def display(printit=False,timeit=False,m=''):
     if timeit:
         times.append(time.clock())
         if printit:
-            print(m,times[-1]-times[-2],' s')
+            print(m,times[-1]-times[-2])
     elif printit:
         print(m)
 
@@ -81,41 +80,31 @@ class neural_net(object):
 
     def training(self,data_params = 
                      {'data_files': ['x_train','y_train','x_test','y_test'],
-                      'data_types_train': ['x_train','y_train'],
-                      'data_types_test': ['x_test','y_test'],
+                      'data_types': ['x_train','y_train','x_test','y_test'],
                       'data_format': 'npz',
                       'data_dir': 'dataset/',
                       'one_hot': False
                      },
+                     alg_params = {'cost': 'cross_entropy', 'optimize':'grad',
+                                   'regularize':None}, 
                      train = True, test = False, timeit = True, printit=True,
-                     save = False, plot = False,
-                     cost_f = 'cross_entropy', **plot_args):
+                     save = False, plot = False,**plot_args):
     
         # Initialize Network Data and Parameters
         
         display(printit,timeit,'Neural Network Starting...')
-        
-        # Define Data Types
-        if not(data_params['data_types_train'] and 
-               data_params['data_types_test']):
-            
-            data_params['data_types'] = ['x_train','y_train','x_test','y_test']
-        
-        else:
-            
-            data_params['data_types'] = (data_params['data_types_train'] +
-                                        data_params['data_types_test'])
-        
-
-
 
         # Import Data
         Data_Proc = Data_Process()
         Data_Proc.plot_close()
+        
         data, data_size = Data_Proc.importer(data_params)
         
-        display(printit,timeit,'Data Imported...')
+        data_typed = {t: [data[k] for k in data_params['data_types'] if t in k] 
+                                  for t in ['train','test']}
         
+        display(printit,timeit,'Data Imported...')
+                
         if not any('test' in key for key in data.keys()):
             test = False
         
@@ -144,17 +133,16 @@ class neural_net(object):
         # Initalize Tensorflow session
         sess = tf.Session()
         
+        # Session Run Function
+        sess_run = lambda var,data_: sess.run(var,feed_dict={k:v 
+                                                for k,v in zip([x_,y_],data_)})
                        
         # Initialize Accuracy and Cost Functions
         y_predictions = tf.equal(tf.argmax(y_est,axis=1),tf.argmax(y_,axis=1))
         
         train_acc = tf.reduce_mean(tf.cast(y_predictions, tf.float32))
         test_acc =  tf.reduce_mean(tf.cast(y_predictions, tf.float32))
-        
-        # Define Cost Function      
-        cost = tf.reduce_mean(
-                self.nn_params['neuron_func']['cost'][cost_f](y_,y_est))
-        
+                
                        
         # Define Learning Rate Corrections
         #global_step = tf.Variable(0, trainable=False)
@@ -162,36 +150,46 @@ class neural_net(object):
 #        tf.train.exponential_decay(self.nn_params['apha_learn'],
 #                              global_step, self.nn_params['n_epochs'],
 #                              0.96, staircase=True)
-#        
-        # Training Output with Learning Rate Alpha
+       
+        
+        # Define Cost Function (with possible Regularization)
+        cost = tf.reduce_mean(
+                self.nn_params['neuron_func']['cost'][alg_params['cost']](
+                                                                    y_,y_est))
+        
+        if alg_params['regularize']:
+            cost += self.nn_params['neuron_func']['cost'][
+                         alg_params['regularize']](
+                                           [v for v in tf.trainable_variables() 
+                                           if 'weights' in v.name],
+                                           self.nn_params['eta_reg'])
+        
+        
+        
+        # Training Output with Learning Rate Alpha and regularization Eta
         train_step = self.nn_params[
-                                   'neuron_func']['optimize'](alpha_learn,cost)
+                            'neuron_func']['optimize'][alg_params['optimize']](
+                                                              alpha_learn,cost)
 
-        # Session Run Function
-        sess_run = lambda var,data_: sess.run(var,feed_dict={k:v 
-                                                for k,v in zip([x_,y_],data_)}) 
+         
        
         
         # Initialize Results Dictionaries
         results_keys_train = ['train_acc','cost']
-        results_keys_test =  ['test_acc', 'y_est']
+        results_keys_test =  ['test_acc']
         results_keys = results_keys_train + results_keys_test
                
         loc = vars()
         loc= {key:loc.get(key) for key in results_keys 
                                if loc.get(key) is not None}
         
-        results_keys = loc.keys()
-        
-        train_args = [data[k] for k in data_params['data_types_train']]
-        
+        results_keys = loc.keys()        
         results = {key: [] for key in results_keys}
         
                 
         results_func = {}
         for key in results_keys:
-            results_func[key] = lambda args=train_args: sess_run(loc.get(key),
-                                                                          args) 
+            results_func[key] = lambda feed_dict: sess_run(loc[key],feed_dict) 
         
         display(printit,timeit,'Results Initialized...')
         
@@ -232,36 +230,31 @@ class neural_net(object):
                 for i_batch in batch_range:
                     
                     # Choose Random Batch of data                    
-                    sess_run(train_step,[data[key][dataset_range,:][i_batch:
+                    sess_run(train_step,[d[dataset_range,:][i_batch:
                                    i_batch + self.nn_params['n_batch_train'],:]
-                                  for key in data_params['data_types_train']])
+                                  for d in data_typed['train']])
                 
             
-            
+                # Record Results every n_epochs_meas
                 if (epoch+1) % self.nn_params['n_epochs_meas'] == 0:
                     
-                    # Record Training Results: Cost and Training Accuracy
+                    # Record Results: Cost and Training Accuracy
                     for key,val in results.items():
-                        if key in results_keys_train:
-                            val.append(results_func[key]()) 
+                        if key in results_keys_train and train:
+                            val.append(results_func[key](data_typed['train'])) 
+                        elif key in results_keys_test and test:
+                            val.append(results_func[key](data_typed['test'])) 
                     
-                    
-                    # Display Results
+
+
+                     # Display Results
                     display(printit,False,'Epoch: %d'% epoch + 
                           '\n'+
                           'Testing Accuracy: '+str(results['train_acc'][-1])+
                           '\n'+
+                          'Testing Accuracy: '+str(results['test_acc'][-1])+
+                          '\n'+
                           'Cost:             '+str(results['cost'][-1]))
-
-                    
-                    # Record Testing Results: y_est and Testing Accuracy        
-                    if test:
-                        for key,val in results.items():
-                            if key in results_keys_test:
-                                #print(key,val)
-                                val.append(results_func[key](
-                                [k for k in data_params['data_types_test']]))
-
 
             
                     # Save and Plot Data
@@ -269,11 +262,6 @@ class neural_net(object):
                                     save=save,plot=plot,**plot_args)
             
             
-        # Test Model
-#        if test:
-#            self.testing({key: results[key] for key in results_keys_test},
-#                         [data[key] for key in data_params['data_types_test']],
-#                         data_params['results_func'])
 
     
         # Make Results Class variable for later testing with final network
@@ -283,7 +271,9 @@ class neural_net(object):
         self.data_params = data_params.copy
         
 
-    
+        # Save Figure of Results
+        Data_Proc.plot_save(data_params['data_dir'],
+                            '%depochs_'%self.nn_params['n_epochs'])
 
 
     
@@ -301,9 +291,9 @@ class neural_net(object):
     
     def layers(self,sigma=1):
         
-        def neuron_var(shape,sigma=0.1):
+        def neuron_var(shape,name,sigma=0.1):
             initial = tf.truncated_normal(shape,stddev=sigma)
-            return tf.Variable(initial)        
+            return tf.Variable(initial,name=name)        
         
         
         # Define Numbers In + Out + Hidden Layers
@@ -331,8 +321,8 @@ class neural_net(object):
                           self.nn_params['n_neuron'][i+1]]
                 bshape = [self.nn_params['n_neuron'][i+1]]
             
-                W[i] = neuron_var(Wshape,sigma)
-                b[i] = neuron_var(bshape,sigma)
+                W[i] = neuron_var(Wshape,'weights_%d'%i,sigma)
+                b[i] = neuron_var(bshape,'biases_%d'%i,sigma)
             
             # Calculate Activation function for ith layer and Output
             if i != self.nn_params['n_layers']:
@@ -351,21 +341,24 @@ class neural_net(object):
 if __name__ == '__main__':
     
     
-    
-    x_train,y_train,plot_data = spiral_dataset()
-    x_test = None
-    y_test = None
-    data_format = 'values'
-    kwargs = {'y_estimate': plot_data}
+#    from network_datasets import spiral_dataset 
+#    x_train,y_train,plot_data = spiral_dataset()
+#    x_test = None
+#    y_test = None
+#    data_format = 'values'
+#    one_hot = True
+#    kwargs = {'y_estimate': plot_data}
 
 
-#    x_train,y_train,x_test,y_test = 'x_train','y_train','x_test','y_test'
-#    data_format = 'npz'
-#    kwargs = {}
+    x_train,y_train,x_test,y_test = 'x_train','y_train','x_test','y_test'
+    data_format = 'npz'
+    one_hot = False
+    kwargs = {}
     
-    network_params = {'n_neuron': [None,10,None],'alpha_learn': 0.6, 
+    network_params = {'n_neuron': [None,100,None],
+                      'alpha_learn': 0.5, 'eta_reg': 0.005,
                   
-                  'neuron_func':{
+                     'neuron_func':{
                        'layer':  tf.nn.sigmoid,
                        'output': tf.nn.sigmoid,
                        'cost': {
@@ -381,31 +374,41 @@ if __name__ == '__main__':
                           
                           'entropy_logits': lambda y_label,y_est: 
                                   tf.nn.sigmoid_cross_entropy_with_logits(
-                                                  labels=y_label, logits=y_est)
+                                                 labels=y_label, logits=y_est),
+                          'L2': lambda var,eta_reg: tf.add_n([ tf.nn.l2_loss(v) 
+                                             for v in var]) * eta_reg
                                 },
                                       
-                    'optimize': lambda a,c: tf.train.GradientDescentOptimizer(
-                                                                 a).minimize(c)
+                    'optimize': {'grad': lambda a,c: 
+                                            tf.train.GradientDescentOptimizer(
+                                                                a).minimize(c),
+                                 'adam': lambda a,c: 
+                                            tf.train.AdamOptimizer(
+                                                                a).minimize(c)
+                                },
                              },
                            
-                  'n_epochs':200 ,
+                  'n_epochs':10 ,
                   'n_batch_train': 1/20, 'n_epochs_meas': 1/20,
                   }
     
     data_params =    {'data_files': [x_train,y_train,x_test,y_test],
-                      'data_types_train': ['x_train','y_train'],
-                      'data_types_test': ['x_test','y_test'],
+                      'data_types': ['x_train','y_train','x_test','y_test'],
                       'data_format': data_format,
                       'data_dir': 'dataset/',
-                      'one_hot': True
+                      'one_hot': one_hot
                      }
-    
+
+   
+    alg_params = {'cost': 'cross_entropy', 'optimize':'grad','regularize':None}
     
     # Run Neural Network
     
     
     nn = neural_net(network_params)
-    nn.training(data_params,cost_f='cross_entropy',plot=True,save=False,
+    nn.training(data_params,alg_params,
+                train=True,test=True,
+                plot=True,save=False,
                 printit=True,timeit=True,**kwargs)
     
     
