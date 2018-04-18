@@ -210,32 +210,30 @@ class neural_net(object):
         
 
 
-        
-        
-        
+        # Train Model
         if train:
             
-            epoch_range = np.arange(self.nn_params['n_epochs'])
+            epoch_range = range(self.nn_params['n_epochs'])
             dataset_range = np.arange(self.nn_params['n_dataset_train'])
+            batch_range = range(0,self.nn_params['n_dataset_train'],
+                                    self.nn_params['n_batch_train'])
+            
             domain = lambda e=self.nn_params['n_epochs']:  {
                           key: list(range(0,e,self.nn_params['n_epochs_meas']))
                           for key in results_keys}
             
-
-            #batch_range = np.arange(self.nn_params['n_epochs_meas'])
-            
+                        
             # Train Model over n_epochs with Gradient Descent 
             for epoch in epoch_range:
                            
                 # Divide training data into batches for training 
                 # with Stochastic Gradient Descent
-                for _ in dataset_range:
+                np.random.shuffle(dataset_range)                       
+                for i_batch in batch_range:
                     
-                    # Choose Random Batch of data
-                    np.random.shuffle(dataset_range)                       
-                    
-                    sess_run(train_step,[data[key][dataset_range,:][
-                                           0:self.nn_params['n_batch_train'],:]
+                    # Choose Random Batch of data                    
+                    sess_run(train_step,[data[key][dataset_range,:][i_batch:
+                                   i_batch + self.nn_params['n_batch_train'],:]
                                   for key in data_params['data_types_train']])
                 
             
@@ -271,11 +269,11 @@ class neural_net(object):
                                     save=save,plot=plot,**plot_args)
             
             
-        
-        if test:
-            self.testing({key: results[key] for key in results_keys_test},
-                         [data[key] for key in data_params['data_types_test']],
-                         data_params['results_func'])
+        # Test Model
+#        if test:
+#            self.testing({key: results[key] for key in results_keys_test},
+#                         [data[key] for key in data_params['data_types_test']],
+#                         data_params['results_func'])
 
     
         # Make Results Class variable for later testing with final network
@@ -284,10 +282,11 @@ class neural_net(object):
 
         self.data_params = data_params.copy
         
-        # Calculate Mutual Information from Loaded Data
-        #I,I_file = self.info_plane(plot=False)
 
-        
+    
+
+
+    
     def testing(self,results,data,data_func):
         
         for key,val in results.items():
@@ -295,6 +294,9 @@ class neural_net(object):
             
         return results
         
+    
+    
+    
     
     
     def layers(self,sigma=1):
@@ -386,7 +388,7 @@ if __name__ == '__main__':
                                                                  a).minimize(c)
                              },
                            
-                  'n_epochs':100 ,
+                  'n_epochs':200 ,
                   'n_batch_train': 1/20, 'n_epochs_meas': 1/20,
                   }
     
@@ -403,6 +405,7 @@ if __name__ == '__main__':
     
     
     nn = neural_net(network_params)
-    nn.training(data_params,cost_f='cross_entropy',printit=True,timeit=True,**kwargs)
+    nn.training(data_params,cost_f='cross_entropy',plot=True,save=False,
+                printit=True,timeit=True,**kwargs)
     
     
