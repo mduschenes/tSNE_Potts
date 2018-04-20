@@ -46,9 +46,7 @@ def spiral_dataset():
         y_estimate =  lambda f,y: np.argmax(f(y,
                                     [np.c_[x1_grid.ravel(),x2_grid.ravel()]]),
                                     axis=1).reshape(x1_grid.shape)
-        
-        fig.sca(ax)
-        ax.clear()
+
             
         plt.contourf(x1_grid, x2_grid, y_estimate(y_est[0],y_est[1]),
                      K, alpha=0.8)

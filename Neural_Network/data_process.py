@@ -31,14 +31,14 @@ class Data_Process(object):
             self.ax = {}
             pass 
         
-        def process(self,data,domain,data_params,
+        def process(self,data,domain,data_params, keys=None,
                     save=False,plot=False,**kwargs):
             
             if save:
                 self.exporter(data,data_params)
             
             if plot:
-                self.plotter(data,domain,**kwargs)    
+                self.plotter(data,domain,keys,**kwargs)    
             
             return
         
@@ -83,7 +83,7 @@ class Data_Process(object):
             # Convert Labels to one-hot Labels
             if data_params.get('one_hot',False):
                 for k in data.keys(): 
-                    if ('y_' in k or 'label_' in k):
+                    if 'y_' in k:
                         data[k] = self.one_hot(data[k])
             
             
@@ -115,50 +115,56 @@ class Data_Process(object):
             return
        
         
-        def plotter(self,data,domain,**kwargs):
+        def plotter(self,data,domain,keys=None,**kwargs):
         
             # Check Data is Dictionary
             data = self.dict_check(data,'data_files')
 
-
+            if keys is None:
+                keys = data.keys()
             
             # Create new Figures/Axes if not existing based on data keys
             if kwargs.get('plot_f'):   
-                keys = [k for k in data.keys() if data.get(k)]+ ['key_plot_f']
+                keys = [k for k in keys if data.get(k)]+ ['plot_f']
             else:
-                keys = list([k for k in data.keys() if data.get(k)])
+                keys = [k for k in keys if data.get(k)]
             
             self.figure_axes(keys)
             
-            # Plot for each data key
-            for key,val in data.items():
             
-                
-                if not val:
-                    continue
+            
+            # Plot for each data key
+            for i,key in enumerate(keys):
                 
                 try:
                     plt.figure(self.fig[key].number)
                 except:
-                    self.figure_axes(list([k for k in data.keys() 
-                                   if data.get(k)])+ [kwargs.get('','')])
+                    self.figure_axes(keys)
                     plt.figure(self.fig[key].number)
                 
-
+                
                 self.fig[key].sca(self.ax[key])
+                self.ax[key].clear()
 
-                plt.plot(domain[key],val,'-o',color='r')
-                plt.title('')
-                plt.ylabel(key)
-                plt.xlabel('Epoch')
+                # Plot Special Plot (possibly)
+                if key == 'plot_f':
+                    
+                    kwargs[key](fig = self.fig[key],
+                                 ax = self.ax[key])
+                else:
+                    plt.plot(domain[key],data.get(key),'-o',color='r')
                 
-                plt.pause(0.01)
+                    plt.title('')
+                    
+                    plt.ylabel(key)
+                    plt.xlabel('Epoch')
+                    
+                    plt.pause(0.01)
                 
-            
-            # Plot Speicial Plot (possibly)
-            if kwargs.get('plot_f'):
-                kwargs['plot_f'](fig = self.fig['key_plot_f'],
-                                 ax = self.ax['key_plot_f'])
+                self.fig[key].suptitle(kwargs.get('plot_title',''),size = 9,
+                                       horizontalalignment='left',x=0.91)
+                
+                
                 
     
         
@@ -187,12 +193,14 @@ class Data_Process(object):
                 file = ''.join([file_dir,label,'_'.join(keys)])
                 
                 i = 0
-                while os.path.isfile(file+file_format):
-                    file += '_%d'%i
+                file_end = ''
+                while os.path.isfile(file+file_end+file_format):
+                    file_end = '_%d'%i
                     i+=1
 
                 # Save Figure as File_Format
-                plt.savefig(file+file_format,dpi=500)
+                plt.savefig(file+file_end+file_format,
+                            bbox_inches='tight',dpi=500)
                 fig.set_size_inches(plot_size) 
             
             return
@@ -205,8 +213,10 @@ class Data_Process(object):
             
             if keys:
            
-                fig, ax = plt.subplots(np.size(keys))
-            
+                fig, ax = plt.subplots(np.size(keys),sharex=True)
+                
+                #fig.canvas.set_window_title('   '.join(keys))
+                
                 for k,a in zip(keys,ax):
                     self.ax[k] = a
                     self.fig[k] = fig
@@ -268,9 +278,44 @@ class Data_Process(object):
             
             return sorter(X,sort)
 
+        def dict_sort(self,dict1,dict2,dtype='dict',reorganize=True):  
+            
+            # Create dict0 as sorted version of dict2 using dict1
+            
+            # Sort dict2 into {key_1: {key_2: { val_1: val_2_array(1_sort)} } }
+            dict0 = {k1: {k2: self.array_sort(v2,v1,0,dtype) 
+                              for k2,v2 in dict2.items()}
+                              for k1,v1 in dict1.items()}
+            
+            # Reorganize to  {key_1: {key_2: { val_1: val_2_array(1_sort)} } }
+            if reorganize and dtype == 'dict':
+            
+                dict0 = {k1: {v1i: {k2: dict0[k1][k2][v1i] 
+                                    for k2 in dict2.keys()}
+                                    for v1i in sorted(np.reshape(v1,(-1,)))}                                    
+                                    for k1,v1 in dict1.items()}
+                        
+            return dict0
+
             
         
-        
+        def array_sort(self,a,b,axis=0,dtype='list'):
+            # Sort 2-dimensional a by elements in 1-d array b
+            
+            b = np.reshape(b,(-1,))
+            
+            if dtype == 'dict':
+                return {i: np.reshape(np.take(a,np.where(b==i),axis),
+                                      (-1,)+np.shape(a)[1:]) 
+                                        for i in set(b)}
+            elif dtype == 'list':
+                return [np.take(a,np.where(b==i),axis) for i in set(b)]
+            elif dtype == 'sorted':
+                return np.concatenate(list(np.take(a,np.where(b==i),axis)
+                                           for i in set(b)),1)
+            else:
+                return a
+                
         
         
 if __name__ == "__main__":

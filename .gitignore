@@ -5,6 +5,8 @@
 # Specific Files
 *Data/
 
+/Neural_Network\network_process.py
+
 OLD*/
 **/OLD*/
 **/*dataset*/

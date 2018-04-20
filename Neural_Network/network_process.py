@@ -41,6 +41,19 @@ import os
 #            y_train = data['y_test'][i_test]
 
 
+
+
+#        plot_args['plot_title'] = ''.join([str(k)+':  '+str(alg_params[k]) +
+#                           ('\n' if (i+1)%(len(alg_params)//4)==0 else 
+#                           (','+'  '+
+#                                 ' '*(max([len(str(t)+':  '+str(alg_params[t])) 
+#                                      for t in alg_params.keys()]) 
+#                                      - len(str(k)+':  '+str(alg_params[k]))))) 
+#                           for i,k in 
+#                           enumerate(sorted(list(alg_params.keys())))])
+
+
+
 ##### Initialize Network #######
 def training_parameters(self,n_batch_train,n_dataset_train):
     
