@@ -10,19 +10,6 @@ import os.path
 
 
 
-
-data_params = {'data_files': ['x_train','y_train','x_test','y_test'],
-              'data_types': None,
-              'data_format': 'npz',
-              'data_dir': 'dataset/',
-              'one_hot': False}
-
-
-
-
-
-
-
 class Data_Process(object):
     
     
@@ -44,22 +31,24 @@ class Data_Process(object):
         
         
         # Import Data
-        def importer(self,data_params = {
-                        'data_files': None,
-                        'data_types': ['x_train','y_train','x_test','y_test'],
-                        'data_format': 'npz',
-                        'data_dir': 'dataset/',
-                        'one_hot': False}):
-            
+        def importer(self,data_params = 
+                        {'data_files': ['x_train','y_train','x_test','y_test'],
+                         'data_sets': ['x_train','y_train','x_test','y_test'],
+                         'data_types': ['train','test','other'],
+                         'data_format': 'npz',
+                         'data_dir': 'dataset/',
+                         'one_hot': False
+                        }):
+        
             # Data Dictionary
             data_params = self.dict_check(data_params,'data_files')            
             
-            if not data_params.get('data_types'):
-                data_params['data_types'] = np.arange(
+            if not data_params.get('data_sets'):
+                data_params['data_sets'] = np.arange(
                         np.size(data_params)).tolist
             
             data_params['data_files'] = self.dict_check(
-                        data_params['data_files'],data_params['data_types'])
+                        data_params['data_files'],data_params['data_sets'])
             
             
             # Import Data
@@ -164,7 +153,7 @@ class Data_Process(object):
                 self.fig[key].suptitle(kwargs.get('plot_title',''),size = 9,
                                        horizontalalignment='left',x=0.91)
                 
-                
+            return
                 
     
         
@@ -309,12 +298,18 @@ class Data_Process(object):
                                       (-1,)+np.shape(a)[1:]) 
                                         for i in set(b)}
             elif dtype == 'list':
-                return [np.take(a,np.where(b==i),axis) for i in set(b)]
+                return [np.reshape(np.take(a,np.where(b==i),axis),
+                                      (-1,)+np.shape(a)[1:]) for i in set(b)]
             elif dtype == 'sorted':
-                return np.concatenate(list(np.take(a,np.where(b==i),axis)
-                                           for i in set(b)),1)
+                return np.concatenate(
+                                    [np.reshape(np.take(a,np.where(b==i),axis),
+                                               (-1,)+np.shape(a)[1:])
+                                    for i in set(b)],1)
             else:
                 return a
+            
+        def array_mean(self,a,axis):
+            return np.mean(a,axis)
                 
         
         

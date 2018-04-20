@@ -52,7 +52,7 @@ import os
 #                           for i,k in 
 #                           enumerate(sorted(list(alg_params.keys())))])
 
-
+        #saver = tf.train.Saver(max_to_keep=self.nn_params['n_epochs'])  
 
 ##### Initialize Network #######
 def training_parameters(self,n_batch_train,n_dataset_train):
