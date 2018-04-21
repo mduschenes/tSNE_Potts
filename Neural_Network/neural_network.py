@@ -2,12 +2,10 @@
 """
 Created on Tue Jan 23 11:04:42 2018
 
-@author: Matt
+@author: Matt Duschenes
+Machine Learning and Many Body Physics
+PSI 2018 - Perimeter Institute
 """
-
-#from __future__ import absolute_import
-#from __future__ import division
-#from __future__ import print_function
 
 from data_process import Data_Process
 array_sort =  Data_Process().array_sort
@@ -32,16 +30,6 @@ def display(printit=False,timeit=False,m=''):
     elif printit:
         print(m)
 
-def adder(a,keys=None):
-    b = []
-    if isinstance(a,dict) and keys:
-        for k in keys:
-            b += a[k]
-    else:
-        for ai in a:
-            b += ai
-            
-    return b
 
 
 
@@ -59,6 +47,7 @@ class neural_net(object):
                      {'data_files': ['x_train','y_train','x_test','y_test'],
                       'data_sets': ['x_train','y_train','x_test','y_test'],
                       'data_types': ['train','test','other'],
+                      'data_wrapper': lambda i,v: array_sort(i,v,0,'list'), 
                       'data_format': 'npz',
                       'data_dir': 'dataset/',
                       'one_hot': False
@@ -85,12 +74,16 @@ class neural_net(object):
         
         data, data_size = Data_Proc.importer(data_params)
                
-        # Organize data by set in data_sets (train, test etc.),
+        # Organize data by data_types (train, test, other),
         # and sorted in the the order of x,y, where it is assumed data_sets is
-        # of the form ['x_train','y_train','x_test','y_test']
+        # of the form ['x_train','y_train','x_test','y_test',*vars_other]
         data_typed = {t: [data[k] 
                           for k in data_params['data_sets'] if t in k]
                           for t in data_params['data_types']}
+        data_sets=   {t: [k 
+                          for k in data_params['data_sets'] if t in k]
+                          for t in data_params['data_types']}
+        
         
         
         display(printit,timeit,'Data Imported...')
@@ -161,29 +154,19 @@ class neural_net(object):
          
        
         
-        # Initialize Results Keys for Results Functions, classifed by data_type
+        # Initialize Results Dictionaries
         results_keys = {}
-        results_keys['train']  = ['train_acc','cost']
-        results_keys['test']   = ['test_acc']
-        results_keys['other']  = ['y_equiv','y_est']
-        results_keys_all = adder(results_keys.values())
-        results_keys['all']  = results_keys_all
-                   
+        results_keys['train'] = ['train_acc','cost']
+        results_keys['test'] =  ['test_acc']
+        results_keys['other'] = ['y_equiv','y_est']
+        results_keys['all'] = (results_keys['train']+results_keys['test']+
+                                results_keys['other'])
+             
         loc = vars()
-        
-        # Create Dictionaries of local objects corresponding to:
-        
-        # data_type booleans (i.e. 'train': train=True)
-        loc_types =   {key: loc.get(key) for key in data_params['data_types']
-                               if loc.get(key)}
-        # results functions (i.e. 'train_acc': train_acc )
-        loc_results = {key: loc.get(key) for key in results_keys['all'] 
+        loc = {key:loc.get(key) for key in results_keys['all'] 
                                if loc.get(key) is not None}
+        results_keys['all'] = loc.keys()        
         
-        # Keep only keys that exist as local objects
-        types_keys = list(loc_types.keys())
-        results_keys['all'] = list(loc_results.keys())
-                
         
         # Results Dictionary of Array for results values
         results = {key: [] for key in results_keys['all']}
@@ -191,7 +174,7 @@ class neural_net(object):
         # Results Dictionary of Functions for results       
         results_func = {}
         for key in results_keys['all']:
-            results_func[key] = lambda d : sess_run(loc_results[key],d) 
+            results_func[key] = lambda feed_dict : sess_run(loc[key],feed_dict) 
         
         
         display(printit,timeit,'Results Initialized...')
@@ -211,7 +194,9 @@ class neural_net(object):
                            enumerate(sorted(list(alg_params.keys())))])
         
         plot_args['fig_title'] = '%depochs_'%alg_params['n_epochs']
-        
+        plot_args['xlabel'] = {k: 'epochs' if k not in results_keys['other'] 
+                                           else str(data_sets['other'][0]) 
+                               for k in results_keys['all']}
         
         
         
@@ -220,7 +205,9 @@ class neural_net(object):
         sess.run(tf.global_variables_initializer())
         
         display(printit,timeit,'Training...')
-    
+        
+
+
 
 
         # Train Model
@@ -231,10 +218,17 @@ class neural_net(object):
             batch_range = range(0,alg_params['n_dataset_train'],
                                     alg_params['n_batch_train'])
             
-            domain = lambda e=alg_params['n_epochs']:  {
-                          key: list(range(0,e,alg_params['n_epochs_meas'])) 
-                          for key in results_keys['all'] }
-            
+            def domain(i = alg_params['n_epochs'],
+                       f = lambda i,*k: list(range(*i))):
+                
+                if not hasattr(i,'__iter__'):
+                    i = (0,i,alg_params['n_epochs_meas'])
+                
+                if callable(f):
+                    return {k: f(i,k) 
+                            for k in results_keys['all'] }
+                else:
+                    return {k: f for k in results_keys['all']}
             
                         
             # Train Model over n_epochs with Gradient Descent 
@@ -256,15 +250,20 @@ class neural_net(object):
                     
                     # Record Results: Cost and Training Accuracy
                     for key,val in results.items():
-                        for t in types_keys:
-                            if key in results_keys[t]:
-                                val.append(results_func[key](data_typed[t]))
-                                    
-                            
+                        if train and key in results_keys['train']:
+                            val.append(results_func[key](data_typed['train'])) 
+                        
+                        elif test and key in results_keys['test']:
+                            val.append(results_func[key](data_typed['test']))
+                        
+                        elif other and key in results_keys['other']:
+                            val.append(results_func[key](data_typed['test']))
+                                                
 
 
                      # Display Results
-                    display(printit,timeit,'\n Epoch: %d'% epoch + '\n'+
+                    display(printit,timeit,'\n Epoch: %d'% epoch + 
+                          '\n'+
                           'Training Accuracy: '+str(results['train_acc'][-1])+
                           '\n'+
                           'Testing Accuracy: '+str(results['test_acc'][-1])+
@@ -287,8 +286,40 @@ class neural_net(object):
 
         self.data_params = data_params
         
+       
+        # Process Other Data with final trained values
+        if other:            
+            # Sort and Average over each array from other results
+            results_sort_avg = {i: {k:[] for k in results_keys['other']}
+                                  for i in range(np.size(data_typed['other']))}
+                        
+            for i,d in enumerate(data_typed['other']):
 
-        # Save Figure of Results
+                d_sort = {}
+
+                for k in results_keys['other']:
+
+                    results_sort,d_sort[i] = data_params['data_wrapper'](
+                                                              results[k][-1],d) 
+                                               
+                    results_avg = np.array(list(map(lambda i: np.mean(i,0), 
+                                                               results_sort)))
+                    
+                    results_sort_avg[i][k] = results_avg
+                    d_sort[i] = domain(f=d_sort[i])
+                Data_Proc.process(results_sort_avg[i],d_sort[i],data_params,
+                                      results_keys['other'],
+                                      save=save,plot=True,**plot_args)
+                
+                
+                    
+        
+        # Plot Final Results
+        Data_Proc.process(results,domain(epoch+1),data_params,
+                                    results_keys['train']+results_keys['test'],
+                                    save=save,plot=True,**plot_args)
+        
+        # Save Final Figures
         Data_Proc.plot_save(data_params['data_dir'],plot_args['fig_title'])
 
 
@@ -352,27 +383,21 @@ class neural_net(object):
         y_est = T[-1]
         
         return y_est,x_,y_
+    
+    
 
 
 if __name__ == '__main__':
     
+
     # Data Set
-    
-#    from network_datasets import spiral_dataset 
-#    x_train,y_train,plot_data = spiral_dataset()
-#    x_test = None
-#    y_test = None
-#    data_format = 'values'
-#    one_hot = True
-#    kwargs = {'y_estimate': plot_data}
-
-
     data_files = ['x_train','y_train','x_test','y_test','T_test']
     data_sets = ['x_train','y_train','x_test','y_test','T_other']
     data_format = 'npz'
     one_hot = False
     kwargs = {}
-    
+
+    # Neural Network Parameters    
     network_params = {'n_neuron': [None,100,None],                  
                      'neuron_func':{
                        'layer':  tf.nn.sigmoid,
@@ -406,31 +431,32 @@ if __name__ == '__main__':
                            
                   }
     
-    data_params =  {'data_files': ['x_train','y_train','x_test','y_test'],
-                    'data_sets': ['x_train','y_train','x_test','y_test'],
+    # Dataset Parameters
+    data_params =  {'data_files': data_files,
+                    'data_sets': data_sets,
                     'data_types': ['train','test','other'],
-                    'data_format': 'npz',
+                    'data_wrapper': lambda i,v: array_sort(i,v,0,'list'),
+                    'data_format': data_format,
                     'data_dir': 'dataset/',
-                    'one_hot': False
+                    'one_hot': one_hot
                    }
 
    
-    alg_params = { 'alpha_learn': 0.3, 'eta_reg': 0.0005,                  
+    # Algorithm Parameters
+    alg_params = { 'alpha_learn': 0.35, 'eta_reg': 0.0005,                  
                   
-                  'n_epochs':200 ,'n_batch_train': 1/10, 'n_epochs_meas': 1/20,
-                  
+                  'n_epochs':500 ,'n_batch_train': 1/20, 'n_epochs_meas': 1/20,
+                 
                   'cost_func': 'cross_entropy', 'optimize_func':'grad',
                   'regularize':'L2'}
     
+    
+    
     # Run Neural Network   
-    
-    
     nn = neural_net(network_params)
     nn.training(data_params,alg_params,
-                train=True,test=True,other=False,
+                train=True,test=True,other=True,
                 plot=True,save=False,
                 printit=True,timeit=True,**kwargs)
-    
-    #np.savez_compressed('dataset/' + 'T_test',a=np.reshape(dT,(-1,1)))
     
     

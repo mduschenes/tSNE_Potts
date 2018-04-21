@@ -12,12 +12,13 @@ import os.path
 
 class Data_Process(object):
     
-    
+        # Create figure and axes dictionaries for dataset keys
         def __init__(self):
             self.fig = {}
             self.ax = {}
             pass 
         
+        # Save and export Data
         def process(self,data,domain,data_params, keys=None,
                     save=False,plot=False,**kwargs):
             
@@ -28,6 +29,7 @@ class Data_Process(object):
                 self.plotter(data,domain,keys,**kwargs)    
             
             return
+        
         
         
         # Import Data
@@ -43,45 +45,53 @@ class Data_Process(object):
             # Data Dictionary
             data_params = self.dict_check(data_params,'data_files')            
             
-            if not data_params.get('data_sets'):
-                data_params['data_sets'] = np.arange(
-                        np.size(data_params)).tolist
-            
             data_params['data_files'] = self.dict_check(
-                        data_params['data_files'],data_params['data_sets'])
+                        data_params['data_files'],
+                        data_params.get('data_sets',
+                                        data_params['data_files']))
             
             
             # Import Data
-            if data_params.get('data_format','values') == 'values':
-                data = {k:v for k,v in data_params['data_files'].items() 
+            import_func = {}
+            
+            import_func['values'] = lambda v:v
+            
+            import_func['npz'] = lambda v: np.load(data_params['data_dir']+
+                                     v + '.' + data_params['data_format'])['a'] 
+            
+            import_func['txt'] = lambda v: np.loadtxt(data_params['data_dir']+
+                                          v + '.' + data_params['data_format']) 
+            
+            data = {k: import_func[data_params.get('data_format','values')](v)
+                        for k,v in data_params['data_files'].items() 
                         if v is not None}
             
-            elif data_params.get('data_format',None) == 'npz':
-                data = {k: np.load(data_params['data_dir']+v+'.'+
-                                   data_params['data_format'])['a'] 
-                                  for k,v in data_params['data_files'].items()
-                                  if v is not None}
-            
-            elif data_params.get('data_format',None) == 'txt':
-                data = {k: np.loadtxt(data_params['data_dir']+v+'.'+
-                                     data_params['data_format']) 
-                                  for k,v in data_params['data_files'].items()
-                                  if v is not None}
-            
-            
             # Convert Labels to one-hot Labels
-            if data_params.get('one_hot',False):
+            if data_params.get('one_hot'):
                 for k in data.keys(): 
                     if 'y_' in k:
                         data[k] = self.one_hot(data[k])
             
             
             # Size of Data Sets
-            data_sizes = {k:np.shape(np.atleast_2d(v)) for k,v in data.items()}
+            data_sizes = {}
+            for k in data.keys():
+                data[k] = np.atleast_2d(data[k])
+                v_shape = np.shape(data[k])
+                if v_shape[0] == 1 and v_shape[1:] != 1:
+                    data[k] = np.transpose(data[k],0)
+                data_sizes[k] = np.shape(data[k])
+                    
             
             
-            
+            # If not npz format, Export as npz for easier subsequent importing
+            if data_params['data_format'] != 'npz':
+                
+                data_params['data_format'] = 'npz'
+                self.exporter(data,data_params)
+                    
             return data, data_sizes
+        
         
         
         
@@ -91,7 +101,7 @@ class Data_Process(object):
            
             # File Names
             if file_names is None:
-                file_names = lambda value: '%depochs_%s'%(np.size(data),value)
+                file_names = lambda value: value
             elif not callable(file_names):
                 g = np.atleast_1d(file_names)
                 file_names = lambda k: g[k]
@@ -104,6 +114,9 @@ class Data_Process(object):
             return
        
         
+        
+        
+        # Plot Data by keyword
         def plotter(self,data,domain,keys=None,**kwargs):
         
             # Check Data is Dictionary
@@ -116,7 +129,7 @@ class Data_Process(object):
             if kwargs.get('plot_f'):   
                 keys = [k for k in keys if data.get(k)]+ ['plot_f']
             else:
-                keys = [k for k in keys if data.get(k)]
+                keys = [k for k in keys if data.get(k) is not None]
             
             self.figure_axes(keys)
             
@@ -138,15 +151,31 @@ class Data_Process(object):
                 # Plot Special Plot (possibly)
                 if key == 'plot_f':
                     
-                    kwargs[key](fig = self.fig[key],
-                                 ax = self.ax[key])
+                    kwargs[key](domain.get(key),data.get(key))
+                
+                # Plot main plots
                 else:
-                    plt.plot(domain[key],data.get(key),'-o',color='r')
+                    if kwargs.get('plot_type') == 'scatter':
+                        plt.scatter(domain.get(key),data.get(key))
+                        
+                        plt.ylabel('x2')
+                        plt.xlabel('x1')
+                
+                    else:
+                        shape_data = np.shape(data.get(key))
+                        if len(shape_data)>1:
+                            for i in range(shape_data[1]):
+                                plt.plot(domain.get(key),data.get(key)[:,i],
+                                         '-o',color='r')
+                        else:
+                            plt.plot(domain.get(key),data.get(key),
+                                     '-o',color='r')
+                            
+                        plt.ylabel(key)
+                        plt.xlabel(kwargs.get('xlabel',{}).get(key,'N'))
                 
                     plt.title('')
                     
-                    plt.ylabel(key)
-                    plt.xlabel('Epoch')
                     
                     plt.pause(0.01)
                 
@@ -156,13 +185,15 @@ class Data_Process(object):
             return
                 
     
-        
+        # Clost all current figures and reset figures and axes dictionaries
         def plot_close(self):
             plt.close('all')   
             self.ax = {}
             self.fig ={}
             return
         
+        
+        # Save all current figures
         def plot_save(self,file_dir='',label='',file_format='.pdf'):
             
             for ifig in plt.get_fignums():
@@ -196,6 +227,7 @@ class Data_Process(object):
         
         
         
+        # Create figures and axes for each passed set of keys for datasets
         def figure_axes(self,keys):
             
             keys = [k for k in np.atleast_1d(keys) if k not in self.ax.keys()]
@@ -212,20 +244,9 @@ class Data_Process(object):
             
             return
         
-        # Check if variable is dictionary
-        def dict_check(self,dictionary,key):
-                        
-            # Check if dict is a dictionary
-            if not isinstance(dictionary,dict):
-                return dict(zip(key,dictionary))
-            else:
-                return dictionary
-            
         
         
-        
-        
-        # Converts data X to n+1-length one-hot form        
+         # Converts data X to n+1-length one-hot form        
         def one_hot(self,X,n=None):
            
             n = int(np.amax(X))+1 if n is None else int(n)+1
@@ -240,13 +261,10 @@ class Data_Process(object):
                 np.put(p,i,1)
                 y[X==i,:] = p
             
-            
-            
-            
+
             return np.reshape(y,(-1,n))
         
-        
-        # Convert Data to Range
+         # Convert Data to Range
         def convert_to_range(self,X,sort='max',N=None):
             # Convert discrete domain data X, into values in range 0...N,
             # where the new values are indices depending on sort method:
@@ -266,7 +284,28 @@ class Data_Process(object):
                                   for x in np.atleast_2d(X)])
             
             return sorter(X,sort)
+        
+        
+        # Check if variable is dictionary
+        def dict_check(self,dictionary,key):
+                        
+            # Check if dict is a dictionary
+            if not isinstance(dictionary,dict):
+                return dict(zip(key,dictionary))
+            else:
+                return dictionary
+            
+        def dict_modify(D,T=None,f=lambda v: v,i=[0,None],j=[0,None]): 
+           if T:
+               return  {t[j[0]:j[1]]: {k[i[0]:i[1]]: f(v) for k,v in D.items() 
+                        if t in k} for t in T}
+           else:
+               return {k[i[0]:i[1]]: f(v) for k,v in D.items()}
+            
+        
 
+
+        # Sort Dictionary by other Dictionary
         def dict_sort(self,dict1,dict2,dtype='dict',reorganize=True):  
             
             # Create dict0 as sorted version of dict2 using dict1
@@ -288,26 +327,33 @@ class Data_Process(object):
 
             
         
+        # Sort 2-dimensional a by elements in 1-d array b
         def array_sort(self,a,b,axis=0,dtype='list'):
-            # Sort 2-dimensional a by elements in 1-d array b
             
             b = np.reshape(b,(-1,))
             
             if dtype == 'dict':
                 return {i: np.reshape(np.take(a,np.where(b==i),axis),
                                       (-1,)+np.shape(a)[1:]) 
-                                        for i in set(b)}
+                                        for i in sorted(set(b))},sorted(set(b))
+            
             elif dtype == 'list':
-                return [np.reshape(np.take(a,np.where(b==i),axis),
-                                      (-1,)+np.shape(a)[1:]) for i in set(b)]
+                return ([np.reshape(np.take(a,np.where(b==i),axis),
+                               (-1,)+np.shape(a)[1:]) for i in sorted(set(b))],
+                                 sorted(set(b)))
+            
             elif dtype == 'sorted':
                 return np.concatenate(
                                     [np.reshape(np.take(a,np.where(b==i),axis),
                                                (-1,)+np.shape(a)[1:])
-                                    for i in set(b)],1)
-            else:
-                return a
+                                    for i in sorted(set(b))],1), sorted(set(b))
             
+            else:
+                return a,sorted(set(b))
+        
+        
+        
+        # Average of array along axis            
         def array_mean(self,a,axis):
             return np.mean(a,axis)
                 

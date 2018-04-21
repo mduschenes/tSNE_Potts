@@ -10,6 +10,22 @@ import matplotlib.pyplot as plt
 
 
 def spiral_dataset():    
+    
+    
+    
+    #    from network_datasets import spiral_dataset 
+#    x_train,y_train,plot_data = spiral_dataset()
+#    x_test = None
+#    y_test = None
+#    data_format = 'values'
+#    one_hot = True
+#    kwargs = {'y_estimate': plot_data}
+    
+    
+    
+    
+    
+    
     # K Branch Data Set
     N = 50 # number of points per branch
     K = 3  # number of branches
