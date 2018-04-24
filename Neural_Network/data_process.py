@@ -162,17 +162,19 @@ class Data_Process(object):
                         plt.xlabel('x1')
                 
                     else:
-                        shape_data = np.shape(data.get(key))
-                        if len(shape_data)>1:
-                            for i in range(shape_data[1]):
-                                plt.plot(domain.get(key),data.get(key)[:,i],
-                                         '-o',color='r')
+                        if isinstance(data.get(key),dict):
+                            for k,v in data.get(key).items():
+                                plt.plot(domain.get(key),v,
+                                         '-o',label=k)
                         else:
                             plt.plot(domain.get(key),data.get(key),
                                      '-o',color='r')
                             
                         plt.ylabel(key)
                         plt.xlabel(kwargs.get('xlabel',{}).get(key,'N'))
+                        plt.legend()
+                        
+                        
                 
                     plt.title('')
                     
@@ -228,13 +230,17 @@ class Data_Process(object):
         
         
         # Create figures and axes for each passed set of keys for datasets
-        def figure_axes(self,keys):
+        def figure_axes(self,keys,keys_shape=None):
+            
+            
+            if keys_shape is None:
+                keys_shape = np.shape(keys)
             
             keys = [k for k in np.atleast_1d(keys) if k not in self.ax.keys()]
             
             if keys:
            
-                fig, ax = plt.subplots(np.size(keys),sharex=True)
+                fig, ax = plt.subplots(*keys_shape,sharex=True)
                 
                 #fig.canvas.set_window_title('   '.join(keys))
                 

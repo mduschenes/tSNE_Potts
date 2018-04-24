@@ -8,13 +8,23 @@ Created on Sat Mar 24 15:54:40 2018
 
 
 import numpy as np
-import os
+import os, time
 import types
 
 
 
 
 ##### Model Functions ########
+
+times = [time.clock()]
+def display(printit=False,timeit=False,m=''):
+    if timeit:
+        times.append(time.clock())
+        if printit:
+            print(m,times[-1]-times[-2])
+    elif printit:
+        print(m)
+
 
 
 def flatten(x,flattenint=True):
@@ -61,7 +71,87 @@ def choose_f(f,i=[0,0,0],f0=None,):
     return f(i[0]) if i[1] in np.atleast_1d(i[2]) else f0
 
 
+# Check if variable is dictionary
+def dict_check(dictionary,key):
+                
+    # Check if dict is a dictionary
+    if not isinstance(dictionary,dict):
+        return dict(zip(key,dictionary))
+    else:
+        return dictionary
+    
+def dict_modify(D,T=None,f=lambda v: v,i=[0,None],j=[0,None]): 
+   if T:
+       return  {t[j[0]:j[1]]: {k[i[0]:i[1]]: f(v) for k,v in D.items() 
+                if t in k} for t in T}
+   else:
+       return {k[i[0]:i[1]]: f(v) for k,v in D.items()}
+    
 
+
+
+# Sort 2-dimensional a by elements in 1-d array b
+def array_sort(a,b,axis=0,dtype='list'):
+    
+    b = np.reshape(b,(-1,))
+    
+    if dtype == 'dict':
+        return {i: np.reshape(np.take(a,np.where(b==i),axis),
+                              (-1,)+np.shape(a)[1:]) 
+                                for i in sorted(set(b))},sorted(set(b))
+    
+    elif dtype == 'list':
+        return ([np.reshape(np.take(a,np.where(b==i),axis),
+                       (-1,)+np.shape(a)[1:]) for i in sorted(set(b))],
+                         sorted(set(b)))
+    
+    elif dtype == 'sorted':
+        return np.concatenate(
+                            [np.reshape(np.take(a,np.where(b==i),axis),
+                                       (-1,)+np.shape(a)[1:])
+                            for i in sorted(set(b))],1), sorted(set(b))
+    
+    else:
+        return a,sorted(set(b))
+
+ # Converts data X to n+1-length one-hot form        
+def one_hot(X,n=None):
+   
+    n = int(np.amax(X))+1 if n is None else int(n)+1
+    
+    sx = np.shape(np.atleast_1d(X))
+    
+   
+    y = np.zeros(sx+(n,),dtype=np.int32)
+    
+    for i in range(n):
+        p = np.zeros(n)
+        np.put(p,i,1)
+        y[X==i,:] = p
+    
+
+    return np.reshape(y,(-1,n))
+
+ # Convert Data to Range
+def convert_to_range(X,sort='max',N=None):
+    # Convert discrete domain data X, into values in range 0...N,
+    # where the new values are indices depending on sort method:
+    # max: values are in range of 0... max(x) 
+    # unique: value are indices of ascending order of set of 
+    #         unique elements in x: 0 ... length(set(x)) 
+    #                     sorted: length(x)+1
+    # int N: values are in range: 0...N
+    
+    sort_method = {'max':   range(int(np.amax(X))+1),
+                   'unique':list(set(X.flatten())),
+                   'int':   range(int(max([np.amax(X),N]))+1)}
+    
+    sorter = lambda X,sort: np.array([[
+                          np.where(sort_method[sort]==i)[0][0] 
+                          for i in x]
+                          for x in np.atleast_2d(X)])
+    
+    return sorter(X,sort)
 
 
 
@@ -80,6 +170,28 @@ def choose_f(f,i=[0,0,0],f0=None,):
 
 
 ##### Other Functions #######
+
+
+# Sort Dictionary by other Dictionary
+def dict_sort(dict1,dict2,dtype='dict',reorganize=True):  
+    
+    # Create dict0 as sorted version of dict2 using dict1
+    
+    # Sort dict2 into {key_1: {key_2: { val_1: val_2_array(1_sort)} } }
+    dict0 = {k1: {k2: array_sort(v2,v1,0,dtype) 
+                      for k2,v2 in dict2.items()}
+                      for k1,v1 in dict1.items()}
+    
+    # Reorganize to  {key_1: {key_2: { val_1: val_2_array(1_sort)} } }
+    if reorganize and dtype == 'dict':
+    
+        dict0 = {k1: {v1i: {k2: dict0[k1][k2][v1i] 
+                            for k2 in dict2.keys()}
+                            for v1i in sorted(np.reshape(v1,(-1,)))}                                    
+                            for k1,v1 in dict1.items()}
+                
+    return dict0
+
 
 
 class ParamDict(dict):

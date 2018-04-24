@@ -6,14 +6,13 @@ Created on Tue Feb 20 14:18:39 2018
 
 import numpy as np
 
-from Plot_Data import Plot_Data
-from ModelFunctions import flatten, caps
+from Data_Plot import Data_Plot
+from ModelFunctions import flatten, caps, display
 
 
 class MonteCarloUpdate(object):
     
-    def __init__(self,sites,neighbour_sites,model_props,
-                      update,animate):
+    def __init__(self,sites,neighbour_sites,model_props,update):
         # Perform Monte Carlo Updates for nclusters of sites and Plot Data
         
         #  Monte Carlo Update Parameters: Perform Monte Carlo Update Boolean
@@ -24,10 +23,6 @@ class MonteCarloUpdate(object):
         # State Transition Parameters:
         #                                 Transition Probability prob_transiton
         #                                 Transition Values site_states
-        #
-        # Animate: [Boolean for Sites, Cluster, Edges Animation,
-        #           plot_range,Save File]
-        
         
         # Define System Configuration
         self.sites = sites
@@ -55,87 +50,57 @@ class MonteCarloUpdate(object):
         # Define Update Algorithms and State Generator
         self.update_algs = {'metropolis': self.metropolis, 'wolff': self.wolff}
         self.state_gen = self.model_props['state_gen']
-
-
         
-        # Initialize Plotting and plot_sites class
-        self.animate = animate
-        plot_range = self.model_props['state_range']
-
-        
-        site_titles = [lambda i:['Spin Configurations'+' - '+
-                                 caps(self.model_props['model'])+' - '+
-                                 caps(self.model_props['algorithm']),
-                                 'Cluster','Edge'][i],
-                       lambda i: r'$t_{MC}$: %d'%i,
-                       lambda i: r'T = %0.1f'%self.T[i],
-                       lambda i: 'Spin Values']
-#        
-#        # titles object is 4 functions, which will act based on 
-#        plot_labels = []
-#        i_title = lambda col,row,num,cols,rows: [[col,row,0],
-#               [num,row,rows-1],
-#               [row,col,0],[0,col,cols-1]]
-#    plot_labels.append(choose_f(t,i_title[i_t]
-#    
-#    
-#    
-#        lambda col,row,num,cols,rows: list(map(lambda i_t,t: i_title(col,row,num,cols,rows),'')),enumerate(site_titles)))
-            
-    
-    
-    
-    
-        data_plot_shape = [int(np.power(self.Nspins,1/self.model_props['d']))]*self.model_props['d']
-        data_process = lambda data: self.sites_region(
-                                                data).reshape(data_plot_shape)
-                                  
-        
-        self.plot_sites = Plot_Data(animate = self.animate,
-                                    plot_rows = np.size(self.T),
-                                    plot_cols = sum(self.animate),
-                                    plot_titles = site_titles, 
-                                    data_process = data_process,
-                                    plot_range = plot_range,
-                                    plot_type = 'sites')
+        # Define Animation
+        Data_Plot().plot_close()
 
         return
-                    
+
         
-    
-    
-    
             
             
             
-            
-    def MCAlg(self,algorithm='wolff',new_figure=False):
+    def MCAlg(self,algorithm='wolff',data_keys={}):
         # Perform Monte Carlo Update Algorithm and Plot Spin Sites
-        
-        
-        self.model_props['alogorithm']=algorithm
+        # Observe: [Boolean to Animate [Sites, Cluster, Edges] [Observables]]
+
+        self.model_props['algorithm']=algorithm
         self.MCUpdate_alg = self.update_algs[algorithm]
         
         self.prob_update = lambda : self.model_props['prob_trans'][algorithm](
                                         self.sites,self.neighbour_sites,self.t)
         
-           
-        self.observables = []
+        
+        display(True,True,'Monte Carlo Simulation... T = %s'%str(self.T))
 
+
+
+        # Create Sites and Observables Dictionaries
+        observables = {t:{k:[] for k in flatten(data_keys['observables'])}
+                            for t in self.T}
+        observables_func = {k: self.model_props['observables'][k[1]] 
+                                for k in flatten(data_keys['observables'])}
         
-        
+        configurations_func = {k: lambda: f for k,f in zip(set([k[0] for k in flatten(data_keys['obs'])]),
+                                                                  [self.sites,self.cluster_sites])} 
+                                 
+
+        configurations = {t:{k:[] for k in flatten(data_keys['configurations'])}
+                            for t in self.T}
+       
+        # Initialize Plotting
+        self.plot_sites = Data_Plot(self.keys_obs,plot=self.observe[1][0])
+
+
         # Perform Monte Carlo at temperatures t = T
         for i_t,t in enumerate(self.T):
             
-            
-        # Create Observable, Cluster, and Edges Array
-            observable = []
             self.clusters = []
             self.cluster_values = []
             self.cluster_edges = []
+                   
             
-            
-            self.t = self.T[i_t]
+            self.t = t
             
        
             # Perform Equilibration Monte Carlo steps initially
@@ -151,29 +116,45 @@ class MonteCarloUpdate(object):
                 self.MCUpdate_alg()
                 
                 # Plot Sites Data
-                if self.animate[0] and i_mc == self.Nmeas-1: # (np.size(self.T)==1)
+                if i_mc == self.Nmeas-1: # (np.size(self.T)==1)
                         
-                    site_data = [self.sites,self.cluster_sites,
-                                       self.cluster_sites]
                     
-                    for i_a,a in reversed(list(enumerate(self.animate))): 
-                        if a:
-                            self.plot_sites.plot_functions['sites'](
-                            site_data[i_a],[i_t, i_a, i_mc],new_figure,-1,'sites',None)
+                    for k in flatten(data_keys['configurations']:
+                        self.configurations[t][k].append()
+                    data_sites = {k:d for k,d in 
+                                 zip([k for k in flatten(data_keys['configurations']) 
+                                      if k[0]==t],
+                                 [self.sites,self.cluster_sites])
+                                 }                                 
+                    
+                    
+                    
+                    
+                    # Update plot_props_obs and Plot data_obs
+
+                    self.plot_sites.plotter(data = data_sites,
+                                            plot_props = self.MCPlot_sites(
+                                                     data_keys['configurations'],i_mc))
                         
-                        
+                    
+                    
+                    
                 # Update Observables Array every Monte Carlo Step: i_mc=nNspins
                 if i_mc % self.Nmeas_f == 0:
-                    observable.append(flatten(self.model_props['observables'](
-                            self.sites,self.neighbour_sites,self.t)))
+                    
+                    
+                    
+                    for k in flatten(data_keys['obs']):
+                        self.observables[k][t].append(
+                              (self.sites,
+                                                          self.neighbour_sites,
+                                                                       self.t))
+                    
                     # Print a progress ticker              
                     #sys.stdout.write('.'); sys.stdout.flush();  
             
             
-            
-            self.observables.append(observable)
-                
-        
+    
         return
      
         
@@ -269,6 +250,183 @@ class MonteCarloUpdate(object):
             region[sites0] = self.sites[sites0]
             return np.array(region)
     
+
+
+
+
+
+
+
+
+    def MCPlot_sites(self,data_keys,*args):
+        
+        
+        def Plot_Props(keys):
+        
+            return {
+                 k: {
+                
+                  'set':   {'title' : '', 
+                            'xlabel': '', 
+                            'ylabel': ''},
+                  
+                  'plot':  {},
+                  
+                  'data':  {'plot_type':'image',
+                            'plot_range': '',
+                            'data_process':lambda data: np.real(data)},
+                            
+                  'other': {'cbar_plot':False, 'cbar_title':'Spin Values',
+                           'cbar_color':'bone','cbar_color_bad':'magenta',
+                            'label': '','pause':0.02}
+                 }
+                for k in keys}
+                  
+                  
+        # Set Varying Properties                  
+        def set_prop(props,key,func,*args):
+              for k in props.keys():
+                  props[k][key[0]][key[1]] = func(k,*args)
+              return
+         
+            
+        # Properties Specific to Plot
+        plot_props_sites = {'title': '', 'xlabel': '', 'ylabel': ''}
+            
+            
+        def plot_title(k,*args):
+            if k[0] != data_keys[0][0][0]:
+                return plot_props_sites['title']
+            
+            elif k[1] == data_keys[0][0][1]:
+                return (k[1] +' - '+
+                       caps(self.model_props['model'])+' - '+
+                       caps(self.model_props['algorithm']))
+            else:
+                return  k[1] # Clusters or Edges
+            
+        def plot_ylabel(k,*args):
+            if k[1] != data_keys[0][0][1]:
+                return plot_props_sites['ylabel']
+            else:
+                return r'T = %0.1f'%k[0] # Temperature
+            
+        def plot_xlabel(k,*args):
+            if k[0] != data_keys[-1][-1][0]:
+                return plot_props_sites['xlabel']
+            else:
+                return r'$t_{MC}$: %d'%args[0] 
+        
+        def cbar_plot(k,*args):
+            if k[1] == data_keys[0][-1][1]:
+                return True
+            else:
+                return False 
+
+        def data_process(k,*args):
+            
+            data_plot_shape = [int(np.power(self.Nspins,
+                          1/self.model_props['d']))]*self.model_props['d']
+            
+            return lambda d: self.sites_region(d).reshape(data_plot_shape)
+        
+        def plot_range(k,*args):
+            return np.append(self.model_props['state_range'],
+                             self.model_props['state_range'][-1]+1)    
+        
+        
+        
     
+        plot_props = Plot_Props(flatten(data_keys))
+        
+        set_prop(plot_props,['set','title'],plot_title)
+        set_prop(plot_props,['set','xlabel'],plot_xlabel,*args)
+        set_prop(plot_props,['set','ylabel'],plot_ylabel)
+        set_prop(plot_props,['data','data_process'],data_process)
+        set_prop(plot_props,['data','plot_range'],plot_range)
+        set_prop(plot_props,['other','cbar_plot'],cbar_plot)
+            
+                
+        return plot_props
     
+
+
+
+    def MCPlot_obs(self,data_keys,*args):
+        
+        
+        def Plot_Props(keys):
+        
+            return {
+                 k: {
+                
+                  'set':   {'title' : '', 
+                            'xlabel': '', 
+                            'ylabel': ''},
+                  
+                  'plot':  {'stacked':True, 'fill':True, 'alpha': 0.35, 
+                            'histtype':'bar'},
+                  
+                  'data':  {'plot_type':'histogram',
+                            'plot_range': '',
+                            'data_process':lambda data: np.real(data)},
+                            
+                  'other': {'cbar_plot':True,  'cbar_title':'Spin Values',
+                           'cbar_color':'bone','cbar_color_bad':'magenta',
+                           'label': caps(k[0]) + ', T = %0.1f'%self.t,
+                            'pause':0.02}
+                 }
+                for k in keys}
+         
+        
+        plot_props_obs = {'title': 'Observables',
+                           'xlabel': '',
+                            'ylabel': 'counts'}
+        
+       
+        
+ 
+                  
+        # Set Varying Properties                  
+        def set_prop(props,key,func,*args):
+              for k in props.keys():
+                  props[k][key[0]][key[1]] = func(k,*args)
+              return
+        
+        
+        
+        def plot_title(k,*args):
+            if k[0] != data_keys[0][0][0]:
+                return ''
+            
+            elif k[1] == data_keys[0][0][1]:
+                return (k[1] +' - '+
+                       caps(self.model_props['model'])+' - '+
+                       caps(k[0]))
+            else:
+                return  k[1] # Clusters or Edges
+            
+        def plot_ylabel(k,*args):
+            if k[1] != data_keys[0][0][1]:
+                return ''
+            else:
+                return plot_props_obs['ylabel']
+            
+        def plot_xlabel(k,*args):
+            if k[0] != data_keys[-1][-1][0]:
+                return ''
+            else:
+                return caps(k[1])
+
+        
+        
+        
+        plot_props = Plot_Props(flatten(data_keys))
+        
+        set_prop(plot_props,['set','title'],plot_title)
+        set_prop(plot_props,['set','xlabel'],plot_xlabel,*args)
+        set_prop(plot_props,['set','ylabel'],plot_ylabel)
+        
     
+        return plot_props
+                     

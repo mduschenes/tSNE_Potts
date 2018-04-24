@@ -15,11 +15,12 @@ import os
 from Lattice import Lattice
 from Model import Model
 from MonteCarloUpdate import MonteCarloUpdate
-from ModelFunctions import caps
-from Plot_Data import Plot_Data
+from ModelFunctions import caps, display
 
 import warnings
 warnings.filterwarnings("ignore")
+
+
 
 
         
@@ -36,20 +37,20 @@ class system(object):
     #                                 Measurement Update Frequency Nmeas_f
     #                                 Number of Clusters Ncluster
     # 
-    # Animate: Booleans for Plot Types (Sites, Clusters, Edges, Observables)
+    # Observe: Booleans for Plot Types (Sites, Clusters, Edges, Observables)
     # DataSave: Boolean
 
     
-    def __init__(self,L=10,d=2,T=3, model=['potts',4,[0,1]],
-                 observe = ['temperature','energy'],
-                 update = [True,20,100,1,1],
-                 animate = [False,False,False,False],
+    def __init__(self,L=6,d=2,T=3, model=['potts',4,[0,1]],
+                 update = [True,20,10,1,1],
+                 observe = [[True,'Spin Configurations','Cluster'],
+                            [True,'temperature','energy','order']],
                  datasave = True):
 
 
 
         # Initialize model class, lattice class
-        m = Model(model,d,observe)
+        m = Model(model,d,observe[1][1:])
         l = Lattice(L,d)
 
         
@@ -77,7 +78,7 @@ class system(object):
                                                    'bond_prob']},
                             'model': m.model.__name__,
                             'algorithm': '',
-                            'observables': m.observables_data,
+                            'observables': m.observables_functions,
                             'observables_props': m.observables_props,
                             'data_dir': '%s_Data'%(caps(m.model.__name__)),
                             'data_file': '/%s_d%d_L%d__%s' %(
@@ -86,40 +87,27 @@ class system(object):
                                                            '%Y-%m-%d-%H-%M'))}
         
         
-        
-
-
-#        # Initialize nearest neighbour sites array
-#        self.nn = self.l.neighbour_sites[0]
-        
-        
         # Perform Monte Carlo Updates for various Temperatures
         # Define Update, Animate Properties
-        self.animate_sites = animate[:-1]
-        self.animate_obs = animate[-1]
         
         # Initialize Monte Carlo Updating Class
-        Plot_Data().plot_close()
-        self.MC = MonteCarloUpdate(m.state_gen(l.Nspins),l.neighbour_sites,
-                         self.model_props,update,self.animate_sites)
-        
-       
-        # Initialize Observables Plotting
-        self.plot_obs = Plot_Data(self.animate_obs,
-                     plot_titles=[lambda x: 'Histogram of Observables'+
-                        '\n %s '%self.MC.model_props['data_file'][1:] +
-                        '\n T = '+str(self.MC.T) +
-                        '\n N_MC = %d '%(self.MC.Nmeas/self.MC.Nspins),
-                        lambda x:self.model_props['observables_props']('__name__')[1:],
-                        lambda x: 'counts',lambda x: ''],plot_types='observables')
+        self.MC = MonteCarloUpdate(sites = m.state_gen(l.Nspins),
+                                   neighbour_sites = l.neighbour_sites,
+                                   model_props = self.model_props,
+                                   update = update)
         
         
         
         # Save Observables data
         self.observables = []
+        self.observe = observe
         self.save = datasave        
-        self.data_path = lambda a='algorithm',s='',b='': [self.MC.model_props.get(p,b) for p in
-                                    ['data_dir','data_file',a]] + [s]
+        self.data_path = lambda a='algorithm',s='',b='': [
+                                         self.MC.model_props.get(p,b) for p in
+                                         ['data_dir','data_file',a]] + [s]
+
+
+
 
         # Initialize Model and Lattice variables
         self.m = m
@@ -133,8 +121,6 @@ class system(object):
     # Main Monte Carlo Algorithm
     def MonteCarlo(self,algorithm = ['wolff','metropolis'], n_iter=1):
  
-        tau0 = time.clock()
-        tau = tau0
         
         algorithm = np.atleast_1d(algorithm)
         
@@ -143,7 +129,16 @@ class system(object):
             n_iter = n_alg
             
             
-        self.n_iter = n_iter
+        # Initialize Plotting
+            
+        self.data_keys {'sites': [[(t,p) for p in self.observe[0][1:]] 
+                                         for t in self.T],
+                         'obs' : [[(a,p) for p in self.observe[1][1:]]
+                                         for a in algorithm]} 
+        
+        self.plot_obs = Data_Plot(self.keys_obs,plot=self.observe[1][0])
+  
+
 
 
         #print(self.model_props['data_file'][1:]])
@@ -153,54 +148,29 @@ class system(object):
             
             # Initialize sites with random spin at each site each Iteration
             self.MC.sites =self.MC.model_props['state_gen'](self.MC.Nspins)
-            
-            self.MC.model_props['algorithm']= algorithm[i%n_alg]
-            
         
+
         
             # Perform Monte Carlo
-            self.MC.MCAlg(algorithm[i%n_alg],new_figure=False)     
+            self.MC.MCAlg(algorithm[i%n_alg],self.data_keys)     
         
         
             # Print Performance for each Iteration
-            print('%s runtime: %0.5f'%(algorithm[i%n_alg],time.clock()-tau))
-            tau = time.clock()
-        
+            display(True,True,'%s runtime: '%(algorithm[i%n_alg]))        
             
             # Save Observables Data per Iteration
             self.observables.append(self.MC.observables)
-            
-            # Create New Figure for each Iteration
-            if i != n_iter-1 and self.animate_sites[0]:
-                self.MC.plot_sites.figures_axes()
         
             # Plot Observables Data
-   
-            
-            if self.animate_obs:
-                self.plot_obs.plot_functions['observables'](self.MC.observables,
-                                   plot_type='observables',new_figure=False,
-                                   plot_props = lambda j:{'stacked':True, 
-                                                          'fill':True, 
-                                                          'alpha': 0.35, 
-                                                          'histtype':'bar',
-                                                          'label':algorithm[
-                                                                i%n_alg] +
-                                                                ', T = %0.1f'
-                                                                %self.MC.T[j]})
+                    self.plot_obs = Data_Plot(self.MC.keys_obs,plot=self.observe[1][0])
+
+            self.plot_obs.plotter(data = self.observables,
+                  plot_props = self.MCPlot_obs(keys_obs))
         
             # Save Observables Data     
             self.data_save(self.save,self.MC.observables,self.data_path())
             
-            
-        # Save Final Figures
-        self.plot_obs.plot_save([self.data_path('','histogram_%s'% s) for
-                            s in self.model_props['observables_props'](
-                            '__name__')[1:]],
-                            'observables')
-            # Pause after last Iteration and Save Data Figure
-        self.MC.plot_sites.plot_save([self.data_path('','%s'% a) for 
-                    a in algorithm],'sites') 
+        
         return
     
     
@@ -232,9 +202,15 @@ class system(object):
                             data_file+('_%d'%n if nfiles>1 else ''),a=data[n])      
         return
     
+    
+    
+    
+    
+    
+    
 
 if __name__ == "__main__":
     T = [5,2.5,2,1.5,1,0.5]
     T0 = 0.5
-    s = system(T=T)
+    s = system(T=T0)
     s.MonteCarlo(algorithm=['wolff','metropolis'],n_iter=1)

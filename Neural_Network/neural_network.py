@@ -302,8 +302,10 @@ class neural_net(object):
                     results_sort,d_sort[i] = data_params['data_wrapper'](
                                                               results[k][-1],d) 
                                                
-                    results_avg = np.array(list(map(lambda i: np.mean(i,0), 
-                                                               results_sort)))
+                    results_avg = dict(zip(data_params['label_titles'][i],
+                                    [np.array(list(map(lambda i: np.mean(i,0), 
+                                    results_sort)))[:,i] 
+                                   for i in range(np.shape(results_sort)[1])]))
                     
                     results_sort_avg[i][k] = results_avg
                     d_sort[i] = domain(f=d_sort[i])
@@ -436,6 +438,7 @@ if __name__ == '__main__':
                     'data_sets': data_sets,
                     'data_types': ['train','test','other'],
                     'data_wrapper': lambda i,v: array_sort(i,v,0,'list'),
+                    'label_titles': [['T>Tc','T<Tc']],
                     'data_format': data_format,
                     'data_dir': 'dataset/',
                     'one_hot': one_hot
@@ -443,11 +446,11 @@ if __name__ == '__main__':
 
    
     # Algorithm Parameters
-    alg_params = { 'alpha_learn': 0.35, 'eta_reg': 0.0005,                  
+    alg_params = { 'alpha_learn': 0.0035, 'eta_reg': 0.0005,                  
                   
-                  'n_epochs':500 ,'n_batch_train': 1/20, 'n_epochs_meas': 1/20,
+                  'n_epochs':5 ,'n_batch_train': 1/10, 'n_epochs_meas': 1/20,
                  
-                  'cost_func': 'cross_entropy', 'optimize_func':'grad',
+                  'cost_func': 'cross_entropy', 'optimize_func':'adam',
                   'regularize':'L2'}
     
     

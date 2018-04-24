@@ -14,7 +14,8 @@ class Model(object):
     # Define a Model class for spin model with: 
     # Lattice Model Type: Model Name and Max Spin Value q
     
-    def __init__(self,model=['ising',1,[0,1]],d=2,observe=['temperature','energy','order']):
+    def __init__(self,model=['ising',1,[0,1]],d=2,\
+                 observe=['temperature','energy','order']):
         # Define Models dictionary for various spin models, with
         # [ Individual spin calculation function, 
         #   Spin Upper, Lower, and Excluded Values]
@@ -56,17 +57,12 @@ class Model(object):
 
         
         # Define Observables
-        self.observables_functions = list(map(lambda x: 
-                                    getattr(self,x,lambda *args:[]) ,observe))
+        self.observables_functions = {k: getattr(self,k,lambda *args:[]) 
+                                      for k in observe}
         
         
-        self.observables_props = lambda prop,*args: list(map(lambda f: 
-                                                    get_attr(f,prop,f,*args),
-                                                   self.observables_functions))
-        
-            
-        self.observables_data = lambda *args: list(map(lambda x: x(*args),
-                                                   self.observables_functions))
+        self.observables_props = lambda prop,*arg: {k: get_attr(v,prop,v,*arg) 
+                                 for k,v in self.observables_functions.items()}
         
         
         
