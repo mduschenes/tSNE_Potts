@@ -61,9 +61,6 @@ def get_attr(f,attr=None,f0=None,*args):
     except AttributeError:
         return f0 
 
-def delta_f(x,y,f=np.multiply):
-    return f(x,y)[x==y]
-
 def choose_f(f,i=[0,0,0],f0=None,):
     if not callable(f):
         g = np.atleast_1d(f)

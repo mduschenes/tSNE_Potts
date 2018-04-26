@@ -14,10 +14,10 @@ from plot_functions import *
 
 
 
-class Data_Plot(object):
+class Data_Process(object):
     
     # Create figure and axes dictionaries for dataset keys
-    def __init__(self, keys=[None],plot=False):
+    def __init__(self,keys=[None],plot=False,multi_plot=False):
     
     
         # Initialize figures and axes dictionaries
@@ -28,11 +28,11 @@ class Data_Plot(object):
         
         if self.plot:
             # Create Figures and Axes with keys
-            self.figures_axes(keys)
+            self.figures_axes(keys,multi_plot)
     
             # Define Possible Plotting Functions
             plot_func = globals()
-            self.plot_func = {k: v for k,v in plot_func.items() if 'plot_' in k}
+            self.plot_func = {k: v for k,v in plot_func.items() if 'plot_'in k}
         return  
     
 
@@ -44,7 +44,7 @@ class Data_Plot(object):
             if keys is None:
                 keys = data.keys()
             
-            keys = [k for k in keys if data.get(k) is not None]
+            keys = [k for k in keys if np.all(data.get(k))]
             
             if domain is None:
                 domain = {k: None for k in keys}
@@ -55,7 +55,7 @@ class Data_Plot(object):
             
             # Plot for each data key
             for key in keys:
-                                
+
                 try:
                     ax = self.axes[key]
                     fig = self.figs[key]
@@ -71,16 +71,17 @@ class Data_Plot(object):
     
                 # Plot Data
                 try:
-                    self.plot_func['plot_'+plot_props[key]['data']['plot_type']](
-                            data[key],domain[key],fig,ax,plot_props[key])
+                    self.plot_func['plot_' + 
+                        plot_props[key]['data']['plot_type']](
+                        data[key],domain[key],fig,ax,plot_props[key])
+                
                 except AttributeError:
                     self.plot_func = plot_props[key]['data']['plot_type'](
                                 data[key],domain[key],fig,ax,plot_props[key])
                 
-                plt.suptitle(plot_props[key].get('plot_title',''))
                 
-    #            ,size = 9,horizontalalignment='left',x=0.91)
-
+                plt.suptitle(plot_props[key]['other'].get('sup_title',''))
+                
             
         return
             
@@ -135,9 +136,9 @@ class Data_Plot(object):
         
         
         if not multi_keys:
-            Keys = [Keys]
+            Keys = {'':Keys}
         
-        for keys in Keys:
+        for keys_label,keys in Keys.items():
             keys_new = [k if k not in self.axes.keys() else None
                        for k in flatten(keys)]
             
@@ -147,8 +148,8 @@ class Data_Plot(object):
             
                 fig, ax = plt.subplots(*(np.shape(keys)[:2]))
                 
-                fig.canvas.set_window_title('   '.join(
-                                              [str(k) for k in keys_new]))
+                fig.canvas.set_window_title('Figure: %d  %s'%(
+                                                        fig.number,keys_label))
                 
                 for k,a in zip(keys_new,flatten(ax.tolist())):
                     if k is not None:
@@ -225,26 +226,45 @@ class Data_Plot(object):
     
     
     # Export Data
-    def exporter(self,data,data_params={'data_dir':'dataset/'},
-                 file_names = None):
+    def exporter(self,data,
+                 data_params={'data_dir':'dataset/','data_file':None},
+                 label = ''):
        
-        # File Names
-        if file_names is None:
-            file_names = lambda value: value
-        elif not callable(file_names):
-            g = np.atleast_1d(file_names)
-            file_names = lambda k: g[k]
+        # Data Directory
+        if not data_params.get('data_dir'):
+            data_params['data_dir'] = 'dataset/'
+        elif not os.path.isdir(data_params['data_dir']):
+            os.mkdir(data_params['data_dir'])
+            
+        # Data Names
+        if not data_params.get('data_file'):
+            data_params['data_file'] = lambda value: value
         
-        data = dict_check(data,'')
+        elif not callable(data_params['data_file']):
+            g = data_params['data_file']
+            data_params['data_file']  = lambda k: g + ' k'
+        
     
+        # Check if Data is dict type
+        data = dict_check(data,'')    
+    
+        # Write Data to File, Ensure no Overwriting
         for k,v in data.items():
-            np.savez_compressed(data_params.get('data_dir','dataset/') + 
-                                                file_names(k),a=v) 
+            
+            i = 0
+            file_end = ''
+            while os.path.isfile(data_params['data_file'](k)+
+                                 label+file_end+'.npz'):
+                file_end = '_%d'%i
+                i+=1
+            
+            np.savez_compressed(data_params['data_dir'] + 
+                                data_params['data_file'](k) +
+                                label + file_end,a=v) 
         return     
             
         
         
-
                 
         
         

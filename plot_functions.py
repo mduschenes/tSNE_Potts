@@ -27,12 +27,14 @@ def plot_plot(data,domain=None,fig=None,ax=None,plot_props={}):
     # Plot Data
     if isinstance(data,dict):
         for k,d in data.items():
-            plot = plt.plot(domain[k],plot_props['data']['data_process'](d),
+            if (d is not None) and (d != []):
+                plt.plot(domain[k],plot_props['data']['data_process'](d),
                             label=plot_props['other'].get('label',k),
                             **plot_props['plot'])
             fig.sca(ax)
     else:
-        plot = plt.plot(domain,plot_props['data']['data_process'](data),
+        if (data is not None) and (data != []):
+            plt.plot(domain,plot_props['data']['data_process'](data),
                         label=plot_props['other'].get('label',''),
                         **plot_props['plot'])
         fig.sca(ax)
@@ -55,13 +57,15 @@ def plot_histogram(data,domain=None,fig=None,ax=None,plot_props={}):
     # Plot Data
     if isinstance(data,dict):
         for k,d in data.items():
-            plt.hist(plot_props['data']['data_process'](d),
+            if (d is not None) and (d != []):
+                plt.hist(plot_props['data']['data_process'](d),
                      bins=int(1 +3.322*np.log10(np.size(d))),
-                     label=plot_props['other'].get('label',k),
+                     label=plot_props['other'].get('label',lambda x:x)(k),
                      **plot_props['plot'])
 
     else:
-        plt.hist(plot_props['data']['data_process'](data),
+        if (data is not None) and (data != []):
+            plt.hist(plot_props['data']['data_process'](data),
                  bins=int(1 +3.322*np.log10(np.size(data))),
                  label=plot_props['other'].get('label',''),
                  **plot_props['plot'])
@@ -85,12 +89,14 @@ def plot_scatter(data,domain=None,fig=None,ax=None,plot_props={}):
     # Plot Data
     if isinstance(data,dict):
         for k,d in data.items():
-            plot = plt.scatter(domain[k],plot_props['data']['data_process'](d),
+            if (d is not None) and (d != []):
+                plt.scatter(domain[k],plot_props['data']['data_process'](d),
                                label=plot_props['other'].get('label',k),
                                **plot_props['plot'])
             fig.sca(ax)
     else:
-        plot = plt.scatter(domain,plot_props['data']['data_process'](data),
+        if (data is not None) and (data != []):
+            plt.scatter(domain,plot_props['data']['data_process'](data),
                            label=plot_props['other'].get('label',''),
                            **plot_props['plot'])
         fig.sca(ax)
@@ -136,17 +142,19 @@ def plot_image(data,domain=None,fig=None,ax=None,plot_props={}):
     # Plot Data
     if isinstance(data,dict):
         for k,d in data.items():
-            plot = plt.imshow(plot_props['data']['data_process'](d),
+            if (d is not None) and (d != []):
+                plot = plt.imshow(plot_props['data']['data_process'](d),
                               cmap=cmap, norm=norm, interpolation='nearest',
                               label=plot_props['other'].get('label',k),
                               **plot_props['plot'])
             fig.sca(ax)
     else:
-       plot = plt.imshow(plot_props['data']['data_process'](data),
+        if (data is not None) and (data != []):
+            plot = plt.imshow(plot_props['data']['data_process'](data),
                          cmap=cmap, norm=norm, interpolation='nearest',
                          label=plot_props['other'].get('label',''),
                          **plot_props['plot'])
-       fig.sca(ax)
+        fig.sca(ax)
 
     # Set Figure Properties
     plt.setp(ax,**plot_props.get('set',{}));

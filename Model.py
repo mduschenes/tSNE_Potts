@@ -6,7 +6,7 @@ Created on Mon Feb 19 20:23:39 2018
 
 import numpy as np
 
-from ModelFunctions import delta_f, get_attr
+from ModelFunctions import get_attr
 
 
 class Model(object):
@@ -14,7 +14,7 @@ class Model(object):
     # Define a Model class for spin model with: 
     # Lattice Model Type: Model Name and Max Spin Value q
     
-    def __init__(self,model=['ising',1,[0,1]],d=2,\
+    def __init__(self,model=['ising',1,[0,1]],d=2,
                  observe=['temperature','energy','order']):
         # Define Models dictionary for various spin models, with
         # [ Individual spin calculation function, 
@@ -127,12 +127,19 @@ class Model(object):
         #                          for r in range(1,len(self.orderp))))
         # Calculate spin energy function S(sites):
         #        e_sites = self.m.site_energy(np.copy(self.sites))
-        return (-self.orderparam[0]*np.sum(self.site_energy(sites)))+(
+        
+        
+        E = (-self.orderparam[0]*np.sum(self.site_energy(sites)))+(
                     -(1/2)*np.sum([
                             self.orderparam[i]*
                             self.site_energy(sites[:,np.newaxis],
                 sites[neighbours[i-1]]) 
-                for i in range(1,len(self.orderparam))]))
+                for i in range(1,len(self.orderparam))])) 
+        if E < -self.orderparam[1]*np.size(sites)*self.d:
+            print('Error - E < -dNJ')
+        elif E > 0:
+            print('Error - E > 0')
+        return E
     
     def order(self,sites,neighbours,T):
         return self.site_order(sites)/np.size(sites)
@@ -194,6 +201,10 @@ class Model(object):
             return args[0]
     
     def potts_energy(self,*args):
+        
+        def delta_f(x,y,f=np.multiply):
+            return np.ones(np.size((x*y)[x==y]))
+        
         try:
             return delta_f(args[0],args[1])
         except IndexError:
@@ -211,3 +222,44 @@ class Model(object):
 
 
 
+    def dEN(self,J=1):
+        dN = np.array([[0,0],
+              [0,1],
+              [0,2],
+              [0,3],
+              [0,4], 
+              [1,0],       
+              [1,1],       
+              [1,2],       
+              [1,3],       
+              [2,0],
+              [2,1],       
+              [2,2],       
+              [3,0],       
+              [3,1],       
+              [4,0]
+             ])
+        dE = -J*(dN[:,1] - dN[:,0])
+        
+        print(dE)
+        
+        
+        PdE = lambda q: [(5*q-17)/(q-1),7/(q-1),3/(q-1),1/(q-1),1/(q-1),
+               (3*q-3)/(q-1),4/(q-1),1/(q-1),1/(q-1),
+               (2*q-5)/(q-1),2/(q-1),1/(q-1),
+               (q-2)/(q-1),1/(q-1),
+               1]
+        
+        
+    
+#        plt.figure()
+        for q  in [2,3,4,5,6]:
+            print('Ptot = %0.4f, %d'%(sum(PdE(q)),q))
+#            plt.plot(dE,PdE(q),'*',label=str(q))
+#        plt.legend()
+        return
+    
+    
+    
+    
+    
