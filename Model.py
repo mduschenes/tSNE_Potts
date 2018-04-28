@@ -113,7 +113,7 @@ class Model(object):
         return T
     
     def sites(self,sites,neighbours,T):
-        return [1,2,3]#sites
+        return sites
 
     def energy(self,sites,neighbours,T):
         # Calculate energy of spins as sum of spins 
@@ -129,20 +129,28 @@ class Model(object):
         #        e_sites = self.m.site_energy(np.copy(self.sites))
         
         
-        E = (-self.orderparam[0]*np.sum(self.site_energy(sites)))+(
+        return (-self.orderparam[0]*np.sum(self.site_energy(sites)))+(
                     -(1/2)*np.sum([
                             self.orderparam[i]*
                             self.site_energy(sites[:,np.newaxis],
                 sites[neighbours[i-1]]) 
                 for i in range(1,len(self.orderparam))])) 
-        if E < -self.orderparam[1]*np.size(sites)*self.d:
-            print('Error - E < -dNJ')
-        elif E > 0:
-            print('Error - E > 0')
-        return E
+#        if E < -self.orderparam[1]*np.size(sites)*self.d:
+#            print('Error - E < -dNJ')
+#        elif E > 0:
+#            print('Error - E > 0')
+#        return E
     
     def order(self,sites,neighbours,T):
         return self.site_order(sites)/np.size(sites)
+    
+    def specific_heat(self,sites,neighbours,T):        
+      return list(map(lambda t:np.mean(list(map(lambda s: np.power(self.energy(
+                                                  s,neighbours,t),2),sites))) -
+                 np.mean(list(map(lambda s: self.energy(
+                                                 s,neighbours,t),sites))),T))/(
+                                                                np.power(T,2))
+        
     
     def correlation(self,sites,neighbours,T,r = None):
         # Calculate correlation function c(r) = <s_i*s_j> 
@@ -201,14 +209,11 @@ class Model(object):
             return args[0]
     
     def potts_energy(self,*args):
-        
-        def delta_f(x,y,f=np.multiply):
-            return np.ones(np.size((x*y)[x==y]))
-        
+
         try:
-            return delta_f(args[0],args[1])
+            return args[0]==args[1]
         except IndexError:
-            return delta_f(args[0],np.zeros(np.shape(args[0])))
+            return args[0]
         
 
     # Model Order Parameter

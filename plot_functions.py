@@ -42,7 +42,8 @@ def plot_plot(data,domain=None,fig=None,ax=None,plot_props={}):
     # Set Figure Properties
     plt.setp(ax,**plot_props.get('set',{}));
     plt.legend()
-    plt.pause(plot_props['other'].get('pause',0.01))
+        
+    plt.pause(plot_props['other'].get('pause',0.5))
 
     return
 
@@ -55,25 +56,29 @@ def plot_histogram(data,domain=None,fig=None,ax=None,plot_props={}):
         ax = fig.gca()
      
     # Plot Data
+    plot = {}
     if isinstance(data,dict):
         for k,d in data.items():
             if (d is not None) and (d != []):
-                plt.hist(plot_props['data']['data_process'](d),
+                plot[k] = plt.hist(plot_props['data']['data_process'](d),
                      bins=int(1 +3.322*np.log10(np.size(d))),
                      label=plot_props['other'].get('label',lambda x:x)(k),
                      **plot_props['plot'])
 
     else:
         if (data is not None) and (data != []):
-            plt.hist(plot_props['data']['data_process'](data),
+            plot[''] = plt.hist(plot_props['data']['data_process'](data),
                  bins=int(1 +3.322*np.log10(np.size(data))),
                  label=plot_props['other'].get('label',''),
                  **plot_props['plot'])
 
     # Set Figure Properties
     plt.setp(ax,**plot_props.get('set',{}));
-    plt.legend()
-    plt.pause(plot_props['other'].get('pause',0.01))
+    leg = plt.legend()
+    
+    #cursor_annotate(plot,leg,fig,ax)
+    
+    plt.pause(plot_props['other'].get('pause',0.5))
     
     return
 
@@ -104,7 +109,7 @@ def plot_scatter(data,domain=None,fig=None,ax=None,plot_props={}):
     # Set Figure Properties
     plt.setp(ax,**plot_props.get('set',{}));
     plt.legend()
-    plt.pause(plot_props['other'].get('pause',0.01))
+    plt.pause(plot_props['other'].get('pause',0.5))
 
     return
 
@@ -116,7 +121,8 @@ def plot_image(data,domain=None,fig=None,ax=None,plot_props={}):
     
     if fig is None or ax is None:
         fig = plt.figure()
-        ax = fig.gca()            
+        ax = fig.gca()   
+       
     
     
     # Setup Image Colourbar
@@ -135,7 +141,7 @@ def plot_image(data,domain=None,fig=None,ax=None,plot_props={}):
     cmap.set_bad(color = plot_props['other'].get('cbar_color_bad','magenta'))
     
         
-    ax.clear()
+    #ax.clear()
     #fig.sca(ax)
     
     
@@ -172,6 +178,39 @@ def plot_image(data,domain=None,fig=None,ax=None,plot_props={}):
         cbar.set_ticklabels(np.array(plot_props['data']['plot_range']))
         #cax.clear()
     
-    plt.pause(plot_props['other'].get('pause',0.01))
+    plt.pause(plot_props['other'].get('pause',0.5))
     
     return
+
+
+
+#
+#def cursor_annotate(plot,leg,fig,ax):
+#    
+#    lined = {}
+#    for leg_line, plt_line in zip(leg.get_lines(),plot.values()):
+#        leg_line.set_picker(5)
+#        lined[leg_line] = plt_line
+#    
+#    def onpick(event):
+#        
+#        leg_line = event.artist
+#        plt_line = lined[leg_line]
+#        
+#        vis = not plt_line.get_visile()
+#        
+#        plt_line.set_visible(vis)
+#        
+#        if vis:
+#            leg_line.set_alpha(1.0)
+#        else:
+#            leg_line.set_alpha(0.2)
+#        fig.canvas.draw()
+#    
+#    def line_hover(event):    
+#        for line in ax.get_lines():
+#            if line.contains(event)[0]:
+#                print(plot.get_label())
+#
+#    fig.canvas.mpl_connect("pick_event", onpick)
+#    plt.show()

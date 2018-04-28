@@ -43,9 +43,9 @@ class Data_Process(object):
         if self.plot:
             if keys is None:
                 keys = data.keys()
-            
-            keys = [k for k in keys if np.all(data.get(k))]
-            
+
+            keys = [k for k in keys if data.get(k,[]) != []]
+
             if domain is None:
                 domain = {k: None for k in keys}
             
@@ -97,11 +97,16 @@ class Data_Process(object):
     
     
     # Save all current figures
-    def plot_save(self,file_dir='',label='',file_format='.pdf'):
+    def plot_save(self,data_params={'data_dir':'dataset/',
+                                    'figure_format':None},
+                       label = ''):
         
-        for ifig in plt.get_fignums():
+        # Save Figures for current Data_Process Instance
+        fignums = set(map(lambda f: f.number, self.figs.values()))
+        
+        for ifig in fignums:
             
-            # Find Attributes Plotted
+            # Find Attributes Plotted in figure(ifig)
             keys = [k for k,v in self.figs.items() if v.number == ifig]
             
             # Set Current Figure
@@ -113,16 +118,18 @@ class Data_Process(object):
             fig.set_size_inches((8.5, 11))
 
             # Set File Name and ensure no Overwriting
-            file = ''.join([file_dir,label,'_'.join(keys)])
+            file = ''.join([data_params.get('data_dir','dataset/'),
+                            label,'_'.join(keys)])
             
             i = 0
             file_end = ''
-            while os.path.isfile(file+file_end+file_format):
+            while os.path.isfile(file+file_end + 
+                                 data_params.get('figure_format','.pdf')):
                 file_end = '_%d'%i
                 i+=1
 
             # Save Figure as File_Format
-            plt.savefig(file+file_end+file_format,
+            plt.savefig(file+file_end+data_params.get('figure_format','.pdf'),
                         bbox_inches='tight',dpi=500)
             fig.set_size_inches(plot_size) 
         
@@ -132,20 +139,21 @@ class Data_Process(object):
     
     
      # Create figures and axes for each passed set of keys for datasets
-    def figures_axes(self,Keys,multi_keys=False):     
+    def figures_axes(self,Keys,multi_keys=False,plot=True):     
         
         
         if not multi_keys:
             Keys = {'':Keys}
         
         for keys_label,keys in Keys.items():
+            #print(keys)
             keys_new = [k if k not in self.axes.keys() else None
                        for k in flatten(keys)]
             
             if not None in keys_new:
                 
                 if len(self.axes) > 1: print('Figure Keys Updated...')
-            
+
                 fig, ax = plt.subplots(*(np.shape(keys)[:2]))
                 
                 fig.canvas.set_window_title('Figure: %d  %s'%(

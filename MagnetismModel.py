@@ -38,11 +38,12 @@ class system(object):
     # Initialize model class, lattice class
     
     
-    def __init__(self,L=10,d=2,T=3, model=['potts',4,[0,1]],
-                 update = [True,10,15,1,1],
-                 observe = {'configurations': [False,'sites','cluster'],
-                            'observables': [True,'temperature','energy']},
-                 datasave = True):
+    def __init__(self,L=10,d=2,T=3, model=['ising',1,[0,1]],
+                update = [True,10,20,1,1],
+                observe = {'configurations': [False,'sites','cluster'],
+                           'observables': [True,'energy','order']
+                           },
+                datasave = True):
 
 
         m = Model(model,d,observe['observables'][1:])
@@ -60,8 +61,8 @@ class system(object):
                             'algorithms': ['metropolis','wolff'],
                             'observables': m.observables_functions,
                             'observables_props': m.observables_props,
-                            'data_dir': '%s_Data'%(caps(m.model.__name__)),
-                            'data_file': '/%s_d%d_L%d__%s' %(
+                            'data_dir': '%s_Data/'%(caps(m.model.__name__)),
+                            'data_file': '%s_d%d_L%d__%s' %(
                                           caps(m.model.__name__),d,L,
                                           datetime.datetime.now().strftime(
                                                            '%Y-%m-%d-%H-%M'))}
@@ -83,7 +84,7 @@ class system(object):
     
     
 if __name__ == "__main__":
-    T = [5,2.5,2,1.5,1,0.5]
+    T = [3.5,2.5,2.2,1.2]
     T0 = 0.5
     s = system(T=T)
     s.MonteCarlo.MCAlg(algorithm=['wolff','metropolis'],n_iter=1)

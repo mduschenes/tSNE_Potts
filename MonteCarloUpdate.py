@@ -65,11 +65,11 @@ class MonteCarloUpdate(object):
         
         # Define Configurations and Observations Keys
         
-        data_keys = {'configurations': [[(t,k) 
-                                        for k in observe['configurations'][1:]]
-                                        for t in self.T],
-                       'observables' : [[k 
-                                        for k in observe['observables'][1:]]]}
+        data_keys = {'configurations':[[(k,t) for t in self.T]
+                                       for k in observe['configurations'][1:]],
+                       
+                       'observables' :[[k for k in observe['observables'][1:]]]
+                    }
 
 
         # Define Configurations and Observables Dictionaries
@@ -77,26 +77,33 @@ class MonteCarloUpdate(object):
         
 
 
-        self.data = {'configurations': {tk:[] 
-                               for tk in flatten(data_keys['configurations'])},
+        self.data = {'configurations': {kt:[] 
+                               for kt in flatten(data_keys['configurations'])},
         
-                    'observables': {k:{(t,a): [] 
-                                    for a in self.model_props['algorithms']
-                                    for t in self.T}
+                    'observables': {k:{(a,t): [] 
+                                    for t in self.T
+                                    for a in self.model_props['algorithms']}
                                     for k in flatten(data_keys['observables'])}
                     }
+    
+        self.data_mean = lambda: {'observables': {k:{a: [np.mean(self.data[
+                                                      'observables'][k][(a,t)]) 
+                                                for t in self.T]
+                                    for a in self.model_props['algorithms']}
+                                    for k in flatten(data_keys['observables'])}
+                         }   
         
         self.data_func = {'configurations': lambda t: [
                                          self.data['configurations'][k].append(
-                                         getattr(self,k[1]))
+                                         getattr(self,k[0]))
                                   for k in flatten(data_keys['configurations']) 
-                                  if k[0]==t],
+                                  if k[1]==t],
         
-                         'observables': lambda t: [self.data['observables'][
-                                        k][(t,self.model_props['algorithm'])
-                                        ].append(
-                                        self.model_props['observables'][k](
-                                            self.sites,self.neighbour_sites,t)) 
+                         'observables': lambda sites,t: [
+                                     self.data['observables'][k][
+                                     (self.model_props['algorithm'],t)].append(
+                                     self.model_props['observables'][k](
+                                     sites,self.neighbour_sites,t)) 
                                     for k in flatten(data_keys['observables'])]
                          }
 
@@ -112,24 +119,31 @@ class MonteCarloUpdate(object):
 
         self.plot_obj = {k: None for k in data_keys.keys()}
 
-        self.plotter = {'configurations': lambda T,*args: self.plot_obj['configurations'].plotter(
-                                              data = {tk: self.data['configurations'][tk][-1] 
-                                                      for tk in flatten(data_keys['configurations']) 
-                                                      if tk[0] in T},       
-                                              plot_props = self.MCPlot_props('configurations',
-                                                                             data_keys['configurations'],
-                                                                             *args)),
+        self.plotter = {'configurations': lambda T,*args: self.plot_obj[
+                                                'configurations'].plotter(
+                             data = {kt: self.data['configurations'][kt][-1]
+                                 for kt in flatten(data_keys['configurations']) 
+                                 if kt[1] in T},       
+                             plot_props = self.MCPlot_props('configurations',
+                                                   data_keys['configurations'],
+                                                   *args)),
         
         
         
-                    'observables': lambda T,*args: self.plot_obj['observables'].plotter(
-                                              data = {k: {(t,self.model_props['algorithm']): self.data['observables'][k][
-                                                                                                      (t,self.model_props['algorithm'])] 
-                                                            for t in T} 
-                                                            for k in flatten(data_keys['observables'])},       
-                                              plot_props = self.MCPlot_props('observables',
-                                                                             data_keys['observables'],
-                                                                             *args))
+                    'observables': lambda T,*args: self.plot_obj[
+                                                    'observables'].plotter(
+                                              data = {k: {(self.model_props[
+                                                    'algorithm'],t): self.data[
+                                                    'observables'][k][
+                                                    (self.model_props[
+                                                            'algorithm'],t)] 
+                                                    for t in T} 
+                                                    for k in flatten(data_keys[
+                                                            'observables'])},       
+                                              plot_props = self.MCPlot_props(
+                                                      'observables',
+                                                      data_keys['observables'],
+                                                      *args))
                     }
 
 
@@ -163,42 +177,47 @@ class MonteCarloUpdate(object):
             alg = algorithm[i%n_alg]
             self.model_props['algorithm'] = alg
     
+            display(True,False,caps(alg)+' Algorithm')
+    
             # Perform Monte Carlo at temperatures t = T
             for i_t,t in enumerate(self.T):
            
                 self.t = t
+                display(True,True,'Updates: T = %0.1f'%t)
                 
                 # Perform Equilibration Monte Carlo steps initially
                 for i_mc in range(self.Neqb):
                     self.update_algs[alg](t)
-    
+                                
                 # Perform Measurement Monte Carlo Steps
                 for i_mc in range(self.Nmeas):
-        
-                    
-                    self.update_algs[self.model_props['algorithm']](t)                
-                    # Plot Sites Data
-        
-                           
-                        
-                      
-                            
-                        
+
+                    self.update_algs[self.model_props['algorithm']](t)                        
+                     
                     # Update Configurations and Observables
                     if i_mc % self.Nmeas_f == 0:
-                        self.data_func['observables'](t)
                         self.data_func['configurations'](t)
-                        self.plotter['configurations']([t],i_mc)
-                        
-                        # Print a progress ticker              
-                        #sys.stdout.write('.'); sys.stdout.flush();  
+                        self.plotter['configurations']([t],i_mc/self.Nspins)
+                
+                self.data_func['observables'](self.sites,t)
                 self.plotter['observables']([t])
                 
                 
             display(True,True,'%s runtime: '%(self.model_props['algorithm']))                
 
-            # Save Observables Data     
-            Data_Process().exporter(self.data,self.model_props)    
+            
+            
+        self.data_mean = lambda: {'observables': {k:{a: [np.mean(self.data[k][(t,a)]) 
+                                               for t in self.T]
+                                   for a in self.model_props['algorithms']}
+                                   for k in ['temperature','energy','order']}
+                                }
+                                                
+        # Save Observables Data 
+        for k,obj in self.plot_obj.items():
+            obj.plot_save(self.model_props,k)
+            
+        Data_Process().exporter(self.data,self.model_props)   
         return
      
         
@@ -242,9 +261,11 @@ class MonteCarloUpdate(object):
         # Perform cluster algorithm to find indices in cluster
         self.cluster_update(isite,T)
         
+        
+        #print(self.cluster)
+        
         # Flip spins in cluster to new value
         self.sites[self.cluster] = np.copy(self.cluster_value)
-        
         return
         
                
@@ -276,24 +297,13 @@ class MonteCarloUpdate(object):
 
     def sites_region(self,sites0):
         if  np.array_equiv(sites0,self.sites):
-            return sites0
+            return self.sites
         else:
             region = np.zeros(np.shape(self.sites))
             region[:] = np.nan
-            region[sites0] = self.sites[sites0]
-            return np.array(region)
+            region[sites0] = np.copy(self.sites[sites0])
+            return region
     
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -319,7 +329,12 @@ class MonteCarloUpdate(object):
                                 
                       'other': {'cbar_plot':False, 'cbar_title':'Spin Values',
                                'cbar_color':'bone','cbar_color_bad':'magenta',
-                                'label': '','pause':0.02}
+                                'label': '','pause':2,
+                                'sup_title': 'Monte Carlo Updates' + ' - '+ 
+                                            caps(self.model_props['model'])+
+                                            ' - '+
+                                            caps(self.model_props['algorithm'])
+                                }
                      }
                     for k in keys}
                       
@@ -339,24 +354,22 @@ class MonteCarloUpdate(object):
                 if k[0] != data_keys[0][0][0]:
                     return plot_props_sites['title']
                 
-                elif k[1] == data_keys[0][0][1]:
-                    return (k[1] +' - '+
-                           caps(self.model_props['model'])+' - '+
-                           caps(self.model_props['algorithm']))
                 else:
-                    return  k[1] # Clusters or Edges
+                   return 'T = %0.1f'%k[1]
                 
             def plot_ylabel(k,*args):
                 if k[1] != data_keys[0][0][1]:
                     return plot_props_sites['ylabel']
                 else:
-                    return r'T = %0.1f'%k[0] # Temperature
+                    return k[0]
+                           
                 
             def plot_xlabel(k,*args):
                 if k[0] != data_keys[-1][-1][0]:
                     return plot_props_sites['xlabel']
                 else:
                     return r'$t_{MC}$: %d'%args[0] 
+                
             
             def cbar_plot(k,*args):
                 if k[1] == data_keys[0][-1][1]:
@@ -369,7 +382,8 @@ class MonteCarloUpdate(object):
                 data_plot_shape = [int(np.power(self.Nspins,
                               1/self.model_props['d']))]*self.model_props['d']
                 
-                return lambda d: np.reshape(self.sites_region(d),data_plot_shape)
+                return lambda d: np.reshape(self.sites_region(d),
+                                            data_plot_shape)
             
             def plot_range(k,*args):
                 return np.append(self.model_props['state_range'],
@@ -417,7 +431,7 @@ class MonteCarloUpdate(object):
                                                 self.model_props['algorithm']),
                                'sup_title': 'Observables Histogram - '+
                                                 self.model_props['model'],
-                                'pause':0.02}
+                                'pause':2}
                      }
                     for k in keys}
              
@@ -438,7 +452,7 @@ class MonteCarloUpdate(object):
                 return ''
                 
             def plot_ylabel(k,*args):
-                if k[1] != data_keys[0][0][1]:
+                if k != data_keys[0][0]:
                     return ''
                 else:
                     return 'Counts'

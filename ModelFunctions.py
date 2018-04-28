@@ -29,7 +29,7 @@ def display(printit=False,timeit=False,m=''):
 
 def flatten(x,flattenint=True):
     # Return a 1d list of all elements in inner lists of x of arbirtrary shape
-    if  not isinstance(x,list):
+    if not isinstance(x,list) or isinstance(x,tuple):
         return x
     elif len(x) == 1 and flattenint:
         return x[0]
@@ -84,7 +84,8 @@ def dict_modify(D,T=None,f=lambda v: v,i=[0,None],j=[0,None]):
    else:
        return {k[i[0]:i[1]]: f(v) for k,v in D.items()}
     
-
+def delta_f(x,y,f=np.multiply):
+    return np.ones(np.size((x*y)[x==y]))
 
 
 # Sort 2-dimensional a by elements in 1-d array b
