@@ -202,6 +202,12 @@ class MonteCarloUpdate(object):
                 self.data_func['observables'](self.sites,t)
                 self.plotter['observables']([t])
                 
+                # Save Observables Data 
+                for k,obj in self.plot_obj.items():
+                    obj.plot_save(self.model_props,k)
+            
+                Data_Process().exporter(self.data,self.model_props)  
+                
                 
             display(True,True,'%s runtime: '%(self.model_props['algorithm']))                
 
@@ -213,11 +219,7 @@ class MonteCarloUpdate(object):
                                    for k in ['temperature','energy','order']}
                                 }
                                                 
-        # Save Observables Data 
-        for k,obj in self.plot_obj.items():
-            obj.plot_save(self.model_props,k)
-            
-        Data_Process().exporter(self.data,self.model_props)   
+        
         return
      
         
