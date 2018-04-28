@@ -107,7 +107,7 @@ class Model(object):
     
     
     
-##### Model Observable s#########
+##### Model Observables #########
  
     def temperature(self,sites,neighbours,T):
         return T
@@ -141,7 +141,7 @@ class Model(object):
 #            print('Error - E > 0')
 #        return E
     
-    def order(self,sites,neighbours,T):
+    def order(self,sites,neighbours,T):        
         return self.site_order(sites)/np.size(sites)
     
     def specific_heat(self,sites,neighbours,T):        

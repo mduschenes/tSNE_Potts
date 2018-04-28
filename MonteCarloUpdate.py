@@ -77,8 +77,10 @@ class MonteCarloUpdate(object):
         
 
 
-        self.data = {'configurations': {kt:[] 
-                               for kt in flatten(data_keys['configurations'])},
+        self.data = {'configurations': {a:{kt:[] 
+                               for kt in flatten(data_keys['configurations'])}
+                               for a in self.model_props['algorithms']
+                                        },
         
                     'observables': {k:{(a,t): [] 
                                     for t in self.T
@@ -94,8 +96,9 @@ class MonteCarloUpdate(object):
                          }   
         
         self.data_func = {'configurations': lambda t: [
-                                         self.data['configurations'][k].append(
-                                         getattr(self,k[0]))
+                                         self.data['configurations'][
+                                         self.model_props['algorithm']][
+                                         k].append(getattr(self,k[0]))
                                   for k in flatten(data_keys['configurations']) 
                                   if k[1]==t],
         
@@ -121,7 +124,9 @@ class MonteCarloUpdate(object):
 
         self.plotter = {'configurations': lambda T,*args: self.plot_obj[
                                                 'configurations'].plotter(
-                             data = {kt: self.data['configurations'][kt][-1]
+                             data = {kt: self.data[
+                                 self.model_props['algorithm']][
+                                                      'configurations'][kt][-1]
                                  for kt in flatten(data_keys['configurations']) 
                                  if kt[1] in T},       
                              plot_props = self.MCPlot_props('configurations',
@@ -196,7 +201,7 @@ class MonteCarloUpdate(object):
                      
                     # Update Configurations and Observables
                     if i_mc % self.Nmeas_f == 0:
-                        self.data_func['configurations'](t)
+                        self.data_func[alg]['configurations'](t)
                         self.plotter['configurations']([t],i_mc/self.Nspins)
                 
                 self.data_func['observables'](self.sites,t)

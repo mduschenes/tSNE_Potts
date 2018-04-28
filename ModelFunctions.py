@@ -16,6 +16,61 @@ import types
 
 ##### Model Functions ########
 
+
+
+def vector_func(f,args,keys0=[]):
+    
+    if isinstance(args,dict):
+        
+        arg_no_map = {}
+        arg_map = {}       
+
+        map_args = map_over(args,keys0)
+            
+        # Create dictionary of items to be mapped over, and constants      
+        for k,v in args.items():
+            if map_args.get(k):
+                if isinstance(v,dict):
+                    arg_map[k] = v.values()
+                else:
+                    arg_map[k] = v
+            else:
+                arg_no_map[k] = v
+            
+        # Create list of dictionaries for mapped over arrays
+        map_keys = list(zip(*arg_map.keys()))
+        map_values = list(zip(*(arg_map.values())))
+        
+        #print(arg_map.values())
+        print(map_keys)
+        print(map_values)
+        
+        dict_map = list(map(lambda x: dict(zip(*x)),
+                           zip(map_keys*len(map_values),map_values)))
+        
+        # Map over list of dictionaries
+        return np.array(list(map(lambda x: f(**arg_no_map,**x),dict_map)))
+    
+    else:
+        return f(*args)
+
+def map_over(a,keys0=[]):    
+    return {k: False if k in np.atleast_1d(keys0) else True for k in a.keys()}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 times = [time.clock()]
 def display(printit=False,timeit=False,m=''):
     if timeit:
