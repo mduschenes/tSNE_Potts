@@ -39,13 +39,13 @@ class system(object):
     
     
     def __init__(self,L=10,d=2,T=3, model=['ising',1,[0,1]],
-                update = [True,10,10,1,1],
+                update = [True,1000,1000,1,1],
                 observe = {'configurations': [False,'sites','cluster'],
                            'observables': [True,'energy','order']
                            },
                 datasave = True):
 
-
+        update[3] /= 1#L**d 
         m = Model(model,d,observe['observables'][1:])
         l = Lattice(L,d)
 
@@ -87,4 +87,4 @@ if __name__ == "__main__":
     T = [3.5,2.5,2.2,1.2]
     T0 = 0.5
     s = system(T=T)
-    #s.MonteCarlo.MCAlg(algorithm=['wolff','metropolis'],n_iter=1)
+    s.MonteCarlo.MCAlg(algorithm=['wolff','metropolis'],n_iter=1)

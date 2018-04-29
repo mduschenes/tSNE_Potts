@@ -40,11 +40,7 @@ def vector_func(f,args,keys0=[]):
         # Create list of dictionaries for mapped over arrays
         map_keys = list(zip(*arg_map.keys()))
         map_values = list(zip(*(arg_map.values())))
-        
-        #print(arg_map.values())
-        print(map_keys)
-        print(map_values)
-        
+
         dict_map = list(map(lambda x: dict(zip(*x)),
                            zip(map_keys*len(map_values),map_values)))
         
@@ -64,19 +60,12 @@ def map_over(a,keys0=[]):
 
 
 
-
-
-
-
-
-
-
 times = [time.clock()]
-def display(printit=False,timeit=False,m=''):
+def display(printit=False,timeit=False,m='',t0=-2):
     if timeit:
         times.append(time.clock())
         if printit:
-            print(m,times[-1]-times[-2])
+            print(m,times[-1]-times[t0])
     elif printit:
         print(m)
 

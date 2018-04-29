@@ -58,7 +58,7 @@ def plot_histogram(data,domain=None,fig=None,ax=None,plot_props={}):
     # Plot Data
     plot = {}
     if isinstance(data,dict):
-        for k,d in data.items():
+        for k,d in sorted(data.items()):
             if (d is not None) and (d != []):
                 plot[k] = plt.hist(plot_props['data']['data_process'](d),
                      bins=int(1 +3.322*np.log10(np.size(d))),
@@ -69,12 +69,12 @@ def plot_histogram(data,domain=None,fig=None,ax=None,plot_props={}):
         if (data is not None) and (data != []):
             plot[''] = plt.hist(plot_props['data']['data_process'](data),
                  bins=int(1 +3.322*np.log10(np.size(data))),
-                 label=plot_props['other'].get('label',''),
+#                 label=plot_props['other'].get('label',''),
                  **plot_props['plot'])
 
     # Set Figure Properties
     plt.setp(ax,**plot_props.get('set',{}));
-    leg = plt.legend()
+    plt.legend()
     
     #cursor_annotate(plot,leg,fig,ax)
     

@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import os.path
 
 
-from ModelFunctions import flatten,dict_check, one_hot
+from ModelFunctions import flatten,dict_check, one_hot,caps
 from plot_functions import *
 
 
@@ -104,6 +104,7 @@ class Data_Process(object):
         # Save Figures for current Data_Process Instance
         fignums = set(map(lambda f: f.number, self.figs.values()))
         
+        
         for ifig in fignums:
             
             # Find Attributes Plotted in figure(ifig)
@@ -119,8 +120,10 @@ class Data_Process(object):
 
             # Set File Name and ensure no Overwriting
             file = ''.join([data_params.get('data_dir','dataset/'),
-                            label,'_'.join(keys)])
+                            data_params.get('data_file',''),
+                            caps(label),'_','_'.join(keys)])
             
+    
             i = 0
             file_end = ''
             while os.path.isfile(file+file_end + 
@@ -246,11 +249,11 @@ class Data_Process(object):
             
         # Data Names
         if not data_params.get('data_file'):
-            data_params['data_file'] = lambda value: value
+            file = lambda value: value
         
         elif not callable(data_params['data_file']):
             g = data_params['data_file']
-            data_params['data_file']  = lambda k: g + ' k'
+            file  = lambda k: g + k
         
     
         # Check if Data is dict type
@@ -261,13 +264,13 @@ class Data_Process(object):
             
             i = 0
             file_end = ''
-            while os.path.isfile(data_params['data_file'](k)+
+            while os.path.isfile(file(k)+
                                  label+file_end+'.npz'):
                 file_end = '_%d'%i
                 i+=1
             
             np.savez_compressed(data_params['data_dir'] + 
-                                data_params['data_file'](k) +
+                                file(k) +
                                 label + file_end,a=v) 
         return     
             
