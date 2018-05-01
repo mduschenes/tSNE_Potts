@@ -85,7 +85,7 @@ class MonteCarloUpdate(object):
                     }
         
         # Define function to initialize plotting instances
-        self.plot_init = lambda k,p=None: Data_Process(plot_keys[k],
+        self.plot_init = lambda k,p=None: Data_Process({k:plot_keys[k]},
                                                        plot = observe[k][0] 
                                                        if p == None else p) 
                             
@@ -97,20 +97,21 @@ class MonteCarloUpdate(object):
                              data = {kt: getattr(self,kt[0])
                                  for kt in flatten(plot_keys['configurations']) 
                                  if kt[1] in T},
-                
                              plot_props = self.MCPlot_props('configurations',
-                                      plot_keys['configurations'],*args)),
+                                      plot_keys['configurations'],*args),
+                             data_key = 'configurations'),
         
          
                        'observables': lambda T,A,*args: 
                           self.plot_obj['observables'].plotter(
                             data = {k: {(a,t): 
                                 self.data['observables'][a][k][t] 
-                                for t in T}
-                                for a in A
+                                for t in T
+                                for a in A}
                                 for k in flatten(plot_keys['observables'])},       
                             plot_props = self.MCPlot_props('observables',                                                      
-                                plot_keys['observables'],*args))
+                                plot_keys['observables'],*args),
+                            data_key = 'observables')
                        }
 
 
@@ -130,8 +131,10 @@ class MonteCarloUpdate(object):
         self.plot_obj['observables'] = self.plot_init('observables')
         
         # Perform Monte Carlo Algorithm for n_iter configurations
-        display(True,False,'Monte Carlo Simulation... %s:\nT = %s\nalg = %s'%(
-                      (self.model_props['model'],str(self.T),str(algorithm))))
+        display(True,False,'Monte Carlo Simulation... \n%s: q = %d \nT = %s'%(
+                      (self.model_props['model'],self.model_props['q'],
+                       str(self.T))) + '\nNeqb = %d, Nmeas = %d'%(
+                                 self.Neqb/self.Nspins,self.Nmeas/self.Nspins))
         
         for i in range(n_iter):
                 
@@ -161,7 +164,7 @@ class MonteCarloUpdate(object):
                      
                     # Update Configurations and Observables
                     if i_mc % self.Nmeas_f == 0:
-                        self.data['sites'][i_t,i_mc//self.Nspins,:] = (
+                        self.data['sites'][i_t,i_mc//self.Nmeas_f,:] = (
                                                            np.copy(self.sites))
                         self.plotter['configurations']([t],i_mc/self.Nspins)
                 

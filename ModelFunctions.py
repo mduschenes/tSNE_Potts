@@ -73,7 +73,7 @@ def display(printit=False,timeit=False,m='',t0=-2):
 
 def flatten(x,flattenint=True):
     # Return a 1d list of all elements in inner lists of x of arbirtrary shape
-    if not isinstance(x,list) or isinstance(x,tuple):
+    if not (isinstance(x,list)) or isinstance(x,tuple) or isinstance(x,str):
         return x
     elif len(x) == 1 and flattenint:
         return x[0]
@@ -121,9 +121,9 @@ def dict_check(dictionary,key):
     else:
         return dictionary
     
-def dict_modify(D,T=None,f=lambda v: v,i=[0,None],j=[0,None]): 
+def dict_modify(D,T=None,f=lambda k,v: v,i=[0,None],j=[0,None]): 
    if T:
-       return  {t[j[0]:j[1]]: {k[i[0]:i[1]]: f(v) for k,v in D.items() 
+       return  {t[j[0]:j[1]]: {k[i[0]:i[1]]: f(k,v) for k,v in D.items() 
                 if t in k} for t in T}
    else:
        return {k[i[0]:i[1]]: f(v) for k,v in D.items()}

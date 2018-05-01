@@ -17,18 +17,19 @@ from plot_functions import *
 class Data_Process(object):
     
     # Create figure and axes dictionaries for dataset keys
-    def __init__(self,keys=[None],plot=False,multi_plot=False):
+    def __init__(self,keys=[None],plot=False):
     
     
         # Initialize figures and axes dictionaries
         self.figs = {}
         self.axes = {}
+        self.data_key = 'data_key'
         
         self.plot = plot
         
         if self.plot:
             # Create Figures and Axes with keys
-            self.figures_axes(keys,multi_plot)
+            self.figures_axes(keys)
     
             # Define Possible Plotting Functions
             plot_func = globals()
@@ -38,18 +39,22 @@ class Data_Process(object):
 
 
      # Plot Data by keyword
-    def plotter(self,data,domain=None,plot_props={},keys=None):
+    def plotter(self,data,domain=None,plot_props={},data_key=None,keys=None):
 
         if self.plot:
+            
+            if data_key is None:
+                data_key = self.data_key
+            
             if keys is None:
-                keys = data.keys()
+                keys = list(data.keys())
 
             keys = [k for k in keys if data.get(k,[]) != []]
 
             if domain is None:
                 domain = {k: None for k in keys}
             
-            self.figures_axes(keys)
+            self.figures_axes({data_key:keys})
             
             
             
@@ -57,27 +62,27 @@ class Data_Process(object):
             for key in keys:
 
                 try:
-                    ax = self.axes[key]
-                    fig = self.figs[key]
+                    ax = self.axes[data_key][key]
+                    fig = self.figs[data_key][key]
                     plt.figure(fig.number)
                     fig.sca(ax)
                 except:
-                    self.figures_axes(keys)
+                    self.figures_axes({data_key:keys})
                     
-                    ax = self.axes[key]
-                    fig = self.figs[key]
+                    ax = self.axes[data_key][key]
+                    fig = self.figs[data_key][key]
                     plt.figure(fig.number)
                     fig.sca(ax)
     
                 # Plot Data
-                try:
-                    self.plot_func['plot_' + 
-                        plot_props[key]['data']['plot_type']](
-                        data[key],domain[key],fig,ax,plot_props[key])
+#                try:
+                self.plot_func['plot_' + 
+                    plot_props[key]['data']['plot_type']](
+                    data[key],domain[key],fig,ax,plot_props[key])
                 
-                except AttributeError:
-                    self.plot_func = plot_props[key]['data']['plot_type'](
-                                data[key],domain[key],fig,ax,plot_props[key])
+#                except AttributeError:
+#                    self.plot_func = plot_props[key]['data']['plot_type'](
+#                                data[key],domain[key],fig,ax,plot_props[key])
                 
                 
                 plt.suptitle(plot_props[key]['other'].get('sup_title',''))
@@ -102,70 +107,73 @@ class Data_Process(object):
                        label = ''):
         
         # Save Figures for current Data_Process Instance
-        fignums = set(map(lambda f: f.number, self.figs.values()))
-        
-        
-        for ifig in fignums:
+        for fig_i in self.figs.values():
             
-            # Find Attributes Plotted in figure(ifig)
-            keys = [k for k,v in self.figs.items() if v.number == ifig]
+            for ifig in set([f.number for f in fig_i.values()]):
             
-            # Set Current Figure
-            plt.figure(ifig)                
-            fig = plt.gcf()
-            
-            # Change Plot Size for Saving                
-            plot_size = fig.get_size_inches()
-            fig.set_size_inches((8.5, 11))
-
-            # Set File Name and ensure no Overwriting
-            file = ''.join([data_params.get('data_dir','dataset/'),
-                            data_params.get('data_file',''),
-                            caps(label),'_','_'.join(keys)])
-            
+                # Set Current Figure
+                plt.figure(ifig)        
+                fig = plt.gcf()
+                
+                # Change Plot Size for Saving                
+                plot_size = fig.get_size_inches()
+                fig.set_size_inches((8.5, 11))
     
-            i = 0
-            file_end = ''
-            while os.path.isfile(file+file_end + 
-                                 data_params.get('figure_format','.pdf')):
-                file_end = '_%d'%i
-                i+=1
-
-            # Save Figure as File_Format
-            plt.savefig(file+file_end+data_params.get('figure_format','.pdf'),
-                        bbox_inches='tight',dpi=500)
-            fig.set_size_inches(plot_size) 
+                # Set File Name and ensure no Overwriting
+                file = ''.join([data_params.get('data_dir','dataset/'),
+                                data_params.get('data_file',''),
+                                caps(label),'_',
+                                '_'.join([k for k in fig_i.keys() 
+                                            if fig_i[k].number == ifig])])
+                
         
+                i = 0
+                file_end = ''
+                while os.path.isfile(file + file_end + 
+                                     data_params.get('figure_format','.pdf')):
+                    file_end = '_%d'%i
+                    i+=1
+    
+                # Save Figure as File_Format
+                plt.savefig(file + 
+                            file_end+data_params.get('figure_format','.pdf'),
+                            bbox_inches='tight',dpi=500)
+                fig.set_size_inches(plot_size) 
+            
         return
     
       
     
     
      # Create figures and axes for each passed set of keys for datasets
-    def figures_axes(self,Keys,multi_keys=False,plot=True):     
+    def figures_axes(self,Keys):     
         
-        
-        if not multi_keys:
-            Keys = {'':Keys}
-        
+        if not isinstance(Keys,dict):
+            Keys = {self.data_key: Keys}
+               
         for keys_label,keys in Keys.items():
             #print(keys)
-            keys_new = [k if k not in self.axes.keys() else None
-                       for k in flatten(keys)]
+            keys_new = [k if k not in self.axes.get(keys_label,{}).keys() 
+                        else None for k in flatten(keys,False)]
             
             if not None in keys_new:
                 
-                if len(self.axes) > 1: print('Figure Keys Updated...')
+                if len(self.axes.get(keys_label,{})) > 1: 
+                    print('Figure Keys Updated...')
+
+                self.axes[keys_label] = {}
+                self.figs[keys_label] = {}
 
                 fig, ax = plt.subplots(*(np.shape(keys)[:2]))
                 
                 fig.canvas.set_window_title('Figure: %d  %s'%(
-                                                        fig.number,keys_label))
-                
-                for k,a in zip(keys_new,flatten(ax.tolist())):
+                                                  fig.number,caps(keys_label)))
+                for k,a in zip(keys_new,
+                               flatten(np.atleast_1d(ax).tolist(),False)):
                     if k is not None:
-                        self.axes[k] = a
-                        self.figs[k] = fig      
+                        self.axes[keys_label][k] = a
+                        self.figs[keys_label][k] = fig      
+                
         return 
 
 
@@ -220,7 +228,7 @@ class Data_Process(object):
             data[k] = np.atleast_2d(data[k])
             v_shape = np.shape(data[k])
             if v_shape[0] == 1 and v_shape[1:] != 1:
-                data[k] = np.transpose(data[k],0)
+                data[k] = np.transpose(data[k])
             data_sizes[k] = np.shape(data[k])
                 
         
@@ -279,9 +287,3 @@ class Data_Process(object):
                 
         
         
-
-
-    
-    
-
-            

@@ -29,6 +29,7 @@ class Model(object):
         self.model_params = {'ising': {'value': self.ising,
                                        'energy': self.ising_energy,
                                        'order': self.ising_order,
+                                       'twoptcorr': self.ising_twoptcorr,
                                        'bond_prob': 
                                            lambda s,n,T: 
                                         1- np.exp(-2*self.orderparam[1]/T),
@@ -36,6 +37,7 @@ class Model(object):
                              'potts': {'value': self.potts,
                                        'energy': self.potts_energy,
                                        'order': self.potts_order,
+                                       'twoptcorr': self.potts_twoptcorr,
                                        'bond_prob': 
                                            lambda s,n,T: 
                                         1- np.exp(-1*self.orderparam[1]/T),
@@ -53,7 +55,8 @@ class Model(object):
         # Define Model Energy and Order Parameter
         self.site_energy = self.model_params[self.model.__name__]['energy']
         self.site_order = self.model_params[self.model.__name__]['order']
-        
+        self.site_twoptcorr = self.model_params[self.model.__name__][
+                                                                   'twoptcorr']
 
         
         # Define Observables
@@ -93,7 +96,7 @@ class Model(object):
         # Return array of N random spins, per possible state_range spin values
         # excluding the possible n0 spin
         # Model dependent generator of spin values 
-        
+
         return self.model(np.random.choice(
                                 np.setdiff1d(self.state_range,n0),N))
         
@@ -142,7 +145,10 @@ class Model(object):
 #        return E
     
     def order(self,sites,neighbours,T):        
-        return self.site_order(sites)/np.size(sites)
+        return self.site_order(sites)
+    
+    def twoptcorr(self,sites,neighbours,T):
+        return self.site_twoptcorr(sites)
     
     def specific_heat(self,sites,neighbours,T):        
       return list(map(lambda t:np.mean(list(map(lambda s: np.power(self.energy(
@@ -181,7 +187,7 @@ class Model(object):
         elif d == 1:
             Tc = 0
         elif d == 2:
-            Tc = 2.0/np.log(1.0 + np.sqrt(2))*self.orderparam[1]
+            Tc = 1.0/np.log(1.0 + np.sqrt(self.q))*self.orderparam[1]
         else: # self.d == 3:
             Tc = None
         return Tc
@@ -218,12 +224,19 @@ class Model(object):
 
     # Model Order Parameter
     def ising_order(self,s):
-        return np.sum(s)
+        return np.sum(s)/np.size(s)
     
-    def potts_order(self,s):
-        return np.real(np.sum(np.exp(2j*np.pi*s/self.q)))
+    def ising_twoptcorr(self,s):
+        return np.sum([np.exlude(s,i)*s[i]
+                                        for i in range(np.size(s))])/np.size(s)
+    
+    def potts_order(self,s,u=1):
+ #       return np.abs(np.sum(np.exp(1j*2*np.pi*s/self.q)))/np.size(s)
+        return (self.q*np.sum(s==u)/np.size(s) - 1)/(self.q-1)
 
-    
+    def potts_twoptcorr(self,s):
+        return (self.q/(self.q-1))*np.sum([np.exlude(s,i)==s[i] -(1/self.q)
+                                        for i in range(np.size(s))])/np.size(s)
 
 
 
