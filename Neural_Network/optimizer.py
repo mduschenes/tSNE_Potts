@@ -6,13 +6,17 @@ Created on Tue Jan 23 11:04:42 2018
 Machine Learning and Many Body Physics
 PSI 2018 - Perimeter Institute
 """
+import sys
+sys.path.insert(0, "C:/Users/Matt/Google Drive/PSI/"+
+                   "PSI Essay/PSI Essay Python Code/tSNE_Potts/")
 
-from data_process import Data_Process
+from optimizer_methods import *
+from Data_Process import Data_Process 
+from ModelFunctions import display
 array_sort =  Data_Process().array_sort
 
 import numpy as np
 import tensorflow as tf
-import time
 
 tf.reset_default_graph()
 
@@ -21,24 +25,13 @@ np.random.seed(seed)
 tf.set_random_seed(seed)
 
 
-times = [time.clock()]
-def display(printit=False,timeit=False,m=''):
-    if timeit:
-        times.append(time.clock())
-        if printit:
-            print(m,times[-1]-times[-2])
-    elif printit:
-        print(m)
 
-
-
-
-class neural_net(object):
+class optimizer(object):
     
-    def __init__(self,nn_params):
+    def __init__(self,opt_params):
                 
         # Define Neural Network Properties Dictionary
-        self.nn_params = nn_params  
+        self.opt_params = opt_params  
        
         return
 
@@ -55,10 +48,12 @@ class neural_net(object):
                      
                      alg_params = {'n_epochs':10, 
                                    'n_batch_train': 1/20,'n_epochs_meas': 1/20,
-                                   'alpha_learn': 0.5, 'eta_reg': 0.005,                  
+                                   'alpha_learn': 0.5, 'eta_reg': 0.005, 
+                                   'sigma_var':0.1, 
                                    'cost_func': 'cross_entropy', 
                                    'optimize_func':'grad',
-                                   'regularize': None
+                                   'regularize': None,
+                                   'method': 'layers',
                                   }, 
                      train = True, test = False, other = False,
                      timeit = True, printit=True,
@@ -94,9 +89,9 @@ class neural_net(object):
         
         
         # Define Number of Neurons at Input and Output
-        alg_params['n_dataset_train'],self.nn_params['n_neuron'][0] = (
+        alg_params['n_dataset_train'],self.opt_params['n_neuron'][0] = (
                                                           data_size['x_train'])
-        self.nn_params['n_neuron'][-1] = data_size['y_train'][1]
+        self.opt_params['n_neuron'][-1] = data_size['y_train'][1]
         alg_params['n_dataset_test'] = data_size.get('x_test',[None])[0]
         
         # Define Training Parameters
@@ -106,8 +101,13 @@ class neural_net(object):
                                                 alg_params['n_epochs_meas']))
         
     
+        # Depending on Network Type, either initialize Neural Network or 
         # Initialize Layers
-        y_est,x_,y_ = self.layers()
+        try:
+            y_est,x_,y_ = getattr(self,alg_params['method'])(opt_params,alg_params)
+        except:
+            y_est,x_,y_ = locals().get(alg_params['method'])()
+            
         
         display(printit,timeit,'Layers Initialized...')
         
@@ -130,25 +130,25 @@ class neural_net(object):
         # Define Learning Rate Corrections
         #global_step = tf.Variable(0, trainable=False)
         alpha_learn = alg_params['alpha_learn']
-#        tf.train.exponential_decay(self.nn_params['apha_learn'],
-#                              global_step, self.nn_params['n_epochs'],
+#        tf.train.exponential_decay(self.opt_params['apha_learn'],
+#                              global_step, self.opt_params['n_epochs'],
 #                              0.96, staircase=True)
        
         
         # Define Cost Function (with possible Regularization)
-        cost = tf.reduce_mean(self.nn_params['cost_func'][
+        cost = tf.reduce_mean(self.opt_params['cost_func'][
                                             alg_params['cost_func']](y_,y_est))
         
         if alg_params['regularize']:
-            cost += self.nn_params['cost_func'][
+            cost += self.opt_params['cost_func'][
                  alg_params['regularize']]([v for v in tf.trainable_variables() 
-                                                       if 'weights' in v.name],
+                                                       if 'reg' in v.name],
                                            alg_params['eta_reg'])
         
         
         
         # Training Output with Learning Rate Alpha and regularization Eta
-        train_step = self.nn_params['optimize_func'][
+        train_step = self.opt_params['optimize_func'][
                                  alg_params['optimize_func']](alpha_learn,cost)
 
          
@@ -164,7 +164,7 @@ class neural_net(object):
              
         loc = vars()
         loc = {key:loc.get(key) for key in results_keys['all'] 
-                               if loc.get(key) is not None}
+                               if loc.get(key)}
         results_keys['all'] = loc.keys()        
         
         
@@ -273,7 +273,7 @@ class neural_net(object):
 
             
                     # Save and Plot Data
-                    Data_Proc.process(results,domain(epoch+1),data_params,
+                    Data_Proc.plotter(results,domain(epoch+1),data_params,
                                     results_keys['train']+results_keys['test'],
                                     save=save,plot=plot,**plot_args)
             
@@ -338,7 +338,7 @@ class neural_net(object):
     
     
     
-    def layers(self,sigma=1):
+    def neural_network(self,sigma=0.1,**kwargs):
         
         def neuron_var(shape,name,sigma=0.1):
             initial = tf.truncated_normal(shape,stddev=sigma)
@@ -346,39 +346,39 @@ class neural_net(object):
         
         
         # Define Numbers In + Out + Hidden Layers
-        self.nn_params['n_layers'] = np.size(self.nn_params['n_neuron']) 
+        self.opt_params['n_layers'] = np.size(self.opt_params['n_neuron']) 
         
         # Define Type of Layers (fcc: Fully Connected, cnn: Convolutional)
-        if not self.nn_params.get('layers'):
-            self.nn_params['layers'] = ['fcc']*(self.nn_params['n_layers']-1)
+        if not self.opt_params.get('layers'):
+            self.opt_params['layers'] = ['fcc']*(self.opt_params['n_layers']-1)
         
         # Initialize Weights, Biases and Input/Output Placeholders
-        x_ = tf.placeholder(tf.float32, [None,self.nn_params['n_neuron'][0] ])
-        y_ = tf.placeholder(tf.float32, [None,self.nn_params['n_neuron'][-1]])
+        x_ = tf.placeholder(tf.float32, [None,self.opt_params['n_neuron'][0] ])
+        y_ = tf.placeholder(tf.float32, [None,self.opt_params['n_neuron'][-1]])
         
-        W = [None]*(self.nn_params['n_layers']-1)
-        b = [None]*(self.nn_params['n_layers']-1)
-        T = [None]*(self.nn_params['n_layers'])
+        W = [None]*(self.opt_params['n_layers']-1)
+        b = [None]*(self.opt_params['n_layers']-1)
+        T = [None]*(self.opt_params['n_layers'])
         
         # Define Input
         T[0] = x_
         
         # Create Neuron Parameters in Layers
-        for i in range(self.nn_params['n_layers']-1):
-            if self.nn_params.get('layers')[i] == 'fcc':
-                Wshape = [self.nn_params['n_neuron'][i],
-                          self.nn_params['n_neuron'][i+1]]
-                bshape = [self.nn_params['n_neuron'][i+1]]
+        for i in range(self.opt_params['n_layers']-1):
+            if self.opt_params.get('layers')[i] == 'fcc':
+                Wshape = [self.opt_params['n_neuron'][i],
+                          self.opt_params['n_neuron'][i+1]]
+                bshape = [self.opt_params['n_neuron'][i+1]]
             
-                W[i] = neuron_var(Wshape,'weights_%d'%i,sigma)
+                W[i] = neuron_var(Wshape,'weights_reg_%d'%i,sigma)
                 b[i] = neuron_var(bshape,'biases_%d'%i,sigma)
             
             # Calculate Activation function for ith layer and Output
-            if i != self.nn_params['n_layers']:
-                T[i+1] = self.nn_params['neuron_func']['layer'](
+            if i != self.opt_params['n_layers']:
+                T[i+1] = self.opt_params['neuron_func']['layer'](
                                               tf.matmul(T[i],W[i]) + b[i])
             else:
-                T[i+1] = self.nn_params['neuron_func']['output'](
+                T[i+1] = self.opt_params['neuron_func']['output'](
                                               tf.matmul(T[i],W[i]) + b[i])
 
         # Define Ouput
@@ -386,7 +386,12 @@ class neural_net(object):
         
         return y_est,x_,y_
     
+
     
+
+
+
+
 
 
 if __name__ == '__main__':
@@ -446,17 +451,19 @@ if __name__ == '__main__':
 
    
     # Algorithm Parameters
-    alg_params = { 'alpha_learn': 0.0035, 'eta_reg': 0.0005,                  
+    alg_params = { 'alpha_learn': 0.0035, 'eta_reg': 0.0005,'sigma_var':0.1,                  
                   
                   'n_epochs':5 ,'n_batch_train': 1/10, 'n_epochs_meas': 1/20,
                  
                   'cost_func': 'cross_entropy', 'optimize_func':'adam',
-                  'regularize':'L2'}
+                  'regularize':'L2',
+                  'method': 'neural_network',
+                  }
     
     
     
     # Run Neural Network   
-    nn = neural_net(network_params)
+    nn = optimizer(network_params)
     nn.training(data_params,alg_params,
                 train=True,test=True,other=True,
                 plot=True,save=False,

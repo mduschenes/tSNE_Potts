@@ -55,9 +55,7 @@ class Data_Process(object):
                 domain = {k: None for k in keys}
             
             self.figures_axes({data_key:keys})
-            
-            
-            
+
             # Plot for each data key
             for key in keys:
 
@@ -67,6 +65,7 @@ class Data_Process(object):
                     plt.figure(fig.number)
                     fig.sca(ax)
                 except:
+                    print('error')
                     self.figures_axes({data_key:keys})
                     
                     ax = self.axes[data_key][key]

@@ -102,7 +102,7 @@ def plot_scatter(data,domain=None,fig=None,ax=None,plot_props={}):
     # Plot Data
     if isinstance(data,dict):
         for k,d in data.items():
-            if (d is not None) and (d != []):
+            if (d is not None) and (d != []):                
                 plot = plt.scatter(domain[k],
                    plot_props.get('data',{}).get('data_process',lambda x:x)(d),
                    label=plot_props.get('other',{}).get('label',lambda x:x)(k),
