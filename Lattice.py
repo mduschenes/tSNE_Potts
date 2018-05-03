@@ -9,7 +9,7 @@ import numpy as np
 
 class Lattice(object):
     
-    # Define a Lattice class for lattice sites configurations with:
+    # Define a (Square) Lattice class for lattice sites configurations with:
     # Lattice Length L, Lattice Dimension d
     
     def __init__(self,L=6,d=3):
@@ -31,14 +31,10 @@ class Lattice(object):
         # L^i for i = 1:d array
         self.L_i = np.power(self.L,np.arange(self.d,dtype=self.dtype))
         
-        # r = [0....ri...0] for i = 1:d array
+        # Arrays for finding coordinate and linear position in d dimensions
         self.I = np.identity(self.d)
         self.R = np.arange(1,np.ceil(self.L/2),dtype=self.dtype)
-        #self.Rn = np.concatenate((self.R,-self.R))
-#        self.Rn = np.array([(x,-x) for x in self.R ])
-#        print(self.Rn)
-#        self.Rnp = np.kron(self.Rn,self.I).reshape((-1,self.d))
-        #print(self.Rnp)
+
         
         # Calculate array of arrays of r-distance neighbour sites,
         # for each site, for r = 1 : L/2 
@@ -47,9 +43,7 @@ class Lattice(object):
         #                                 for r in range(1,
         #                                             int(np.ceil(self.L/2)))])
         self.neighbour_sites = self.neighboursites(None,None)
-        #print(self.neighbour_sites.reshape((self.Nspins,-1,2*self.d)),'F')
-        #print(self.neighbour_sites)
-        #.reshape((len(site),-1,4))
+
 
         
     def position(self,site):
@@ -94,13 +88,7 @@ class Lattice(object):
         # Return spins of r-distance neighbours for all spin sites
         return np.array([np.index(self.sites,self.neighbour_sites[r-1][i]) 
                                     for i in range(len(self.sites))])
-#        return 
-#        np.stack((self.site(np.mod(sitepos+R*self.I,self.L))) for R in Rrange) 
 
-            
-        #  rvals = np.diag(np.delete(np.arange(-self.L,self.L+1),0))
-        #  self.rsites = np.kron(rvals,np.identity(self.d))
-        #  print(self.rsites)
         
 if __name__ == '__main__':
     l = Lattice

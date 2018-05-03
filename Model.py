@@ -14,7 +14,7 @@ class Model(object):
     # Define a Model class for spin model with: 
     # Lattice Model Type: Model Name and Max Spin Value q
     
-    def __init__(self,model=['potts',3,[0,1]],d=2,
+    def __init__(self,model=['potts',3,[0,1]],d=2,T=1,
                  observe=['temperature','energy','order']):
         # Define Models dictionary for various spin models, with
         # [ Individual spin calculation function, 
@@ -25,32 +25,54 @@ class Model(object):
         self.q = model[1]
         self.orderparam = model[2]
         self.d = d
+        self.T = np.atleast_1d(T)
         
-        self.model_params = {'ising': {'value': self.ising,
-                                       'energy': self.ising_energy,
-                                       'order': self.ising_order,
-                                       'twoptcorr': self.ising_twoptcorr,
-                                       'bond_prob': 
-                                           lambda s,n,T: 
-                                        1- np.exp(-1*self.orderparam[1]/T),
+        self.model_types = ['ising','potts']
+        
+        # Define model specific parameters
+        self.models_params = {'ising': {'prob_update': {
+                
+                                            'metropolis': {(dE,t): 
+                                              np.exp(-self.orderparam[1]*dE/t) 
+                                                 for dE in range(-2*2*self.d,
+                                                                  2*2*self.d+1)
+                                                 for t in T},
+                                                
+                                            'wolff':{t: (1 - np.exp(
+                                                      -2*self.orderparam[1]/t))
+                                                     for t in T}},
+                                                
                                        'value_range': [-self.q,self.q,0]},
-                             'potts': {'value': self.potts,
-                                       'energy': self.potts_energy,
-                                       'order': self.potts_order,
-                                       'twoptcorr': self.potts_twoptcorr,
-                                       'bond_prob': 
-                                           lambda s,n,T: 
-                                        1- np.exp(-2*self.orderparam[1]/T),
+                            
+                            'potts':  {'prob_update': {
+                                    
+                                            'metropolis': {(dE,t): 
+                                              np.exp(-self.orderparam[1]*dE/t) 
+                                                 for dE in range(-2*self.d,
+                                                                  2*self.d+1)
+                                                 for t in T},
+                                                
+                                            'wolff':{t: (1 - np.exp(
+                                                      -1*self.orderparam[1]/t))
+                                                     for t in T}},
+                                                
                                        'value_range': [1,self.q,None]}} 
-                                 
-
-        # Define Model Name        
-        self.model = self.model_params[model[0].lower()]['value']
         
+        # Define model specific functions                                
+        for t in self.model_types:
+            for k in ['value','int','order','twoptcorr']:
+                self.models_params[t][k] = getattr(self,t+'_'+k,
+                                                   lambda *args:[])
+                    
 
-        # Define Range of Possible Spin Values and Lookup Table of Values                        
+        # Define Model Value function and Name for given Input
+        self.model_name = model[0].lower()
+        self.model_params = self.models_params[self.model_name]
+        self.model = self.model_params['value']
+
+        # Define Range of Possible Spin Values and  Energy Function                     
         self.state_range = self.state_ranges()
-        
+
         
         # Define Observables
         self.observables_functions = {k: getattr(self,k,lambda *args:[]) 
@@ -67,7 +89,7 @@ class Model(object):
     # Generate array of possible q values
     def state_ranges(self,xNone=None,xmin=float('inf'),xmax=-float('inf')):
         
-        vals = self.model_params[self.model.__name__]['value_range']
+        vals = self.model_params['value_range']
         
         # Exclude xNone Values
         if xNone == None:
@@ -87,7 +109,7 @@ class Model(object):
         # Model dependent generator of spin values 
 
         return self.model(np.random.choice(
-                                np.setdiff1d(self.state_range,n0),N))
+                                          np.setdiff1d(self.state_range,n0),N))
     
     
     
@@ -104,55 +126,76 @@ class Model(object):
     def energy(self,sites,neighbours,T):
         # Calculate energy of spins as sum of spins 
         # + sum of r-distance neighbour interactions
-        site_energy = self.model_params[self.model.__name__]['energy']
-        return ((-self.orderparam[0]*np.sum(site_energy(sites),axis=-1)) + (
-               -(1/2)*np.sum(np.array([
-                self.orderparam[i+1]*site_energy(np.expand_dims(sites,axis=-1),
-                                          np.take(sites,neighbours[i],axis=-1)) 
+        site_int = self.model_params['int']
+        return ((-self.orderparam[0]*np.sum(site_int(sites),axis=-1))+(
+               -(1/2)*np.sum(np.array([self.orderparam[i+1]*(
+                                       site_int(
+                                         np.expand_dims(sites,axis=-1),
+                                         np.take(sites,neighbours[i],axis=-1)))
                 for i in range(len(self.orderparam)-1)]),
                 axis=(0,-2,-1))))/np.shape(sites)[-1]
 
     
     def order(self,sites,neighbours,T):
-        site_order = self.model_params[self.model.__name__]['order']        
+        site_order = self.model_params['order']        
         return site_order(sites)
     
     def twoptcorr(self,sites,neighbours,T):
-        site_twoptcorr = self.model_params[self.model.__name__]['twoptcorr']
+        site_twoptcorr = self.model_params['twoptcorr']
         return site_twoptcorr(sites)
     
     def specific_heat(self,sites,neighbours,T):  
       wrapper = lambda x: np.power(x,2)
       return np.reshape((self.obs_mean(sites,neighbours,T,self.energy,wrapper) - 
-           wrapper(self.obs_mean(sites,neighbours,T,self.energy)))*(
-           np.shape(sites)[-1])**2/wrapper(T),(np.size(T),-1))
+             wrapper(self.obs_mean(sites,neighbours,T,self.energy)))*(
+             np.shape(sites)[-1]/wrapper(T)),
+             (np.size(T),-1))
   
  
     def susceptibility(self,sites,neighbours,T):        
       wrapper = lambda x: np.power(x,2)
       return np.reshape((self.obs_mean(sites,neighbours,T,self.order,wrapper) - 
-           wrapper(self.obs_mean(sites,neighbours,T,self.order)))*(
-           np.shape(sites)[-1])**2/T,(np.size(T),-1))
+             wrapper(self.obs_mean(sites,neighbours,T,self.order,np.abs)))*(
+             np.shape(sites)[-1]/T),
+             (np.size(T),-1))
     
+        
+    def local_energy(self,i,sites,neighbours,T):
+        site_int = self.model_params['int']
+        return -np.sum(np.array([self.orderparam[j+1]*site_int(
+                np.expand_dims(np.take(sites,i,axis=-1),axis=-1),
+                np.take(sites,neighbours[j][i],axis=-1)) 
+                for j in range(len(self.orderparam)-1)]),
+                axis=(0,-1))
+
+
+
     def obs_mean(self,sites,neighbours,T,func,wrapper=lambda x:x):
         return np.mean(wrapper(func(sites,neighbours,T)),axis=-1)
-    
-   
+
+
+
+
+
+
+           
     # Model Site Values                                 
-    def ising(self,s):
+    def ising_value(self,s):
         return s
     
-    def potts(self,s):
-        return s 
+    def potts_value(self,s):
+        return s
+    
+    
 
-    # Model Energy
-    def ising_energy(self,*args):
+    # Model Interactions Energy 
+    def ising_int(self,*args):
         try:
             return args[0]*args[1]
         except IndexError:
             return args[0]
     
-    def potts_energy(self,*args):
+    def potts_int(self,*args):
         try:
             return np.equal(args[0],args[1])
         except IndexError:
@@ -165,16 +208,19 @@ class Model(object):
     
     def ising_twoptcorr(self,s):
         shape_l = np.shape(s)[-1]
-        return np.sum([np.delete(s,i,axis=-1)*np.take(s,i,axis=-1)
+        return np.sum([self.ising_int(np.delete(s,i,axis=-1),
+                                      np.take(s,i,axis=-1))
                        for i in range(shape_l)],axis=(0,-1))/shape_l
     
     def potts_order(self,s,u=1):
- #   return np.abs(np.sum(np.exp(1j*2*np.pi*s/self.q),axis=-1))/np.shape(s)[-1]
-        return (self.q*np.sum(s==u,axis=-1)/np.shape(s)[-1] - 1)/(self.q-1)
+        return np.mean(np.array([(self.q*np.mean(self.potts_int(s,u),
+                                 axis=-1)- 1)/(self.q-1)
+                         for u in range(1,2)]),axis=0)
 
     def potts_twoptcorr(self,s):
         shape_l = np.shape(s)[-1]
-        return np.sum([np.equal(np.delete(s,i,axis=-1),np.take(s,i,axis=-1))
+        return np.sum([self.potts_int(np.delete(s,i,axis=-1),
+                                      np.take(s,i,axis=-1))
                        for i in range(shape_l)],axis=(0,-1))/shape_l
 
 

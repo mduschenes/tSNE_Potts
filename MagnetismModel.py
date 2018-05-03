@@ -24,7 +24,7 @@ class system(object):
     #                                 Number of initial updates Neqb,
     #                                 Number of Measurement Updates Nmeas
     #                                 Measurement Update Frequency Nmeas_f
-    #                                 Number of Clusters Ncluster
+    #                                 Number of Clusters Ncluster (Not used)
     # 
     # Observe: Booleans for Plot Types (Sites, Clusters, Edges, Observables)
     # DataSave: Boolean
@@ -32,14 +32,14 @@ class system(object):
     
     # Define system parameters of:
     # Size, Dimension, q states, Temperature
-    # State Range, State Generator, Transition Probability
-    # Model Name, Monte Carlo Algorithm, Observables
+    # State Range, State Generator, State Interactions, Transition Probability
+    # Model Name, Monte Carlo Algorithm 
+    # Observables functions, Observables properties 
     # Data File and Directory        
-    # Initialize model class, lattice class
     
     
-    def __init__(self,L=15,d=2,T=3, model=['potts',3,[0,1]],
-                update = [True,1000,5000,10,1],
+    def __init__(self,L=15,d=2,T=3, model=['potts',2,[0,1]],
+                update = [True,10,10,1,1],
                 observe = {'configurations': [False,'sites','cluster'],
                            'observables': [True,'temperature','energy',
                                                 'order','specific_heat',
@@ -48,25 +48,24 @@ class system(object):
                            },
                 datasave = True):
 
-        m = Model(model,d,observe['observables'][1:])
+
+        # Initialize model class, lattice class
+        m = Model(model,d,T,observe['observables'][1:])
         l = Lattice(L,d)
 
         self.model_props = {'L': L, 'd': d, 'q': m.q, 'T': T,
                             'state_range': m.state_range,
                             'state_gen': m.state_gen,
-                            'prob_trans': {'metropolis': m.energy,
-                                           'wolff':m.model_params[
-                                                   m.model.__name__][
-                                                   'bond_prob']},
-                            'model': m.model.__name__,
+                            'state_int': m.model_params['int'],
+                            'prob_update': m.model_params['prob_update'],
+                            'model': m.model_name,
                             'algorithm': 'wolff',
                             'algorithms': ['metropolis','wolff'],
                             'observables': m.observables_functions,
                             'observables_props': m.observables_props,
-                            'observables_mean': m.obs_mean,
-                            'data_dir': '%s_Data/'%(caps(m.model.__name__)),
+                            'data_dir': '%s_Data/'%(caps(m.model_name)),
                             'data_file': '%s_d%d_L%d__%s' %(
-                                          caps(m.model.__name__),d,L,
+                                          caps(m.model_name),d,L,
                                           datetime.datetime.now().strftime(
                                                            '%Y-%m-%d-%H-%M'))}
         
@@ -85,9 +84,24 @@ class system(object):
         return
     
     
-    
+# Run System for Temperatures and Iteration Configurations  
 if __name__ == "__main__":
-    T = [3.0,2.5,1.75,1.2]
-    T0 = 0.5
-    s = system(T=T)
-    s.MonteCarlo.MCAlg(props_iter={'algorithm':['wolff','metropolis']})
+    L=15
+    d=2
+    T = [3.0,2.5,1.75,1.2,0.8,0.5,0.2]
+    T0 = 0.25
+    model=['potts',2,[0,1]]
+    update = [True,10,10,1,1]
+    observe = {'configurations': [False,'sites','cluster'],
+                           'observables': [True,'temperature','energy',
+                                                'order','specific_heat',
+                                                'susceptibility'],
+                           'observables_mean': [True]
+                           }
+    datasave = True
+    
+    
+    props_iter = {'algorithm':['wolff','metropolis']}
+    
+    s = system(L,d,T,model,update,observe,datasave)
+    s.MonteCarlo.MCUpdate(props_iter)

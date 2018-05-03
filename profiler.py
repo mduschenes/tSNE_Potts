@@ -67,6 +67,8 @@ class profiler(object):
         p = pstats.Stats(statsfile)
         p.strip_dirs().sort_stats('cumulative').print_stats()
         
+        
+        
 class profiler_graph(object):
     def __init__(self,module,num=''):
         from pycallgraph import PyCallGraph
@@ -77,16 +79,28 @@ class profiler_graph(object):
 
 num = 0
 if __name__ == "__main__":
-#    T = [5,2.5,2,1.5,1,0.5]
-#    T0 = 0.5
-#    L=6
-#    d=2
-#    num +=1
-#    
-#    from MagnetismModel import system
-#    
-#    profiler_graph(system(L,d,T0).MonteCarlo,num)
+    L=15
+    d=2
+    T = [3.0,2.5,1.75,1.2,0.8,0.5,0.2]
+    T0 = 0.25
+    model=['potts',2,[0,1]]
+    update = [True,10,10,1,1]
+    observe = {'configurations': [False,'sites','cluster'],
+                           'observables': [True,'temperature','energy',
+                                                'order','specific_heat',
+                                                'susceptibility'],
+                           'observables_mean': [True]
+                           }
+    datasave = False
     
-    from neural network import foo
-    profiler_graph(foo,3)
+    
+    props_iter = {'algorithm':['wolff','metropolis']}
+    num +=1
+#    
+    from MagnetismModel import system
+    
+    profiler_graph(system(L,d,T,model,update,observe,datasave).MonteCarlo,num)
+    
+#    from neural network import foo
+#    profiler_graph(foo,3)
     #profiler('MagnetismModel.system','MonteCarlo',L,d,T)

@@ -32,15 +32,19 @@ def display(printit=True,timeit=True,m='',t0=-2,line_break=False):
 
 def flatten(x,flattenint=True):
     # Return a 1d list of all elements in inner lists of x of arbirtrary shape
-    if not (isinstance(x,list)) or isinstance(x,tuple) or isinstance(x,str):
+    if not (isinstance(x,list)):
         return x
     elif len(x) == 1 and flattenint:
-        return x[0]
+        if isinstance(x[0],tuple) or isinstance(x[0],str):
+            return x
+        else:
+            return x[0]
     xlist = []
     for y in x:
         if isinstance(y,type([])):
             xlist.extend(flatten(y))
-        else: xlist.append(y)
+        else: 
+            xlist.append(y)
     return xlist
 
 def caps(word):
@@ -61,6 +65,7 @@ def get_attr(f,attr=None,f0=None,*args):
         
     except AttributeError:
         return f0 
+
 
 
 def array_dict(d):

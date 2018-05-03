@@ -153,7 +153,7 @@ class Data_Process(object):
         for keys_label,keys in Keys.items():
             #print(keys)
             keys_new = [k if k not in self.axes.get(keys_label,{}).keys() 
-                        else None for k in flatten(keys,False)]
+                        else None for k in flatten(keys)]
             
             if not None in keys_new:
                 
@@ -167,8 +167,7 @@ class Data_Process(object):
                 
                 fig.canvas.set_window_title('Figure: %d  %s'%(
                                                   fig.number,caps(keys_label)))
-                for k,a in zip(keys_new,
-                               flatten(np.atleast_1d(ax).tolist(),False)):
+                for k,a in zip(keys_new,flatten(np.atleast_1d(ax).tolist())):
                     if k is not None:
                         self.axes[keys_label][k] = a
                         self.figs[keys_label][k] = fig      

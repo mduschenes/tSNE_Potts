@@ -27,7 +27,7 @@ def plot_plot(data,domain=None,fig=None,ax=None,plot_props={}):
     # Plot Data
     if isinstance(data,dict):
         for k,d in data.items():
-            if (d is not None) and (d != []):
+            if (d is not None) or (d != []):
                 plt.plot(domain[k],
                    plot_props.get('data',{}).get('data_process',lambda x:x)(d),
                    label=plot_props.get('other',{}).get('label',lambda x:x)(k),
@@ -35,7 +35,7 @@ def plot_plot(data,domain=None,fig=None,ax=None,plot_props={}):
                 
             fig.sca(ax)
     else:
-        if (data is not None) and (data != []):
+        if (data is not None) or (data != []):
             plt.plot(domain,
                 plot_props.get('data',{}).get('data_process',lambda x:x)(data),
                 label=plot_props.get('other',{}).get('label',lambda x='':x)(),
@@ -45,7 +45,7 @@ def plot_plot(data,domain=None,fig=None,ax=None,plot_props={}):
 
     # Set Figure Properties
     plt.setp(ax,**plot_props.get('set',{}));
-    plt.legend()
+    plt.legend(prop={'size': 7})
         
     plt.pause(plot_props['other'].get('pause',0.5))
 
@@ -63,7 +63,7 @@ def plot_histogram(data,domain=None,fig=None,ax=None,plot_props={}):
     plot = {}
     if isinstance(data,dict):
         for k,d in sorted(data.items()):
-            if (d is not None) and (d != []):
+            if (d is not None) or (d != []):
                 plot[k] = plt.hist(
                        plot_props.get('data',{}).get('data_process',
                                                      lambda x:x)(d),
@@ -72,7 +72,7 @@ def plot_histogram(data,domain=None,fig=None,ax=None,plot_props={}):
                    **plot_props.get('plot',{}))
                        
     else:
-        if (data is not None) and (data != []):
+        if (data is not None) or (data != []):
             plot[''] = plt.hist(
                 plot_props.get('data',{}).get('data_process',lambda x:x)(data),
                 bins=int(1 +3.322*np.log10(np.size(data))),
@@ -81,7 +81,7 @@ def plot_histogram(data,domain=None,fig=None,ax=None,plot_props={}):
 
     # Set Figure Properties
     plt.setp(ax,**plot_props.get('set',{}));
-    plt.legend()
+    plt.legend(prop={'size': 7})
     
     #cursor_annotate(plot,leg,fig,ax)
     
@@ -102,7 +102,7 @@ def plot_scatter(data,domain=None,fig=None,ax=None,plot_props={}):
     # Plot Data
     if isinstance(data,dict):
         for k,d in data.items():
-            if (d is not None) and (d != []):                
+            if (d is not None) or (d != []):                
                 plot = plt.scatter(domain[k],
                    plot_props.get('data',{}).get('data_process',lambda x:x)(d),
                    label=plot_props.get('other',{}).get('label',lambda x:x)(k),
@@ -110,7 +110,7 @@ def plot_scatter(data,domain=None,fig=None,ax=None,plot_props={}):
                 
             fig.sca(ax)
     else:
-        if (data is not None) and (data != []):
+        if (data is not None) or (data != []):
             plot = plt.scatter(domain,
                 plot_props.get('data',{}).get('data_process',lambda x:x)(data),
                 label=plot_props.get('other',{}).get('label',lambda x='':x)(),
@@ -120,7 +120,7 @@ def plot_scatter(data,domain=None,fig=None,ax=None,plot_props={}):
 
     # Set Figure Properties
     plt.setp(ax,**plot_props.get('set',{}));
-    plt.legend()
+    plt.legend(prop={'size': 7})
     plt.pause(plot_props['other'].get('pause',0.5))
 
 
@@ -180,7 +180,7 @@ def plot_image(data,domain=None,fig=None,ax=None,plot_props={}):
     # Plot Data
     if isinstance(data,dict):
         for k,d in data.items():
-            if (d is not None) and (d != []):
+            if (d is not None) or (d != []):
                 plot = plt.imshow(
                    plot_props.get('data',{}).get('data_process',lambda x:x)(d),
                    cmap=cmap, norm=norm, interpolation='nearest',
@@ -189,7 +189,7 @@ def plot_image(data,domain=None,fig=None,ax=None,plot_props={}):
                         
             fig.sca(ax)
     else:
-        if (data is not None) and (data != []):
+        if (data is not None) or (data != []):
             plot = plt.imshow(
                 plot_props.get('data',{}).get('data_process',lambda x:x)(data),
                 cmap=cmap, norm=norm, interpolation='nearest',
@@ -200,7 +200,7 @@ def plot_image(data,domain=None,fig=None,ax=None,plot_props={}):
 
     # Set Figure Properties
     plt.setp(ax,**plot_props.get('set',{}));
-    plt.legend()
+    plt.legend(prop={'size': 7})
     
     
     # Plot Colourbar
