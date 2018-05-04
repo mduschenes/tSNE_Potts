@@ -52,7 +52,12 @@ class Data_Process(object):
             keys = [k for k in keys if data.get(k,[]) != []]
 
             if domain is None:
-                domain = {k: None for k in keys}
+                domain = {}
+                for k in keys:
+                    if isinstance(data[k],dict):
+                        domain[k] = {ki: None for ki in data[k].keys()}
+                    else:
+                        domain[k] = None
             
             self.figures_axes({data_key:keys})
 
@@ -74,18 +79,20 @@ class Data_Process(object):
                     fig.sca(ax)
     
                 # Plot Data
-#                try:
-                self.plot_func['plot_' + 
-                    plot_props[key]['data']['plot_type']](
-                    data[key],domain[key],fig,ax,plot_props[key])
+                try:
+                    self.plot_func['plot_' + 
+                                  plot_props[key]['data']['plot_type']](
+                                  data[key],domain[key],fig,ax,plot_props[key])
                 
-#                except AttributeError:
-#                    self.plot_func = plot_props[key]['data']['plot_type'](
-#                                data[key],domain[key],fig,ax,plot_props[key])
+                except AttributeError:
+                    self.plot_func = plot_props[key]['data']['plot_type'](
+                                data[key],domain[key],fig,ax,plot_props[key])
                 
                 
                 plt.suptitle(plot_props[key]['other'].get('sup_title',''))
                 
+                if plot_props.get('other',{}).get('sup_legend'):
+                    fig.legend(*(ax.get_legend_handles_labels()))
             
         return
             

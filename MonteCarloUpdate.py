@@ -350,15 +350,17 @@ class MonteCarloUpdate(object):
                                 'xlabel': '', 
                                 'ylabel': ''},
                       
-                      'plot':  {},
+                      'plot':  {'interpolation':'nearest'},
                       
                       'data':  {'plot_type':'image',
                                 'plot_range': '',
                                 'data_process':lambda data: np.real(data)},
                                 
-                      'other': {'cbar_plot':False, 'cbar_title':'Spin Values',
-                               'cbar_color':'bone','cbar_color_bad':'magenta',
-                                'label': '','pause':2,
+                      'other': {'label': lambda x='':x,
+                                'cbar_plot':False, 'cbar_title':'Spin Values',
+                                'cbar_color':'bone','cbar_color_bad':'magenta',
+                                'pause':2,
+                                'sup_legend': True,
                                 'sup_title': 'Monte Carlo Updates' + ' - '+ 
                                             caps(self.model_props['model'])+
                                             ' - '+
@@ -454,12 +456,15 @@ class MonteCarloUpdate(object):
                                 'plot_range': '',
                                 'data_process':lambda data: np.real(data)},
                                 
-                      'other': {'cbar_plot':True,  'cbar_title':'Spin Values',
-                               'cbar_color':'bone','cbar_color_bad':'magenta',
-                               'label':'',
-                               'sup_title': 'Observables Histogram - %s'%(
-                                            caps(self.model_props['model'])) + 
-                                            ' - q = %d'%(
+                      'other': {'label': lambda x='':x,
+                                'sup_legend': True,
+                                'sup_title': 'Observables Histogram - %s'\
+                                            '- q = %d \n Neqb = %d   '\
+                                            'Nmeas = %d   Nmeas_freq = %d'%(
+                                            caps(self.model_props['model']),
+                                            self.Neqb/self.Nspins,
+                                            self.Nmeas/self.Nspins,
+                                            self.Nmeas_f/self.Nspins,
                                             self.model_props['q'] + (1 if 
                                              self.model_props['model']=='ising' 
                                              else 0)),
@@ -523,22 +528,26 @@ class MonteCarloUpdate(object):
                                 'xlabel': '', 
                                 'ylabel': ''},
                       
-                      'plot':  {},
+                      'plot':  {'marker':'-*'},
                       
                       'data':  {'plot_type':'plot',
                                 'plot_range': '',
                                 'data_process':''
                                },
                                 
-                      'other': {'cbar_plot':True,  'cbar_title':'Spin Values',
-                               'cbar_color':'bone','cbar_color_bad':'magenta',
-                               'label':'',
-                               'sup_title': 'Observables Plots - %s'%(
-                                            caps(self.model_props['model'])) + 
-                                            ' - q = %d'%(
+                      'other': {'label': lambda x='':x,
+                                 'sup_legend': True,
+                                 'sup_title': 'Observables Histogram - %s'\
+                                            '- q = %d \n Neqb = %d   '\
+                                            'Nmeas = %d   Nmeas_freq = %d'%(
+                                            caps(self.model_props['model']),
                                             self.model_props['q'] + (1 if 
-                                             self.model_props['model']=='ising' 
-                                             else 0)),
+                                            self.model_props['model']=='ising' 
+                                                                      else 0),
+                                            self.Neqb/self.Nspins,
+                                            self.Nmeas/self.Nspins,
+                                            self.Nmeas_f/self.Nspins
+                                           ),
                                 'pause':2}
                      }
                     for k in keys}
