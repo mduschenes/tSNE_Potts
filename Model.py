@@ -215,7 +215,7 @@ class Model(object):
     def potts_order(self,s,u=1):
         return np.mean(np.array([(self.q*np.mean(self.potts_int(s,u),
                                  axis=-1)- 1)/(self.q-1)
-                         for u in range(1,2)]),axis=0)
+                         for u in range(1,self.q)]),axis=0)
 
     def potts_twoptcorr(self,s):
         shape_l = np.shape(s)[-1]

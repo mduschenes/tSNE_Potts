@@ -88,10 +88,10 @@ class system(object):
 if __name__ == "__main__":
     L=15
     d=2
-    T = [3.0,2.5,1.75]#,1.2,0.8,0.5,0.2]
+    T = [3.0,2.5,1.75,1.2,0.8,0.5,0.2]
     T0 = 0.25
-    model=['potts',3,[0,1]]
-    update = [True,10,10,1,1]
+    model=['potts',4,[0,1]]
+    update = [True,500,1000,1,1]
     observe = {'configurations': [False,'sites','cluster'],
                            'observables': [True,'temperature','energy',
                                                 'order','specific_heat',

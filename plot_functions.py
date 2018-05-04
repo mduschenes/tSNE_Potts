@@ -85,6 +85,7 @@ def plot_decorator(plot_func):
         
         if not plot_props.get('other',{}).get('sup_legend'):
             plt.legend(prop={'size': 7})
+
         
         
         
@@ -125,7 +126,7 @@ def plot_plot(x,y,props):
 
 @plot_decorator
 def plot_histogram(x,y,props):
-    props['bins'] = int(1 +3.322*np.log10(np.size(y)))
+    props['bins'] = 20 #int(1+3.322*np.log10(np.size(y))
     plot = plt.hist(y,**props)
     return plot
 

@@ -249,11 +249,15 @@ class MonteCarloUpdate(object):
             
             
             
+        display(m='Observables Calculated')
 
         self.plotter['observables'](self.T,[p['algorithm']
                                             for p in props_iter])
         self.plotter['observables_mean'](self.T,[p['algorithm']
                                                   for p in props_iter])
+        
+        display(m='Figures Plotted')
+
         
         for k,obj in self.plot_obj.items():
             if obj:
@@ -459,15 +463,17 @@ class MonteCarloUpdate(object):
                       'other': {'label': lambda x='':x,
                                 'sup_legend': True,
                                 'sup_title': 'Observables Histogram - %s'\
-                                            '- q = %d \n Neqb = %d   '\
+                                            ' - q = %d \n T =  %s '\
+                                            '\n Neqb = %d   '\
                                             'Nmeas = %d   Nmeas_freq = %d'%(
                                             caps(self.model_props['model']),
-                                            self.Neqb/self.Nspins,
-                                            self.Nmeas/self.Nspins,
-                                            self.Nmeas_f/self.Nspins,
                                             self.model_props['q'] + (1 if 
                                              self.model_props['model']=='ising' 
-                                             else 0)),
+                                             else 0),
+                                            str(self.T),
+                                            self.Neqb/self.Nspins,
+                                            self.Nmeas/self.Nspins,
+                                            self.Nmeas_f/self.Nspins),
                                 'pause':2}
                      }
                     for k in keys}
@@ -528,7 +534,7 @@ class MonteCarloUpdate(object):
                                 'xlabel': '', 
                                 'ylabel': ''},
                       
-                      'plot':  {'marker':'-*'},
+                      'plot':  {'marker':'*'},
                       
                       'data':  {'plot_type':'plot',
                                 'plot_range': '',
@@ -537,18 +543,18 @@ class MonteCarloUpdate(object):
                                 
                       'other': {'label': lambda x='':x,
                                  'sup_legend': True,
-                                 'sup_title': 'Observables Histogram - %s'\
-                                            '- q = %d \n Neqb = %d   '\
+                                 'sup_title': 'Observables - %s'\
+                                            ' - q = %d \n T =  %s '\
+                                            '\n Neqb = %d   '\
                                             'Nmeas = %d   Nmeas_freq = %d'%(
                                             caps(self.model_props['model']),
                                             self.model_props['q'] + (1 if 
-                                            self.model_props['model']=='ising' 
-                                                                      else 0),
+                                             self.model_props['model']=='ising' 
+                                             else 0),
+                                            str(self.T),
                                             self.Neqb/self.Nspins,
                                             self.Nmeas/self.Nspins,
-                                            self.Nmeas_f/self.Nspins
-                                           ),
-                                'pause':2}
+                                            self.Nmeas_f/self.Nspins)}
                      }
                     for k in keys}
              
@@ -580,7 +586,7 @@ class MonteCarloUpdate(object):
             
             def data_process(k,*args):
                 if k == 'order':
-                    return lambda x:  np.mean(np.abs(x),axis=-1)
+                    return lambda x:  np.mean(x,axis=-1)
                 else:
                     return lambda x:  np.mean(x,axis=-1)
             

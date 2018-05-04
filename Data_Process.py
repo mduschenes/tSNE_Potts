@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import os.path
 
 
-from ModelFunctions import flatten,dict_check, one_hot,caps
+from ModelFunctions import flatten,dict_check, one_hot,caps,display
 from plot_functions import *
 
 
@@ -17,7 +17,7 @@ from plot_functions import *
 class Data_Process(object):
     
     # Create figure and axes dictionaries for dataset keys
-    def __init__(self,keys=[None],plot=False):
+    def __init__(self,keys=[None],plot=True):
     
     
         # Initialize figures and axes dictionaries
@@ -43,6 +43,15 @@ class Data_Process(object):
 
         if self.plot:
             
+            plot_key = ''
+            
+            if not isinstance(data,dict):
+                data = {plot_key: data}
+            
+            if not isinstance(plot_props,dict):
+                plot_props = {plot_key: {}}
+                
+            
             if data_key is None:
                 data_key = self.data_key
             
@@ -51,6 +60,8 @@ class Data_Process(object):
 
             keys = [k for k in keys if data.get(k,[]) != []]
 
+
+
             if domain is None:
                 domain = {}
                 for k in keys:
@@ -58,19 +69,25 @@ class Data_Process(object):
                         domain[k] = {ki: None for ki in data[k].keys()}
                     else:
                         domain[k] = None
+            elif not isinstance(domain,dict):
+                domain = {plot_key: domain}
             
+            # Create Figures and Axes
             self.figures_axes({data_key:keys})
-
+            
+            display(m='Figures Created')
+            
             # Plot for each data key
             for key in keys:
 
+                props = plot_props.get(key,{})
+                
                 try:
                     ax = self.axes[data_key][key]
                     fig = self.figs[data_key][key]
                     plt.figure(fig.number)
                     fig.sca(ax)
                 except:
-                    print('error')
                     self.figures_axes({data_key:keys})
                     
                     ax = self.axes[data_key][key]
@@ -80,18 +97,20 @@ class Data_Process(object):
     
                 # Plot Data
                 try:
-                    self.plot_func['plot_' + 
-                                  plot_props[key]['data']['plot_type']](
-                                  data[key],domain[key],fig,ax,plot_props[key])
+                    self.plot_func['plot_' + props.get(
+                                   'data',{}).get('plot_type','plot')](
+                                  data[key],domain[key],fig,ax,props)
                 
                 except AttributeError:
-                    self.plot_func = plot_props[key]['data']['plot_type'](
-                                data[key],domain[key],fig,ax,plot_props[key])
+                    self.plot_func = props.get('data',{}).get('plot_type')(
+                                data[key],domain[key],fig,ax,props)
                 
+                display(m='Figure %s Created'%plot_props[key]['data']['plot_type'])
                 
-                plt.suptitle(plot_props[key]['other'].get('sup_title',''))
+                plt.suptitle(plot_props[key].get(
+                                            'other',{}).get('sup_title',''))
                 
-                if plot_props.get('other',{}).get('sup_legend'):
+                if plot_props[key].get('other',{}).get('sup_legend'):
                     fig.legend(*(ax.get_legend_handles_labels()))
             
         return
@@ -158,9 +177,9 @@ class Data_Process(object):
             Keys = {self.data_key: Keys}
                
         for keys_label,keys in Keys.items():
-            #print(keys)
+
             keys_new = [k if k not in self.axes.get(keys_label,{}).keys() 
-                        else None for k in flatten(keys)]
+                        else None for k in flatten(keys,False)]
             
             if not None in keys_new:
                 
