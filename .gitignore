@@ -5,7 +5,8 @@
 # Specific Files
 *Data/
 
-/Neural_Network\network_process.py
+**/*cython*\**
+**/Neural_Network\**
 
 OLD*/
 **/OLD*/

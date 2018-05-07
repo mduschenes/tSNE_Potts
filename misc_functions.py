@@ -11,8 +11,6 @@ import numpy as np
 import time
 
 
-
-
 ##### Model Functions ########
 
 times = [time.clock()]
@@ -47,12 +45,22 @@ def flatten(x,flattenint=True):
             xlist.append(y)
     return xlist
 
-def caps(word):
+def caps(word,every_word=False,sep_char=' ',split_char=' '):
     try:
-        return word[0].upper()+word[1:].lower()
+        if not every_word:
+            return word[0].upper()+word[1:].lower()
+        else:
+            return sep_char.join([w[0].upper()+w[1:].lower() 
+                                 for w in word.split(split_char)])
     except IndexError:
         return word
 
+def str_split(word,split_char='_',sep_char=' '):
+    return sep_char.join(word.split(split_char))
+
+
+def list_sort(a,j):
+    return list(zip(*sorted(list(zip(*a)),key=lambda i:i[j])))
 
 
 def get_attr(f,attr=None,f0=None,*args):
@@ -86,11 +94,21 @@ def dict_check(dictionary,key):
         return dictionary
     
 
-
+def dict_make(vals,keys,val_type='constant'):
+    if len(keys)>1 and np.size(keys[0])>1:
+        return {k: dict_make(vals,keys[1:],val_type) 
+                for k in np.atleast_1d(keys[0])}
+    else:
+        keys = np.atleast_1d(keys[0])
+        if val_type=='callable':
+            return {k: vals(k) for k in keys}
+        elif val_type=='iterable':
+            return {k: vals[i] for i,k in enumerate(keys)}
+        elif val_type == 'constant':
+            return {k: vals for k in keys}
 
 # Sort 2-dimensional a by elements in 1-d array b
 def array_sort(a,b,axis=0,dtype='list'):
-    
     b = np.reshape(b,(-1,))
     
     if dtype == 'dict':
@@ -102,7 +120,10 @@ def array_sort(a,b,axis=0,dtype='list'):
         return ([np.reshape(np.take(a,np.where(b==i),axis),
                        (-1,)+np.shape(a)[1:]) for i in sorted(set(b))],
                          sorted(set(b)))
-    
+    elif dtype == 'ndarray':
+        return (np.array([np.reshape(np.take(a,np.where(b==i),axis),
+                       (-1,)+np.shape(a)[1:]) for i in sorted(set(b))]),
+                         sorted(set(b)))
     elif dtype == 'sorted':
         return np.concatenate(
                             [np.reshape(np.take(a,np.where(b==i),axis),
@@ -131,7 +152,12 @@ def one_hot(X,n=None):
     return np.reshape(y,(-1,n))
 
 
-
+def dict_modify(D,T=None,f=lambda k,v: v,i=[0,None],j=[0,None]): 
+   if T:
+       return  {t[j[0]:j[1]]: {k[i[0]:i[1]]: f(k,v) for k,v in D.items() 
+                if t in k} for t in T}
+   else:
+       return {k[i[0]:i[1]]: f(v) for k,v in D.items()}
 
 
 
@@ -194,12 +220,7 @@ def one_hot(X,n=None):
 #    return {k: False if k in np.atleast_1d(keys0) else True for k in a.keys()}
 #
 #
-#def dict_modify(D,T=None,f=lambda k,v: v,i=[0,None],j=[0,None]): 
-#   if T:
-#       return  {t[j[0]:j[1]]: {k[i[0]:i[1]]: f(k,v) for k,v in D.items() 
-#                if t in k} for t in T}
-#   else:
-#       return {k[i[0]:i[1]]: f(v) for k,v in D.items()}
+
 #    
 #def delta_f(x,y,f=np.multiply):
 #    return np.ones(np.size((x*y)[x==y]))

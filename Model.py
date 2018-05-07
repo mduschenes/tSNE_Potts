@@ -6,7 +6,7 @@ Created on Mon Feb 19 20:23:39 2018
 
 import numpy as np
 
-from ModelFunctions import get_attr
+from misc_functions import get_attr
 
 
 class Model(object):
@@ -115,7 +115,7 @@ class Model(object):
     
     
     
-##### Model Observables #########
+##### Model Observables (per site) #########
          
     def temperature(self,sites,neighbours,T):
         return T
@@ -215,7 +215,7 @@ class Model(object):
     def potts_order(self,s,u=1):
         return np.mean(np.array([(self.q*np.mean(self.potts_int(s,u),
                                  axis=-1)- 1)/(self.q-1)
-                         for u in range(1,self.q)]),axis=0)
+                         for u in range(1,2)]),axis=0)
 
     def potts_twoptcorr(self,s):
         shape_l = np.shape(s)[-1]

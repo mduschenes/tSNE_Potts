@@ -9,8 +9,8 @@ import warnings,copy
 warnings.filterwarnings("ignore")
 
 
-from Data_Process import Data_Process
-from ModelFunctions import flatten,array_dict, caps, display
+from data_functions import Data_Process
+from misc_functions import flatten,array_dict, caps, display
 
 
 class MonteCarloUpdate(object):
@@ -166,7 +166,7 @@ class MonteCarloUpdate(object):
             
             
     # Perform Monte Carlo Update Algorithm and Plot Sites and Observables            
-    def MCUpdate(self,props_iter={'algorithm':'wolff'}):
+    def MCUpdate(self,props_iter={'algorithm':'wolff'},disp_updates=True):
         
         # Initialize props_iter as array of dictionaries
         props_iter,n_iter = array_dict(props_iter)
@@ -181,7 +181,8 @@ class MonteCarloUpdate(object):
                                     for _ in range(n_iter)])
         
         
-        display(True,False,'Monte Carlo Simulation... \n%s: q = %d \nT = %s'%(
+        display(disp_updates,False,
+                'Monte Carlo Simulation... \n%s: q = %d \nT = %s'%(
                       (self.model_props['model'],self.model_props['q'],
                        str(self.T))) + '\nNeqb = %d, Nmeas = %d'%(
                                  self.Neqb/self.Nspins,self.Nmeas/self.Nspins),
@@ -203,9 +204,9 @@ class MonteCarloUpdate(object):
             
             self.prob_update = self.model_props['prob_update'][
                                        self.model_props['algorithm']]
-            #self.plot_obj['configurations'] = self.plot_init('configurations')
+            self.plot_obj['configurations'] = self.plot_init('configurations')
     
-            display(1,0,'Iter %d: %s Algorithm'%(
+            display(disp_updates,0,'Iter %d: %s Algorithm'%(
                                    i_iter,caps(self.model_props['algorithm'])))
     
     
@@ -229,13 +230,14 @@ class MonteCarloUpdate(object):
                     if i_mc % self.Nmeas_f == 0:
                         self.data['sites'][i_iter,i_t,i_mc//self.Nmeas_f,:] = (
                                                            np.copy(self.sites))
-                        #self.plotter['configurations']([t],[],i_mc/self.Nspins)                
+                        self.plotter['configurations']([t],[],i_mc/self.Nspins)                
               
-                display(m='Updates: T = %0.2f'%t)
+                display(printit=disp_updates,m='Updates: T = %0.2f'%t)
             
             
             
-            display(m='Runtime: ',t0=-(len(self.T)+2),line_break=True)
+            display(printit=disp_updates,
+                    m='Runtime: ',t0=-(len(self.T)+2),line_break=True)
                 
                 
         # Compute, Plot and Save Observables Data and Figures
@@ -249,14 +251,14 @@ class MonteCarloUpdate(object):
             
             
             
-        display(m='Observables Calculated')
+        display(printit=disp_updates,m='Observables Calculated')
 
         self.plotter['observables'](self.T,[p['algorithm']
                                             for p in props_iter])
         self.plotter['observables_mean'](self.T,[p['algorithm']
                                                   for p in props_iter])
         
-        display(m='Figures Plotted')
+        display(printit=disp_updates,m='Figures Plotted')
 
         
         for k,obj in self.plot_obj.items():
@@ -364,11 +366,13 @@ class MonteCarloUpdate(object):
                                 'cbar_plot':False, 'cbar_title':'Spin Values',
                                 'cbar_color':'bone','cbar_color_bad':'magenta',
                                 'pause':2,
-                                'sup_legend': True,
-                                'sup_title': 'Monte Carlo Updates' + ' - '+ 
+                                'sup_legend': False,
+                                'sup_title': {'t':'Monte Carlo Updates' 
+                                               + ' - '+ 
                                             caps(self.model_props['model'])+
                                             ' - '+
                                             caps(self.model_props['algorithm'])
+                                            }
                                 }
                      }
                     for k in keys}
@@ -462,7 +466,7 @@ class MonteCarloUpdate(object):
                                 
                       'other': {'label': lambda x='':x,
                                 'sup_legend': True,
-                                'sup_title': 'Observables Histogram - %s'\
+                                'sup_title': {'t':'Observables Histogram - %s'\
                                             ' - q = %d \n T =  %s '\
                                             '\n Neqb = %d   '\
                                             'Nmeas = %d   Nmeas_freq = %d'%(
@@ -473,7 +477,7 @@ class MonteCarloUpdate(object):
                                             str(self.T),
                                             self.Neqb/self.Nspins,
                                             self.Nmeas/self.Nspins,
-                                            self.Nmeas_f/self.Nspins),
+                                            self.Nmeas_f/self.Nspins)},
                                 'pause':2}
                      }
                     for k in keys}
@@ -543,7 +547,7 @@ class MonteCarloUpdate(object):
                                 
                       'other': {'label': lambda x='':x,
                                  'sup_legend': True,
-                                 'sup_title': 'Observables - %s'\
+                                 'sup_title': {'t':'Observables - %s'\
                                             ' - q = %d \n T =  %s '\
                                             '\n Neqb = %d   '\
                                             'Nmeas = %d   Nmeas_freq = %d'%(
@@ -554,7 +558,7 @@ class MonteCarloUpdate(object):
                                             str(self.T),
                                             self.Neqb/self.Nspins,
                                             self.Nmeas/self.Nspins,
-                                            self.Nmeas_f/self.Nspins)}
+                                            self.Nmeas_f/self.Nspins)}}
                      }
                     for k in keys}
              

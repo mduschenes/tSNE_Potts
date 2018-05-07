@@ -6,12 +6,11 @@ Created on Mon Apr 23 02:43:27 2018
 """
 import numpy as np
 import copy
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-
-import matplotlib
 matplotlib.rcParams['mathtext.fontset'] = 'custom'
 matplotlib.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
 #matplotlib.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
@@ -54,6 +53,7 @@ def plot_decorator(plot_func):
             plot_props.get('plot',{})['norm'] = norm
         
         # Plot Data
+        
         if isinstance(data,dict):
             plot = {}
             for k,d in data.items():
@@ -109,7 +109,7 @@ def plot_decorator(plot_func):
                 cbar.set_ticklabels(cbar_vals)
         
         
-        plt.pause(plot_props['other'].get('pause',0.5))
+        plt.pause(plot_props['other'].get('pause',0.01))
         
         # Reset plot_props
         plot_props = plot_props0
@@ -138,7 +138,8 @@ def plot_scatter(x,y,props):
 
 
 @plot_decorator
-def plot_image(x,y,props):    
+def plot_image(x,y,props):  
+    plt.cla()
     plot = plt.imshow(y,**props)
     return plot
 

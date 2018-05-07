@@ -8,7 +8,7 @@ import datetime
 from Lattice import Lattice
 from Model import Model
 from MonteCarloUpdate import MonteCarloUpdate
-from ModelFunctions import caps
+from misc_functions import caps
 
 
 
@@ -86,22 +86,35 @@ class system(object):
     
 # Run System for Temperatures and Iteration Configurations  
 if __name__ == "__main__":
+    
+    # System Parameters
     L=15
     d=2
     T = [3.0,2.5,1.75,1.2,0.8,0.5,0.2]
+    Tlow = [0.5,0.25,0.15,0.1,0.05,0.02]
     T0 = 0.25
     model=['potts',4,[0,1]]
-    update = [True,500,1000,1,1]
+    update = [True,200,200,1,1]
     observe = {'configurations': [False,'sites','cluster'],
-                           'observables': [True,'temperature','energy',
+                           'observables': [False,'temperature','energy',
                                                 'order','specific_heat',
                                                 'susceptibility'],
-                           'observables_mean': [True]
-                           }
+                           'observables_mean': [False]
+              }
     datasave = True
     
     
+    # Monte Carlo Simulation Parameters (with Update, Observe Parameters)
     props_iter = {'algorithm':['wolff','metropolis']}
+    disp_updates = True
     
     s = system(L,d,T,model,update,observe,datasave)
-    s.MonteCarlo.MCUpdate(props_iter)
+    s.MonteCarlo.MCUpdate(props_iter,disp_updates=disp_updates)
+
+    # Optional Plotting if Plotting=False during Simulation
+    for t in ['observables','observables_mean']:
+        s.MonteCarlo.plot_obj[t].plot=True
+        s.MonteCarlo.plotter[t](T,[p for p in props_iter['algorithm']])
+    for k,obj in  s.MonteCarlo.plot_obj.items():
+        if obj:
+            obj.plot_save( s.MonteCarlo.model_props,k) 

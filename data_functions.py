@@ -4,20 +4,20 @@ Created on Sat Mar 24 19:54:38 2018
 @author: Matt
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import os.path
 
 
-from ModelFunctions import flatten,dict_check, one_hot,caps,display
-from plot_functions import *
+from misc_functions import flatten,dict_check, one_hot,caps,list_sort
+import plot_functions
 
 
 
 class Data_Process(object):
     
     # Create figure and axes dictionaries for dataset keys
-    def __init__(self,keys=[None],plot=True):
+    def __init__(self,keys=[None],plot=False):
     
     
         # Initialize figures and axes dictionaries
@@ -31,9 +31,6 @@ class Data_Process(object):
             # Create Figures and Axes with keys
             self.figures_axes(keys)
     
-            # Define Possible Plotting Functions
-            plot_func = globals()
-            self.plot_func = {k: v for k,v in plot_func.items() if 'plot_'in k}
         return  
     
 
@@ -43,44 +40,51 @@ class Data_Process(object):
 
         if self.plot:
             
-            plot_key = ''
+            # Ensure Data, Domain and Keys are Dictionaries
             
+            plot_key = ''
             if not isinstance(data,dict):
                 data = {plot_key: data}
             
-            if not isinstance(plot_props,dict):
-                plot_props = {plot_key: {}}
-                
-            
             if data_key is None:
                 data_key = self.data_key
+        
+            
             
             if keys is None:
-                keys = list(data.keys())
+                keys = [k for k in data.keys() if k in self.axes.get(data_key,
+                                                                   data.keys())
+                                               or k == plot_key]
 
             keys = [k for k in keys if data.get(k,[]) != []]
 
 
-
-            if domain is None:
-                domain = {}
-                for k in keys:
-                    if isinstance(data[k],dict):
-                        domain[k] = {ki: None for ki in data[k].keys()}
+            dom = {}
+            for k in keys:    
+                if not isinstance(domain,dict) and isinstance(data[k],dict):
+                    dom[k] =  {ki: domain for ki in data[k].keys()}
+                elif not isinstance(domain,dict):
+                    dom[k] = domain
+                elif isinstance(data[k],dict):
+                    if isinstance(domain[k],dict):
+                        dom[k] = {ki: domain[k][ki] for ki in data[k].keys()}
                     else:
-                        domain[k] = None
-            elif not isinstance(domain,dict):
-                domain = {plot_key: domain}
+                        dom[k] = {ki: domain[k] for ki in data[k].keys()}
+                else:
+                    dom = domain
+            
+            domain = dom
+                    
+            
             
             # Create Figures and Axes
-            self.figures_axes({data_key:keys})
+            self.figures_axes({data_key:keys})            
             
-            display(m='Figures Created')
-            
+#            display(m='Figures Created')
             # Plot for each data key
             for key in keys:
 
-                props = plot_props.get(key,{})
+                props = plot_props.get(key,plot_props)
                 
                 try:
                     ax = self.axes[data_key][key]
@@ -96,22 +100,24 @@ class Data_Process(object):
                     fig.sca(ax)
     
                 # Plot Data
-                try:
-                    self.plot_func['plot_' + props.get(
-                                   'data',{}).get('plot_type','plot')](
-                                  data[key],domain[key],fig,ax,props)
+#                try:
+                getattr(plot_functions,
+                            'plot_' + props.get(
+                                    'data',{}).get('plot_type','plot'))(
+                                     data[key],domain[key],fig,ax,props)
                 
-                except AttributeError:
-                    self.plot_func = props.get('data',{}).get('plot_type')(
-                                data[key],domain[key],fig,ax,props)
+#                except AttributeError:
+#                    props.get('data',{}).get('plot_type')(
+#                                data[key],domain[key],fig,ax,props)
                 
-                display(m='Figure %s Created'%plot_props[key]['data']['plot_type'])
+#                display(m='Figure %s Created'%(
+#                                         plot_props[key]['data']['plot_type']))
                 
-                plt.suptitle(plot_props[key].get(
-                                            'other',{}).get('sup_title',''))
+                plt.suptitle(**plot_props[key].get(
+                                            'other',{}).get('sup_title',{}))
                 
                 if plot_props[key].get('other',{}).get('sup_legend'):
-                    fig.legend(*(ax.get_legend_handles_labels()))
+                    fig.legend(*(list_sort(ax.get_legend_handles_labels(),1)))
             
         return
             
@@ -191,7 +197,7 @@ class Data_Process(object):
 
                 fig, ax = plt.subplots(*(np.shape(keys)[:2]))
                 
-                fig.canvas.set_window_title('Figure: %d  %s'%(
+                fig.canvas.set_window_title('Figure: %d  %s Datasets'%(
                                                   fig.number,caps(keys_label)))
                 for k,a in zip(keys_new,flatten(np.atleast_1d(ax).tolist())):
                     if k is not None:
@@ -209,7 +215,6 @@ class Data_Process(object):
     def importer(self,data_params = 
                     {'data_files': ['x_train','y_train','x_test','y_test'],
                      'data_sets': ['x_train','y_train','x_test','y_test'],
-                     'data_types': ['train','test','other'],
                      'data_format': 'npz',
                      'data_dir': 'dataset/',
                      'one_hot': False
