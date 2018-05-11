@@ -55,6 +55,15 @@ def caps(word,every_word=False,sep_char=' ',split_char=' '):
     except IndexError:
         return word
 
+def attr_wrapper(attribute={}):
+	def attr_decorator(func):
+		def  attr_func(*args,**kwargs):
+			for a,v in attribute.items():
+				setattr(attr_func,a,v(*args,**kwargs))
+			return func(*args,**kwargs)
+		return attr_func	
+	return attr_decorator
+	
 def str_split(word,split_char='_',sep_char=' '):
     return sep_char.join(word.split(split_char))
 
