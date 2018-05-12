@@ -10,7 +10,7 @@ import argparse
 
 from Lattice import Lattice
 from Model import Model
-from MonteCarloUpdate import MonteCarloUpdate
+from MonteCarloUpdate_cython import MonteCarloUpdate
 from misc_functions import caps
 
 
@@ -65,7 +65,7 @@ class system(object):
                             'state_range': m.state_range,
                             'state_gen': m.state_gen,
                             'state_int': m.model_params['int'],
-                            'prob_update': m.model_params['prob_update'],
+                            'state_update': m.model_params['state_update'],
                             'algorithm': 'wolff',
                             'algorithms': ['metropolis','wolff'],
 							'update': update,
@@ -96,22 +96,23 @@ class system(object):
 # Parser Object
 parser = argparse.ArgumentParser(description = "Parse Arguments")
 # group = parser.add_mutually_exclusive_group()
-
+# group.add_argument("-v","--verbose",help = "verbosity measure",
+                     # action='count')# choices=[0,1,2])#action="store_true")
 # Add Args
 parser.add_argument('-L','--L',help = 'System Length Scale',
 					type=int,default=15)# choices=[0,1,2])#action="store_true")
 
-parser.add_argument('-d','--dimension',help = 'System Dimension',
+parser.add_argument('-d','--d',help = 'System Dimension',
 					type=int,default=2)
 
-parser.add_argument('-q','--q_parameter',help = 'Model spin range',
+parser.add_argument('-q','--q',help = 'Model spin range',
 					type=int,default=2)
 
-parser.add_argument('-m','--model',help = 'Model Type',
+parser.add_argument('-m','--m',help = 'Model Type',
 					type=str,default='potts')
 
-parser.add_argument('-T','--temperature',help = 'System Temperature',
-					nargs = '+')
+parser.add_argument('-T','--T',help = 'System Temperature',
+					nargs = '+',type=float)
 
 
 # Parse Args Command
@@ -120,10 +121,10 @@ args = parser.parse_args()
 if __name__ == "__main__":
     
     # System Parameters
-	L=args.L
+	L=15
 	d=2
 	q = 2
-	T = [3.0,2.5,1.75,1.2]
+	T = [3.0,2.5,1.75,1.2,1.0,0.8,0.5]
 	Tlow = [0.5,0.25,0.15,0.1,0.05,0.02]
 	T0 = 0.25
 	m = 'potts'
@@ -133,7 +134,7 @@ if __name__ == "__main__":
 						   'observables': [False,'energy',
 												'order','specific_heat',
 												'susceptibility'],
-						   'observables_mean': [False]
+						   'observables_mean': [True]
 			  }
 	datasave = True
 
@@ -142,5 +143,6 @@ if __name__ == "__main__":
 	props_iter = {'algorithm':['wolff','metropolis']}
 	disp_updates = True
 
-	s = system(L,d,T,q,m,model,update,observe,datasave)
+	s = system(**vars(args),model=model,update=update,
+				observe=observe,datasave=datasave)
 	s.MonteCarlo.MC_update(props_iter,disp_updates=disp_updates) 

@@ -33,7 +33,7 @@ class Model(object):
 		self.model_types = ['ising','potts']
         
 		# Define model specific parameters
-		self.models_params = {'ising': {'prob_update': {
+		self.models_params = {'ising': {'state_update': {
 				
 											'metropolis': {(dE,t): 
 											  np.exp(-self.orderparam[1]*dE/t) 
@@ -47,7 +47,7 @@ class Model(object):
 												
 									   'value_range': [-self.q,self.q,0]},
 							
-							'potts':  {'prob_update': {
+							'potts':  {'state_update': {
 									
 											'metropolis': {(dE,t): 
 											  np.exp(-self.orderparam[1]*dE/t) 
@@ -201,7 +201,7 @@ class Model(object):
 	
 	def potts_int(self,*args):
 		try:
-			return np.equal(args[0],args[1])
+			return 1*np.equal(args[0],args[1])
 		except IndexError:
 			return args[0]
 		

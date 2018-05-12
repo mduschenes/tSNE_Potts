@@ -322,7 +322,7 @@ class Data_Process(object):
 			
 			np.savez_compressed(data_params['data_dir'] + 
 								file(k) +
-								label + file_end,a=v) 
+								label + file_end,a=v)
 		return     
             
         
