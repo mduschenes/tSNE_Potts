@@ -18,7 +18,9 @@ warnings.filterwarnings("ignore")
 from data_functions import Data_Process
 from misc_functions import flatten,array_dict, caps, display
 
+
 ctypedef  long  SITE_TYPE
+
 
 
 # cdef extern from "stdlib.h":
@@ -49,20 +51,11 @@ cdef class MonteCarloUpdate(object):
 	# Declare Class Attributes
 
 	# Define System Configuration
-	cdef object sites, cluster, neighbour_sites, nearest_neighbours
-	cdef ndarray T
-	cdef int Nspins
-	cdef float t
-
-	# Define Monte Carlo Update Parameters:
-	cdef bint mcupdate
-	cdef int Neqb, Nmeas, Nmeas_f, Ncluster
-	cdef object update, state_int, state_gen, state_update
-
+	cdef object sites, cluster
+	cdef int N_sites
 
 	# Define Configurations and Observables Data Dictionaries
-	cdef dict model_props,data    
-	cdef object plot_obj
+	cdef dict model_props,data
 
 	def __init__(self,model_props):
 
@@ -76,7 +69,7 @@ cdef class MonteCarloUpdate(object):
         # State Transition Parameters:
         #                                 Transition Probability prob_transiton
         #                                 Transition Values site_states
-        # Observe: [Boolean to Animate [Sites, Observables]]
+        # observe_props: [Boolean to Animate [Sites, Observables]]
 
 
 #        model_props = {'L': L, 'd': d, 'q': m.q, 'T': T,
@@ -86,11 +79,11 @@ cdef class MonteCarloUpdate(object):
 #                                           'wolff':m.model_params[
 #                                                   m.model.__name__][
 #                                                   'bond_prob']},
-#                            'model': m.model.__name__,
+#                            'model_name': m.model.__name__,
 #                            'algorithm': 'wolff',
 #                            'algorithms': ['metropolis','wolff'],
 #                            'update': update,
-#                            'observe': observe,
+#                            'observe_props': observe_props,
 #                            'observables': m.observables_functions,
 #                            'observables_props': m.observables_props,
 #                            'observables_mean': m.obs_mean,
@@ -107,34 +100,26 @@ cdef class MonteCarloUpdate(object):
 
 
 		# Define System Configuration
-		self.neighbour_sites = model_props['neighbour_sites']
-		self.nearest_neighbours = self.neighbour_sites[0]
-
-
-		self.Nspins = np.shape(self.neighbour_sites)[1]
-		self.T = np.atleast_1d(model_props['T'])
-		self.sites = np.zeros(self.Nspins,dtype=np.int_)
-		self.cluster = np.zeros(self.Nspins,dtype=int)
+		model_props['T'] = np.atleast_1d(model_props['T'])
+		model_props['N_sites'] = np.shape(model_props['neighbour_sites'])[1]
+		self.N_sites = np.shape(model_props['neighbour_sites'])[1]
+		
+		self.sites = np.zeros(self.N_sites,dtype=np.int_)
+		self.cluster = np.zeros(self.N_sites,dtype=int)
 
 		# Define Monte Carlo Update Parameters:
 		# Number of updates to reach "equilibrium" before measurement, 
 		# Number of measurement updates.
-		update = model_props['update']
-		self.mcupdate = update[0]
-		self.Neqb = int(((1) if update[1]==None else update[1])*self.Nspins)
-		self.Nmeas = int(((1) if update[2]==None else update[2])*self.Nspins)
-		self.Nmeas_f = int(((1) if update[3]==None else update[3])*self.Nspins)
-		self.Ncluster = update[4]
-
-		# self.state_int = model_props['state_int']
-		# self.state_gen = model_props['state_gen']
+		# Each sweep consists of Nsites updates
+		
+		for n in ['Neqb','Nmeas','Nmeas_f']:
+			model_props['update_props'][n] *= self.N_sites
 
 
 		# Define Configurations and Observables Data Dictionaries
-		self.model_props = model_props       
-		Data_Process().plot_close()
-		self.plot_obj = None
+		self.model_props = model_props 
 		self.data = {}
+		Data_Process().plot_close()
 
 		return
 
@@ -144,42 +129,52 @@ cdef class MonteCarloUpdate(object):
 	@cython.boundscheck(False)
 	@cython.wraparound(False)
 	@cython.cdivision(True)
-	def MC_update(self,props_iter={'algorithm':'wolff'},disp_updates=True):
+	def MC_update(self,iter_props={'algorithm':'wolff'}):
 
 		# Monte Carlo Update Function
 		cdef object MC_alg 
-		# Initialize props_iter as array of dictionaries
+
+		# Initialize iter_props as array of dictionaries
 		cdef int n_iter
-		props_iter,n_iter = array_dict(props_iter)
+		iter_props,n_iter = array_dict(iter_props)
 		
-		# Declare Variable Types
+		# Declare Update Variable Types
+		cdef int disp_updates = self.model_props['disp_updates']
 		cdef int i_iter=0,i_t=0,i_mc=0,i_mc_meas=0
-		cdef int Neqb = self.Neqb, Nmeas = self.Nmeas, Nmeas_f = self.Nmeas_f
-		cdef int N_sites = self.Nspins
-		cdef int N_neighbours = len(self.neighbour_sites[0,0,:])
-		cdef SITE_TYPE[::1] sites = self.sites
-		cdef int[::1] cluster = self.cluster
-		cdef int[::1] cluster_bool = np.zeros(N_sites,dtype=np.intc)
-		cdef int[:,::1] nearest_neighbours = self.neighbour_sites[0]
+		cdef int Neqb = self.model_props['update_props']['Neqb']
+		cdef int Nmeas = self.model_props['update_props']['Nmeas']
+		cdef int Nmeas_f = self.model_props['update_props']['Nmeas_f']
 		cdef object state_update
 		cdef object state_int = self.model_props['state_int']
 		cdef object state_gen = self.model_props['state_gen']
 
-		# Initialize Plotting and Data for n_iterations
-		cdef int n_T = len(self.T)
-		cdef int n_meas = self.Nmeas//self.Nmeas_f
-		self.data['sites']  = np.empty((n_iter,n_T,n_meas,N_sites), dtype=np.int_)
-		cdef SITE_TYPE[:,:,:,::1] data_sites = self.data['sites']
+		# Declare Model Variable Types
+		cdef int N_sites = self.N_sites
+		cdef int N_neighbours = len(self.model_props['neighbour_sites'][0,0,:])
+		cdef SITE_TYPE[::1] sites = np.zeros(self.N_sites,
+									        dtype=self.model_props['data_type'])
+		cdef SITE_TYPE[::1] cluster = np.zeros(self.N_sites,
+									        dtype=self.model_props['data_type'])
+		cdef int[::1] cluster_bool = np.zeros(N_sites,dtype=np.intc)
+		cdef int[:,::1] neighbours = self.model_props['neighbour_sites'][0]
+
+
+		# Initialize Plotting and Data Types
+		cdef int n_T = len(self.model_props['T'])
+		cdef int n_meas = Nmeas//Nmeas_f
+		cdef SITE_TYPE[:,:,:,::1] data_sites = np.empty((n_iter,n_T,
+														 n_meas,N_sites), 
+									  dtype=self.model_props['data_type'])
 									  
-		self.plot_obj = self.MC_plot(self.model_props['observe'],None,None,
-									 self.T)
+		cdef object plot_obj = self.MC_plot(self.model_props['observe_props'],
+										    None,None, self.model_props['T'])
 
 
 		display(disp_updates,False,
 				'Monte Carlo Simulation... \n%s: q = %d \nT = %s'%(
-					  (self.model_props['model'],self.model_props['q'],
-					   str(self.T))) + '\nNeqb = %d, Nmeas = %d'%(
-								 self.Neqb/self.Nspins,self.Nmeas/self.Nspins),
+					  (self.model_props['model_name'],self.model_props['q'],
+					   str(self.model_props['T'])))+'\nNeqb = %d, Nmeas = %d'%(
+								 Neqb/N_sites,Nmeas/N_sites),
 					   line_break=True)
 					  
 					  
@@ -190,32 +185,32 @@ cdef class MonteCarloUpdate(object):
 		for i_iter in range(n_iter):
 				
 			# Update dictionary and plotting for each Iteration
-			self.model_props.update(props_iter[i_iter])
+			self.model_props.update(iter_props[i_iter])
 
 			
 			# Initialize sites with random spin at each site for each Iteration
-			sites = state_gen(self.Nspins)
-			cluster = np.zeros(self.Nspins,dtype=np.intc)			
+			sites = state_gen(self.N_sites)
 			state_update = self.model_props['state_update'][
 									   self.model_props['algorithm']]
 
-			display(disp_updates,0,'Iter %d: %s Algorithm'%(
+			display(disp_updates,time_check=True,
+					m= 'Iter %d: %s Algorithm'%(
 								   i_iter,caps(self.model_props['algorithm'])))
 
 			MC_alg = getattr(self,self.model_props['algorithm'])
 
 			# Perform Monte Carlo at temperatures t = T
-			for i_t,t in enumerate(self.T):
-				self.t = t
+			for i_t,t in enumerate(self.model_props['T']):
 				# Perform Equilibration Monte Carlo steps initially
 				for i_mc in range(Neqb):
-					MC_alg(sites,cluster.copy(),cluster_bool.copy(),nearest_neighbours,N_sites,N_neighbours,t, 
+					MC_alg(sites,cluster.copy(),cluster_bool.copy(),neighbours,
+						   N_sites,N_neighbours,t, 
 						   state_update, state_gen, state_int)					
 					
 				# Perform Measurement Monte Carlo Steps
 				for i_mc in range(Nmeas):
-
-					MC_alg(sites,cluster.copy(),cluster_bool.copy(),nearest_neighbours,N_sites,N_neighbours,t, 
+					MC_alg(sites,cluster.copy(),cluster_bool.copy(),neighbours,
+						   N_sites,N_neighbours,t, 
 						   state_update, state_gen, state_int)
 					# print('cluster',np.asarray(cluster))
 					# print('sites',np.asarray(sites))
@@ -226,49 +221,51 @@ cdef class MonteCarloUpdate(object):
 						# display(printit=disp_updates,
 								# m='Monte Carlo Step: %d'%(i_mc//N_sites))
 						
-						
-						self.plot_obj = self.MC_plot({'configurations': 
-								self.model_props['observe']['configurations']},
-											    self.plot_obj,
-												{'configurations':
-													{'sites': np.asarray(sites),
-													 'cluster':np.asarray(cluster)}},
-												*[[t],[],i_mc/self.Nspins])                
+						plot_obj = self.MC_plot(
+						{'configurations': 
+						  self.model_props['observe_props']['configurations']},
+	    				  plot_obj,
+						  {'configurations': {'sites': np.asarray(sites),
+											  'cluster':np.asarray(cluster)}},
+						*[[t],[],i_mc/N_sites])                
 			  
 				display(printit=disp_updates,m='Updates: T = %0.2f'%t)
 				
 			# Save Current Data
 			if self.model_props['data_save']:
-				self.plot_obj.plot_save(self.model_props,
+				plot_obj.plot_save(self.model_props,
 								        label=self.model_props['algorithm'],
 										fig_keys='configurations')
 				Data_Process().exporter({'sites': np.asarray(data_sites)},self.model_props,
 										self.model_props['algorithm'])  
 		
 			display(printit=disp_updates,
-					m='Runtime: ',t0=-(len(self.T)+2),line_break=True)
+					m='Runtime: ',t0=-(i_t+2),line_break=True)
 				
 				
 		# Compute, Plot and Save Observables Data and Figures
 		self.data['sites'] = data_sites
 		self.data['observables'] = self.MC_measurements(self.data['sites'],
-											self.neighbour_sites,self.T,
+											self.model_props['neighbour_sites'],
+											self.model_props['T'],
 											self.model_props['observables'])                                                   
 			
 			
 		display(printit=disp_updates,m='Observables Calculated')
 
-		self.plot_obj = self.MC_plot(self.model_props['observe'], self.plot_obj,
+		plot_obj = self.MC_plot(self.model_props['observe_props'], plot_obj,
 								{'observables': self.data['observables'],
 								 'observables_mean': self.data['observables']},
-								*[self.T,[p['algorithm']for p in props_iter],
-								  i_mc/self.Nspins])
+								*[self.model_props['T'],
+								  [p['algorithm']for p in iter_props],
+								  i_mc/N_sites
+								 ])
 
 		display(printit=disp_updates,m='Figures Plotted')
 
 		
 		if self.model_props['data_save']:
-			self.plot_obj.plot_save(self.model_props,
+			plot_obj.plot_save(self.model_props,
 							        fig_keys=['observables','observables_mean'])
 			Data_Process().exporter(self.data,self.model_props)  
 											   
@@ -395,7 +392,7 @@ cdef class MonteCarloUpdate(object):
 
 		# Generate Random Spin Site and store previous Spin Value
 
-		isite = [np.random.randint(self.Nspins) for j in 
+		isite = [np.random.randint(self.N_sites) for j in 
 				  range(self.Ncluster)]
 		self.cluster = isite
 		sites0 = self.sites[isite]
@@ -417,9 +414,9 @@ cdef class MonteCarloUpdate(object):
 	def wolff_python(self,T=1):      
 		# Create Cluster Array and Choose Random Site
 
-		isite = np.random.randint(self.Nspins)
+		isite = np.random.randint(self.N_sites)
 
-		self.cluster_bool = np.zeros(self.Nspins,dtype=np.int_)
+		self.cluster_bool = np.zeros(self.N_sites,dtype=np.int_)
 		self.cluster_value0 = self.sites[isite]
 
 		# Perform cluster algorithm to find indices in cluster
@@ -548,7 +545,7 @@ cdef class MonteCarloUpdate(object):
 
 	# Data type dependent plot properties keys
 	@cython.wraparound(True)
-	def MC_plot_props(self,plot_type,plot_keys,*args):
+	def MC_plot_props(self,plot_type,plot_keys,model_props,*args):
 
 		# Function plot sites or clusters of sites
 		def sites_region(sites):
@@ -564,14 +561,15 @@ cdef class MonteCarloUpdate(object):
 
 		def sup_title(label):
 			return label +  ' - %s - $q = %d$ \n $T =  %s$ '%(
-				  caps(self.model_props['model']),self.model_props['q'] + (1 if 
-									 self.model_props['model']=='ising' else 0),
-						str(self.T)) + '\n'\
-						'$N_{eqb} = %d \hspace{1cm} N_{meas} = %d \hspace{1cm}'\
-						'N_{meas_{freq}} = %d$'%(
-						self.Neqb/self.Nspins, self.Nmeas/self.Nspins,
-						self.Nmeas_f/self.Nspins)
-
+				caps(self.model_props['model_name']),
+				self.model_props['q'] + (1 if 
+					self.model_props['model_name']=='ising' else 0),
+				str(self.model_props['T'])) + '\n'\
+					'$N_{eqb} = %d \hspace{1cm} N_{meas} = %d \hspace{1cm}'\
+					'N_{meas_{freq}} = %d$'%(
+					self.model_props['update_props']['Neqb']/self.N_sites, 
+					self.model_props['update_props']['Nmeas']/self.N_sites,
+					self.model_props['update_props']['Nmeas_f']/self.N_sites)
 
 		if plot_type == 'configurations':
 			
@@ -648,7 +646,7 @@ cdef class MonteCarloUpdate(object):
 
 			def data_process(k,*args):
 				
-				data_plot_shape = [int(np.power(self.Nspins,
+				data_plot_shape = [int(np.power(self.N_sites,
 							1/self.model_props['d']))]*self.model_props['d']
 				
 				return lambda d: np.reshape(sites_region(d),
@@ -801,7 +799,7 @@ cdef class MonteCarloUpdate(object):
 			
 			def data_process(k,*args):
 				if k == 'order':
-					return lambda x:  np.mean(x,axis=-1)
+					return lambda x:  np.mean(np.abs(x),axis=-1)
 				else:
 					return lambda x:  np.mean(x,axis=-1)
 			

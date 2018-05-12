@@ -16,9 +16,9 @@ class Lattice(object):
         # Define parameters of system        
         self.L = L
         self.d = d
-        self.Nspins = L**d
+        self.N_sites = L**d
         
-        if self.Nspins > 2**32-1:
+        if self.N_sites > 2**32-1:
             self.dtype = np.int64
         else:
             self.dtype=np.int32
@@ -26,7 +26,7 @@ class Lattice(object):
         # Prepare arrays for Lattice functions
 
         # Define array of sites
-        self.sites = np.arange(self.Nspins)
+        self.sites = np.arange(self.N_sites)
         
         # L^i for i = 1:d array
         self.L_i = np.power(self.L,np.arange(self.d,dtype=self.dtype))
@@ -39,7 +39,7 @@ class Lattice(object):
         # Calculate array of arrays of r-distance neighbour sites,
         # for each site, for r = 1 : L/2 
         # i.e) self.neighbour_sites = np.array([[self.neighboursites(i,r) 
-        #                                 for i in range(self.Nspins)]
+        #                                 for i in range(self.N_sites)]
         #                                 for r in range(1,
         #                                             int(np.ceil(self.L/2)))])
         self.neighbour_sites = self.neighboursites(None,None)
@@ -48,13 +48,13 @@ class Lattice(object):
         
     def position(self,site):
         # Return position coordinates in d-dimensional L^d lattice 
-        # from given linear site position in 1d Nspins^2 length array
+        # from given linear site position in 1d N_sites^2 length array
         # i.e) [int(site/(self.L**(i))) % self.L for i in range(self.d)]
         return np.mod(((np.atleast_1d(site)[:,np.newaxis]/self.L_i)).
                         astype(self.dtype),self.L)
     
     def site(self,position):
-        # Return linear site position in 1d Nspins^2 length array 
+        # Return linear site position in 1d N_sites^2 length array 
         # from given position coordinates in d-dimensional L^d lattice
         # i.e) sum(position[i]*self.L**i for i in range(self.d))
         return (np.dot(np.atleast_2d(position),self.L_i)).astype(self.dtype)

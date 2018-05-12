@@ -14,17 +14,20 @@ import time
 ##### Model Functions ########
 
 times = [time.clock()]
-def display(printit=True,timeit=True,m='',t0=-2,line_break=False):
-    if line_break:
-        line_break = '\n'
-    else:
-        line_break = ''
-    if timeit:
-        times.append(time.clock())
-        if printit:
-            print(m,times[-1]-times[t0],line_break)
-    elif printit:
-        print(m,line_break)
+def display(print_it=True,time_it=True,m='',
+			t0=-2,line_break=False,time_check=False):
+	if line_break:
+		line_break = '\n'
+	else:
+		line_break = ''
+	if time_it or time_check:
+		times.append(time.clock())
+		if print_it and not time_check:
+			print(m,times[-1]-times[t0],line_break)
+		else:
+			print(m,line_break)
+	elif print_it:
+		print(m,line_break)
 
 
 

@@ -41,54 +41,55 @@ class system(object):
     # Data File and Directory        
     
     
-    def __init__(self,L=15,d=2,T=3,q=2,m='potts',
-				model=[[0,1],np.int_],
-                update = [True,10,10,1,1],
-                observe = {'configurations': [False,'sites','cluster'],
-                           'observables': [True,'energy',
-                                                'order','specific_heat',
-                                                'susceptibility'],
-                           'observables_mean': [True]
-                           },
-                datasave = True):
+	def __init__(self,
+				model_props =   {'model_name':'potts','q':2, 'd':2, 'L': 15, 
+							     'T': 1.13,'coupling_param':[0,1],
+								 'data_type':np.int_},
+                update_props =  {'update_bool':True,'Neqb':5, 'Nmeas':5, 
+								 'Nmeas_f':1, 'Ncluster':1},
+                observe_props = {'configurations':   [False,'sites','cluster'],
+                                 'observables':      [True,'energy', 'order',
+													  'specific_heat',
+													  'susceptibility'],
+                                 'observables_mean': [True]},
+				process_props = {'disp_updates': 1, 'data_save': 1}):
 
+		# Initialize model class, lattice class
+		m = Model(model=model_props, observe=observe_props['observables'][1:])
+		l = Lattice(L=model_props['L'], d=model_props['d'])
 
-        # Initialize model class, lattice class
-        m = Model(model = {'model_name':m,'q':q, 'd':d, 'T': T,
-						   'order_param':model[0],'data_type':model[1]},
-				 observe = observe['observables'][1:])
-        l = Lattice(L,d)
+		# Initialize System Attributes
+		self.m = m
+		self.l = l
+		self.model_props = model_props
 
-        self.model_props = {'L': L, 'd': d, 'q': m.q, 'T': T,
+		# Update model_props
+		model_props.update({
 							'neighbour_sites': l.neighbour_sites,
-							'model': m.model_name,
-                            'state_range': m.state_range,
-                            'state_gen': m.state_gen,
-                            'state_int': m.model_params['int'],
-                            'state_update': m.model_params['state_update'],
-                            'algorithm': 'wolff',
-                            'algorithms': ['metropolis','wolff'],
-							'update': update,
-							'observe': observe,
-                            'observables': m.observables_functions,
-                            'observables_props': m.observables_props,
-							'data_type':model[1],
-							'data_save':datasave,
-                            'data_dir': '%s_Data/'%(caps(m.model_name)),
-                            'data_file': '%s_d%d_L%d__%s' %(
-                                          caps(m.model_name),d,L,
-                                          datetime.datetime.now().strftime(
-                                                           '%Y-%m-%d-%H-%M'))}
+							'state_range': m.state_range,
+							'state_gen': m.state_gen,
+							'state_int': m.model_params['int'],
+							'state_update': m.model_params['state_update'],
+							'algorithm': 'wolff',
+							'algorithms': ['metropolis','wolff'],
+							'update_props': update_props,
+							'observe_props': observe_props,
+							'observables': m.observables_functions,
+							'observables_props': m.observables_props,
+							'data_dir': '%s_Data/'%(caps(m.model_name)),
+							'data_file': '%s_d%d_L%d__%s' %(
+										  caps(m.model_name),model_props['d'], 
+										  model_props['L'],
+										  datetime.datetime.now().strftime(
+														   '%Y-%m-%d-%H-%M'))
+						   })
+		model_props.update(process_props)
+		
+		
+		# Perform Monte Carlo Updates for various Temperatures
+		self.MonteCarlo = MonteCarloUpdate(model_props = model_props)
         
-        
-        # Perform Monte Carlo Updates for various Temperatures
-        
-        self.MonteCarlo = MonteCarloUpdate(model_props = self.model_props)
-        # Initialize Model and Lattice variables
-        self.m = m
-        self.l = l
-        
-        return
+		return
     
     
 # Run System for Temperatures and Iteration Configurations with arg_parser
@@ -108,7 +109,7 @@ parser.add_argument('-d','--d',help = 'System Dimension',
 parser.add_argument('-q','--q',help = 'Model spin range',
 					type=int,default=2)
 
-parser.add_argument('-m','--m',help = 'Model Type',
+parser.add_argument('-m','--model_name',help = 'Model Name',
 					type=str,default='potts')
 
 parser.add_argument('-T','--T',help = 'System Temperature',
@@ -121,28 +122,28 @@ args = parser.parse_args()
 if __name__ == "__main__":
     
     # System Parameters
-	L=15
-	d=2
-	q = 2
-	T = [3.0,2.5,1.75,1.2,1.0,0.8,0.5]
-	Tlow = [0.5,0.25,0.15,0.1,0.05,0.02]
-	T0 = 0.25
-	m = 'potts'
-	model=[[0,1],np.int_]
-	update = [True,5,5,1,1]
-	observe = {'configurations': [False,'sites','cluster'],
-						   'observables': [False,'energy',
-												'order','specific_heat',
-												'susceptibility'],
-						   'observables_mean': [True]
-			  }
-	datasave = True
+	# L=15
+	# d=2
+	# q = 2
+	# T = [3.0,2.5,1.75,1.2,1.0,0.8,0.5]
+	# m = 'potts'
+	model_props={'coupling_param':[0,1],'data_type':np.int_}
+	model_props.update(vars(args))
 
+	update_props = {'update_bool':True,'Neqb':100, 'Nmeas':100, 
+					                'Nmeas_f':1, 'Ncluster':1}
 
-	# Monte Carlo Simulation Parameters (with Update, Observe Parameters)
-	props_iter = {'algorithm':['wolff','metropolis']}
-	disp_updates = True
+	observe_props = {'configurations': [False,'sites','cluster'],
+			         'observables': [False,'energy','order','specific_heat',
+									                          'susceptibility'],
+                     'observables_mean': [True]}
 
-	s = system(**vars(args),model=model,update=update,
-				observe=observe,datasave=datasave)
-	s.MonteCarlo.MC_update(props_iter,disp_updates=disp_updates) 
+	process_props = {'disp_updates': True, 'data_save': True}
+
+	s = system(model_props=model_props,     update_props=update_props,
+			   observe_props=observe_props, process_props=process_props)
+
+	
+	# Monte Carlo Simulation Parameters
+	iter_props = {'algorithm':['wolff','metropolis']}	
+	s.MonteCarlo.MC_update(iter_props) 

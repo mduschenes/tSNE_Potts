@@ -15,7 +15,7 @@ class Model(object):
     # Lattice Model Type: Model Name and Max Spin Value q
     
 	def __init__(self,model={'model_name':'potts', 'q':3, 'd':2, 'T': 2.2269,
-							 'order_param':[0,1], 'data_type':np.int_},
+							 'coupling_param':[0,1], 'data_type':np.int_},
                  observe=['temperature','energy','order']):
         # Define Models dictionary for various spin models, with
         # [ Individual spin calculation function, 
@@ -27,36 +27,34 @@ class Model(object):
 		self.q = model['q']
 		self.d = model['d']
 		self.T = np.atleast_1d(model['T'])
-		self.orderparam = model['order_param']
+		self.coupling_param = model['coupling_param']
 
 
 		self.model_types = ['ising','potts']
         
 		# Define model specific parameters
 		self.models_params = {'ising': {'state_update': {
-				
-											'metropolis': {(dE,t): 
-											  np.exp(-self.orderparam[1]*dE/t) 
+										'metropolis': {(dE,t): 
+											np.exp(-self.coupling_param[1]*dE/t) 
 												 for dE in range(-2*2*self.d,
 																  2*2*self.d+1)
 												 for t in self.T},
 												
-											'wolff':{t: (1 - np.exp(
-													  -2*self.orderparam[1]/t))
+										'wolff':{t: (1 - np.exp(
+												   -2*self.coupling_param[1]/t))
 													 for t in self.T}},
 												
 									   'value_range': [-self.q,self.q,0]},
 							
 							'potts':  {'state_update': {
-									
-											'metropolis': {(dE,t): 
-											  np.exp(-self.orderparam[1]*dE/t) 
+										'metropolis': {(dE,t): 
+											np.exp(-self.coupling_param[1]*dE/t) 
 												 for dE in range(-2*self.d,
 																  2*self.d+1)
 												 for t in self.T},
 												
 											'wolff':{t: (1 - np.exp(
-													  -1*self.orderparam[1]/t))
+												   -1*self.coupling_param[1]/t))
 													 for t in self.T}},
 												
 									   'value_range': [1,self.q,None]}} 
@@ -131,12 +129,12 @@ class Model(object):
 		# Calculate energy of spins as sum of spins 
 		# + sum of r-distance neighbour interactions
 		site_int = self.model_params['int']
-		return ((-self.orderparam[0]*np.sum(site_int(sites),axis=-1))+(
-			   -(1/2)*np.sum(np.array([self.orderparam[i+1]*(
+		return ((-self.coupling_param[0]*np.sum(site_int(sites),axis=-1))+(
+			   -(1/2)*np.sum(np.array([self.coupling_param[i+1]*(
 									   site_int(
 										 np.expand_dims(sites,axis=-1),
 										 np.take(sites,neighbours[i],axis=-1)))
-				for i in range(len(self.orderparam)-1)]),
+				for i in range(len(self.coupling_param)-1)]),
 				axis=(0,-2,-1))))/np.shape(sites)[-1]
 
 	
@@ -166,10 +164,10 @@ class Model(object):
 		
 	def local_energy(self,i,sites,neighbours,T):
 		site_int = self.model_params['int']
-		return -np.sum(np.array([self.orderparam[j+1]*site_int(
+		return -np.sum(np.array([self.coupling_param[j+1]*site_int(
 				np.expand_dims(np.take(sites,i,axis=-1),axis=-1),
 				np.take(sites,neighbours[j][i],axis=-1)) 
-				for j in range(len(self.orderparam)-1)]),
+				for j in range(len(self.coupling_param)-1)]),
 				axis=(0,-1))
 
 
