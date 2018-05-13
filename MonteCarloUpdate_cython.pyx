@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore")
 
 from MonteCarloPlot import MonteCarloPlot
 
-from data_functions import Data_Process
+from data_functions import Data_Process as Data_Proc
 from misc_functions import flatten,array_dict, caps, display
 
 
@@ -168,7 +168,12 @@ cdef class MonteCarloUpdate(object):
 						   self.model_props['observe_props']['configurations']},
 						   self.model_props, self.model_props['T'])
 
-
+		# Save Model_Props
+		if self.model_props.get('data_save',True):
+			for f in ['txt','npz']:
+				Data_Proc().exporter({'model_props':self.model_props},
+							            self.model_props,format=f)
+						   
 		display(disp_updates,False,
 				'Monte Carlo Simulation... \n%s: q = %d \nT = %s'%(
 					  (self.model_props['model_name'],self.model_props['q'],
@@ -227,38 +232,28 @@ cdef class MonteCarloUpdate(object):
 				display(print_it=disp_updates,m='Updates: T = %0.2f'%t)
 				
 			# Save Current Data
-			if self.model_props['data_save']:
+			if self.model_props.get('data_save',True):
 				plot_obj.plot_save(self.model_props,
 								        label=self.model_props['algorithm'],
 										fig_keys='configurations')
 										
-				Data_Process().exporter({'sites': np.asarray(data_sites)},
-										 self.model_props,
-										self.model_props['algorithm'])  
+				Data_Proc().exporter(
+							  {'sites':np.asarray(data_sites[i_iter])},
+							   self.model_props, self.model_props['algorithm'])  
 		
 			display(print_it=disp_updates,
 					m='Runtime: ',t0=-(i_t+2),line_break=True)
 				
-				
-		# Compute Observables Data
-		data['sites'] = data_sites
-		data['observables'] = self.MC_measurements(data['sites'],
-											self.model_props['neighbour_sites'],
-											self.model_props['T'],
-											self.model_props['observables'])                                                   
 			
-		if self.model_props['data_save']:
-			Data_Process().exporter(data,self.model_props)
-			for f in ['.txt','.npz']:
-				Data_Process().exporter({'model_props':self.model_props},
-							            self.model_props,format=f)
-			
-		display(print_it=disp_updates,m='Observables Calculated')
 		display(print_it=disp_updates,time_it=False,
 				m='Monte Carlo Simulation Complete...',line_break=True)
 								   
-		return data, self.model_props
-
+		if self.model_props.get('return_data'):
+			return np.asarray(data_sites), self.model_props
+		else:
+			return
+			
+			
 	# Update Algorithms
 	@cython.boundscheck(False)
 	@cython.wraparound(False)
@@ -344,21 +339,3 @@ cdef class MonteCarloUpdate(object):
 				sites[i] = val
 
 		return
-
-
-
-
-	def MC_measurements(self,sites,neighbours,T,observables):
-
-		if sites.ndim < 4:
-			sites = sites[np.newaxis,:]
-
-		n_iter = np.shape(sites)[0]
-
-		data = [{} for _ in range(n_iter)]
-
-		for i_iter in range(n_iter):        
-			for k,obs in observables.items():
-				data[i_iter][k] = obs(sites[i_iter],neighbours,T)
-
-		return data

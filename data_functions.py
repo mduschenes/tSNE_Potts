@@ -7,8 +7,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-import os.path
-
+import os,glob
 
 from misc_functions import flatten,dict_check, one_hot,caps,list_sort
 import plot_functions
@@ -18,19 +17,20 @@ import plot_functions
 class Data_Process(object):
     
     # Create figure and axes dictionaries for dataset keys
-	def __init__(self,keys=[None],plot=False):
+	def __init__(self,keys=[None],plot=[False]):
 		 
 		# Initialize figures and axes dictionaries
-		self.figs = {}
-		self.axes = {}
-		
-		self.keys = keys
-		self.plot = plot
-		
-		self.data_key = 'data_key'
-		
-		# Create Figures and Axes with keys
-		self.figures_axes(keys)
+		if not None in keys:
+			self.figs = {}
+			self.axes = {}
+			
+			self.keys = keys
+			self.plot = plot
+			
+			self.data_key = 'data_key'
+			
+			# Create Figures and Axes with keys
+			self.figures_axes(keys)
 
 		return  
     
@@ -235,13 +235,27 @@ class Data_Process(object):
 					 'one_hot': False
 					}):
 
-		# Data Dictionary
+		# Data Files Dictionary
+		
+		# Check of importing batch of files
 		data_params = dict_check(data_params,'data_files')            
+
+		if isinstance(data_params['data_files'],str) and (
+		   '*' in data_params['data_files']) :
+		data_params['data_files'] = [os.path.basename(x) 
+									for x in glob.glob(data_params['data_dir']+
+									    			 data_params['data_files'])]
+		elif isinstance(data_params['data_files'],str):
+			data_params['data_files'] = [f for f in os.listdir(
+									     data_params['data_dir']) 
+										 if os.isfile(os.join(
+													data_params['data_dir'], f)) 
+										 and data_params['data_files'] in d ]
+		if not data_params.get('data_sets'):
+			data_params['data_sets'] = data_params['data_files']
 		
 		data_params['data_files'] = dict_check(
-					data_params['data_files'],
-					data_params.get('data_sets',
-									data_params['data_files']))
+					data_params['data_files'],data_params['data_sets'])
 		
 		
 		# Import Data
@@ -276,6 +290,25 @@ class Data_Process(object):
 			data_sizes[k] = np.shape(data[k])
 				
 		
+		# Type of Data Sets
+		if not data_params.get('data_types'):
+			data_params['data_types'] = list(data.keys())
+			data_typed = data.copy()
+			
+		elif data_params.get('data_typed') == 'dict'
+			data_typed = {t: {k: data[k].copy() 
+                          for k in data_params['data_sets'] if t in k}
+                          for t in data_params['data_types']}
+			
+		else:
+			data_typed = {t: [data[k].copy() 
+                          for k in data_params['data_sets'] if t in k]
+                          for t in data_params['data_types']}
+						  
+		data_keys =   {t: [k 
+					  for k in data_params['data_sets'] if t in k]
+					  for t in data_params['data_types']}
+		
 		
 		# If not npz format, Export as npz for easier subsequent importing
 		if data_params['data_format'] != 'npz':
@@ -283,7 +316,7 @@ class Data_Process(object):
 			data_params['data_format'] = 'npz'
 			self.exporter(data,data_params)
 				
-		return data, data_sizes
+		return data, data_sizes, data_typed, data_keys
 
 
 
@@ -292,7 +325,7 @@ class Data_Process(object):
 	def exporter(self,data,
 				 data_params={'data_dir':'dataset/','data_file':None},
 				 label = '',
-				 format='.npz'):
+				 format='npz'):
 	   
 		# Data Directory
 		if not data_params.get('data_dir'):
@@ -318,16 +351,16 @@ class Data_Process(object):
 			i = 0
 			file_end = ''
 			while os.path.isfile(file(k)+
-								 label+file_end+format):
+								 label+file_end+ '.' +format):
 				file_end = '_%d'%i
 				i+=1
-			if format == '.npz':
+			if format == 'npz':
 				np.savez_compressed(data_params['data_dir'] + 
 									file(k) +
 									label + file_end,a=v)
-			elif format == '.txt':
+			elif format == 'txt':
 				with open(data_params['data_dir'] + file(k) +
-						 label + file_end+format, 'w') as file_txt:
+						 label + file_end+ '.' +format, 'w') as file_txt:
 					if isinstance(v,dict):
 						for key in sorted(list(v.keys()),
 										   key=lambda x: (len(str(v[x])),

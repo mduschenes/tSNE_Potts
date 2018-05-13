@@ -86,7 +86,12 @@ def get_attr(f,attr=None,f0=None,*args):
     except AttributeError:
         return f0 
 
-
+def dict_modify(D,T=None,f=lambda k,v: v,i=[0,None],j=[0,None]): 
+   if T:
+       return  {t[j[0]:j[1]]: {k[i[0]:i[1]]: f(k,v) for k,v in D.items() 
+                if t in k} for t in T}
+   else:
+       return {k[i[0]:i[1]]: f(v) for k,v in D.items()}
 
 def array_dict(d):
     # Convert dictionary of arrays into array of dictionaries
@@ -163,13 +168,6 @@ def one_hot(X,n=None):
 
     return np.reshape(y,(-1,n))
 
-
-def dict_modify(D,T=None,f=lambda k,v: v,i=[0,None],j=[0,None]): 
-   if T:
-       return  {t[j[0]:j[1]]: {k[i[0]:i[1]]: f(k,v) for k,v in D.items() 
-                if t in k} for t in T}
-   else:
-       return {k[i[0]:i[1]]: f(v) for k,v in D.items()}
 
 
 

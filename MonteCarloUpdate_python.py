@@ -10,7 +10,7 @@ warnings.filterwarnings("ignore")
 
 from MonteCarloPlot import MonteCarloPlot
 
-from data_functions import Data_Process
+from data_functions import Data_Process as Data_Proc
 from misc_functions import flatten,array_dict, caps, display
 
 
@@ -78,7 +78,7 @@ class MonteCarloUpdate(object):
 
 		# Define Configurations and Observables Data Dictionaries
 		self.model_props = model_props 
-		Data_Process().plot_close()
+		Data_Proc().plot_close()
 
 		return
 
@@ -127,7 +127,11 @@ class MonteCarloUpdate(object):
 								 Neqb/N_sites,Nmeas/N_sites),
 					   line_break=True,time_check=True)
 					  
-					  
+		# Save Model_Props
+		if self.model_props.get('data_save',True):
+			for f in ['txt','npz']:
+				Data_Proc().exporter({'model_props':self.model_props},
+							            self.model_props,format=f)
 
 		# Perform Monte Carlo Algorithm for n_iter configurations        
 		for i_iter in range(n_iter):
@@ -175,36 +179,40 @@ class MonteCarloUpdate(object):
 				display(print_it=disp_updates,m='Updates: T = %0.2f'%t)
 				
 			# Save Current Data
-			if self.model_props['data_save']:
+			if self.model_props.get('data_save',True):
 				plot_obj.plot_save(self.model_props,
 								        label=self.model_props['algorithm'],
 										fig_keys='configurations')
-				Data_Process().exporter({'sites': np.asarray(data_sites)},
-										 self.model_props,
-										 self.model_props['algorithm'])  
+				Data_Proc().exporter(
+							  {'configurations':np.asarray(data_sites[i_iter])},
+							   self.model_props, self.model_props['algorithm'])  
 		
 			display(print_it=disp_updates,
 					m='Runtime: ',t0=-(i_t+2),line_break=True)
 				
 			
-		# Compute Observables Data
+		# Compute Data
 		data['sites'] = data_sites
 		data['observables'] = self.MC_measurements(data['sites'],
 											self.model_props['neighbour_sites'],
 											self.model_props['T'],
 											self.model_props['observables'])                                                   
-			
-		if self.model_props['data_save']:
-			Data_Process().exporter(data,self.model_props)
-			Data_Process().exporter({'model_props':self.model_props},
-							        self.model_props,format='.txt') 
-			
 		display(print_it=disp_updates,m='Observables Calculated')
+			
+		if self.model_props.get('data_save',True):
+			Data_Proc().exporter({'observables':data['observables']},
+							     self.model_props) 
+			
 		display(print_it=disp_updates,time_it=False,
 				m='Monte Carlo Simulation Complete...',line_break=True)
-				
-		return data, self.model_props
+		
+		if self.model_props.get('return_data'):
+			return np.asarray(data_sites), self.model_props
+		else:
+			return
 
+			
+			
 	# Update Algorithms
 	def metropolis(self,sites, cluster, cluster_bool, neighbours,
 						N_sites,N_neighbours, T, 

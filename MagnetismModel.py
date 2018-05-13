@@ -77,10 +77,10 @@ class system(object):
 							'observables': m.observables_functions,
 							'observables_props': m.observables_props,
 							'data_dir': '%s_Data/'%(caps(m.model_name)),
-							'data_file': '%s_d%d_L%d__%s' %(
-										  caps(m.model_name),model_props['d'], 
-										  model_props['L'],
-										  datetime.datetime.now().strftime(
+							'data_file': '%s_d%d_L%d_T%s_%s' %(
+										 caps(m.model_name),model_props['d'], 
+										 model_props['L'],str(model_props['T']),
+										 datetime.datetime.now().strftime(
 														   '%Y-%m-%d-%H-%M'))
 						   })
 		model_props.update(process_props)
@@ -88,9 +88,11 @@ class system(object):
 		
 		# Perform Monte Carlo Updates for various Temperatures
 		self.MonteCarlo = MonteCarloUpdate(model_props = model_props)
+		self.Analysis = Model_Analysis()
 		self.model_props = model_props
 		return
     
+	
     
 # Run System for Temperatures and Iteration Configurations with arg_parser
 
@@ -155,7 +157,16 @@ if __name__ == "__main__":
                      'observables_mean': [True,'energy','order','specific_heat',
 									                          'susceptibility']}
 
-	process_props = {'disp_updates': True, 'data_save': True}
+	process_props = {'disp_updates':True, 'data_save':True, 'return_data':False,
+					data_params = 
+					{'data_files': '*.npz',
+					 'data_types': ['sites','observables''model_props'],
+					 'data_typed': 'dict',
+					 'data_format': 'npz',
+					 'data_dir': 'dataset/',
+					}}
+	
+	
 
 	# Delete non keyword arg attributes
 	for k in ['version','Neqb','Nmeas','Nmeas_f']:
@@ -168,11 +179,28 @@ if __name__ == "__main__":
 	
 	
 	# Monte Carlo Simulation Parameters
-	iter_props = {'algorithm':['wolff','metropolis']}	
-	s.data,s.model_props = s.MonteCarlo.MC_update(iter_props) 
+	iter_props = {'algorithm':['wolff','metropolis']}
+	results = s.MonteCarlo.MC_update(iter_props)
+	if s.model_props.get('return_data'):
+			s.data, s.model_props = results
+		else:
+			del results
 		
 	
-	# Plot Observables
+	# Analyse Results
+	
+	data['sites'] = s.data
+	data['observables'] = self.MC_measurements(data['sites'],
+											self.model_props['neighbour_sites'],
+											self.model_props['T'],
+											self.model_props['observables'])                                                   
+	display(print_it=disp_updates,m='Observables Calculated')
+			
+		if self.model_props.get('data_save',True):
+			Data_Proc().exporter({'observables':data['observables']},
+							     self.model_props)
+	
+	
 	plot_obj = MonteCarloPlot(s.model_props['observe_props'],
 							  s.model_props, s.model_props['T'])
 	
