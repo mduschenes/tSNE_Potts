@@ -20,7 +20,7 @@ class MonteCarloPlot(object):
 		# Define model properties
 		self.model_props = model_props
 		
-		# Define plotting instance
+		# Define plotting keys
 		plot_keys = {}
 		plot_bool = {}
 		for K,V in model_keys.items():
@@ -32,6 +32,8 @@ class MonteCarloPlot(object):
 				plot_keys[K] = [[k for k in V[1:]]]
 			plot_bool[K] = V[0]
 		
+		# Define Plotting Instance
+		Data_Process().plot_close()
 		self.plot_obj = Data_Process(plot_keys,plot_bool)
 		self.plot_save = self.plot_obj.plot_save
 		self.plot_keys = plot_keys

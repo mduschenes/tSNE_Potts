@@ -78,7 +78,6 @@ class MonteCarloUpdate(object):
 
 		# Define Configurations and Observables Data Dictionaries
 		self.model_props = model_props 
-		self.data = {}
 		Data_Process().plot_close()
 
 		return
@@ -110,6 +109,7 @@ class MonteCarloUpdate(object):
 
 
 		# Initialize Plotting and Data Types
+		data = {}
 		n_T = len(self.model_props['T'])
 		n_meas = Nmeas//Nmeas_f
 		data_sites = np.empty((n_iter,n_T,n_meas,N_sites), 
@@ -188,14 +188,14 @@ class MonteCarloUpdate(object):
 				
 			
 		# Compute Observables Data
-		self.data['sites'] = data_sites
-		self.data['observables'] = self.MC_measurements(self.data['sites'],
+		data['sites'] = data_sites
+		data['observables'] = self.MC_measurements(data['sites'],
 											self.model_props['neighbour_sites'],
 											self.model_props['T'],
 											self.model_props['observables'])                                                   
 			
 		if self.model_props['data_save']:
-			Data_Process().exporter(self.data,self.model_props)
+			Data_Process().exporter(data,self.model_props)
 			Data_Process().exporter({'model_props':self.model_props},
 							        self.model_props,format='.txt') 
 			
@@ -203,7 +203,7 @@ class MonteCarloUpdate(object):
 		display(print_it=disp_updates,time_it=False,
 				m='Monte Carlo Simulation Complete...')
 				
-		return
+		return data, self.model_props
 
 	# Update Algorithms
 	def metropolis(self,sites, cluster, cluster_bool, neighbours,

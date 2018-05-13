@@ -53,9 +53,9 @@ cdef class MonteCarloUpdate(object):
 	cdef int N_sites
 
 	# Define Configurations and Observables Data Dictionaries
-	cdef dict model_props,data
+	cdef dict model_props
 
-	def __init__(self,model_props):
+	def __init__(self,dict model_props):
 
         # Perform Monte Carlo Updates for nclusters of sites and Plot Data
         
@@ -115,9 +115,7 @@ cdef class MonteCarloUpdate(object):
 
 
 		# Define Configurations and Observables Data Dictionaries
-		self.model_props = model_props 
-		self.data = {}
-		Data_Process().plot_close()
+		self.model_props = model_props
 
 		return
 
@@ -135,6 +133,7 @@ cdef class MonteCarloUpdate(object):
 		# Initialize iter_props as array of dictionaries
 		cdef int n_iter
 		iter_props,n_iter = array_dict(iter_props)
+		self.model_props['iter_props'] = iter_props
 		
 		# Declare Update Variable Types
 		cdef int disp_updates = self.model_props['disp_updates']
@@ -158,6 +157,7 @@ cdef class MonteCarloUpdate(object):
 
 
 		# Initialize Plotting and Data Types
+		cdef dict data = {}
 		cdef int n_T = len(self.model_props['T'])
 		cdef int n_meas = Nmeas//Nmeas_f
 		cdef SITE_TYPE[:,:,:,::1] data_sites = np.empty((n_iter,n_T,
@@ -241,28 +241,29 @@ cdef class MonteCarloUpdate(object):
 				
 				
 		# Compute Observables Data
-		self.data['sites'] = data_sites
-		self.data['observables'] = self.MC_measurements(self.data['sites'],
+		data['sites'] = data_sites
+		data['observables'] = self.MC_measurements(data['sites'],
 											self.model_props['neighbour_sites'],
 											self.model_props['T'],
 											self.model_props['observables'])                                                   
 			
 		if self.model_props['data_save']:
-			Data_Process().exporter(self.data,self.model_props)
-			Data_Process().exporter({'model_props':self.model_props},
-							        self.model_props,format='.txt') 
+			Data_Process().exporter(data,self.model_props)
+			for f in ['.txt','.npz']:
+				Data_Process().exporter({'model_props':self.model_props},
+							            self.model_props,format=f)
 			
 		display(print_it=disp_updates,m='Observables Calculated')
 		display(print_it=disp_updates,time_it=False,
 				m='Monte Carlo Simulation Complete...')
 								   
-		return
+		return data, self.model_props
 
 	# Update Algorithms
 	@cython.boundscheck(False)
 	@cython.wraparound(False)
 	@cython.cdivision(True)
-	def metropolis(self,SITE_TYPE[::1] sites,
+	cpdef void metropolis(self,SITE_TYPE[::1] sites,
 							  SITE_TYPE[::1] cluster,
 							  int [::1] cluster_bool,
 							  int[:,::1] neighbours,

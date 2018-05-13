@@ -61,7 +61,6 @@ class system(object):
 		# Initialize System Attributes
 		self.m = m
 		self.l = l
-		self.model_props = model_props
 
 		# Update model_props
 		model_props.update({
@@ -88,8 +87,7 @@ class system(object):
 		
 		# Perform Monte Carlo Updates for various Temperatures
 		self.MonteCarlo = MonteCarloUpdate(model_props = model_props)
-		self.data = self.MonteCarlo.data
-		
+		self.model_props = model_props
 		return
     
     
@@ -157,16 +155,14 @@ if __name__ == "__main__":
 	
 	# Monte Carlo Simulation Parameters
 	iter_props = {'algorithm':['wolff','metropolis']}	
-	s.MonteCarlo.MC_update(iter_props) 
-	
-	
-	
+	s.data,s.model_props = s.MonteCarlo.MC_update(iter_props) 
+		
 	
 	
 	
 	# Plot Observables
 	plot_obj = MonteCarloPlot(s.model_props['observe_props'],
-									  s.model_props, s.model_props['T'])
+							  s.model_props, s.model_props['T'])
 	
 	
 	
@@ -180,4 +176,3 @@ if __name__ == "__main__":
 		
 	if s.model_props['data_save']:
 		plot_obj.plot_save(s.model_props)
-								# fig_keys=['observables','observables_mean'])
