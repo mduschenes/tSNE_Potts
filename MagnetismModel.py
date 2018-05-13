@@ -10,8 +10,8 @@ import argparse
 
 from Lattice import Lattice
 from Model import Model
-from MonteCarloUpdate_cython import MonteCarloUpdate
-from misc_functions import caps
+from MonteCarloPlot import MonteCarloPlot
+from misc_functions import caps,display
 
 
 
@@ -88,7 +88,8 @@ class system(object):
 		
 		# Perform Monte Carlo Updates for various Temperatures
 		self.MonteCarlo = MonteCarloUpdate(model_props = model_props)
-        
+		self.data = self.MonteCarlo.data
+		
 		return
     
     
@@ -115,6 +116,8 @@ parser.add_argument('-m','--model_name',help = 'Model Name',
 parser.add_argument('-T','--T',help = 'System Temperature',
 					nargs = '+',type=float)
 
+parser.add_argument('-v','--version',help = 'Version: Python or Cython',
+						type=str,choices=['py','cy'],default='py')
 
 # Parse Args Command
 args = parser.parse_args()
@@ -128,13 +131,21 @@ if __name__ == "__main__":
 	# T = [3.0,2.5,1.75,1.2,1.0,0.8,0.5]
 	# m = 'potts'
 	model_props={'coupling_param':[0,1],'data_type':np.int_}
+	
+	# Check for Version
+	if args.version == 'py':
+		from MonteCarloUpdate_python import MonteCarloUpdate
+	elif args.version == 'cy':
+		from MonteCarloUpdate_cython import MonteCarloUpdate
+	del args.version
+	
 	model_props.update(vars(args))
 
-	update_props = {'update_bool':True,'Neqb':100, 'Nmeas':100, 
+	update_props = {'update_bool':True,'Neqb':5, 'Nmeas':5, 
 					                'Nmeas_f':1, 'Ncluster':1}
 
 	observe_props = {'configurations': [False,'sites','cluster'],
-			         'observables': [False,'energy','order','specific_heat',
+			         'observables': [True,'energy','order','specific_heat',
 									                          'susceptibility'],
                      'observables_mean': [True]}
 
@@ -147,3 +158,26 @@ if __name__ == "__main__":
 	# Monte Carlo Simulation Parameters
 	iter_props = {'algorithm':['wolff','metropolis']}	
 	s.MonteCarlo.MC_update(iter_props) 
+	
+	
+	
+	
+	
+	
+	# Plot Observables
+	plot_obj = MonteCarloPlot(s.model_props['observe_props'],
+									  s.model_props, s.model_props['T'])
+	
+	
+	
+	plot_obj.MC_plotter({'observables': s.data['observables'],
+						 'observables_mean': s.data['observables']},
+					  *[s.model_props['T'],
+					    [p['algorithm'] for p in s.model_props['iter_props']]])
+
+	display(print_it=True,time_it=False,m='Observables Figures Plotted')
+
+		
+	if s.model_props['data_save']:
+		plot_obj.plot_save(s.model_props)
+								# fig_keys=['observables','observables_mean'])

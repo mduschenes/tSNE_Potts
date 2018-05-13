@@ -24,7 +24,7 @@ def display(print_it=True,time_it=True,m='',
 		times.append(time.clock())
 		if print_it and not time_check:
 			print(m,times[-1]-times[t0],line_break)
-		else:
+		elif print_it:
 			print(m,line_break)
 	elif print_it:
 		print(m,line_break)

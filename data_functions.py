@@ -290,7 +290,8 @@ class Data_Process(object):
 	# Export Data
 	def exporter(self,data,
 				 data_params={'data_dir':'dataset/','data_file':None},
-				 label = ''):
+				 label = '',
+				 format='.npz'):
 	   
 		# Data Directory
 		if not data_params.get('data_dir'):
@@ -316,14 +317,25 @@ class Data_Process(object):
 			i = 0
 			file_end = ''
 			while os.path.isfile(file(k)+
-								 label+file_end+'.npz'):
+								 label+file_end+format):
 				file_end = '_%d'%i
 				i+=1
-			
-			np.savez_compressed(data_params['data_dir'] + 
-								file(k) +
-								label + file_end,a=v)
-		return     
+			if format == '.npz':
+				np.savez_compressed(data_params['data_dir'] + 
+									file(k) +
+									label + file_end,a=v)
+			elif format == '.txt':
+				with open(data_params['data_dir'] + file(k) +
+						 label + file_end+format, 'w') as file_txt:
+					if isinstance(v,dict):
+						for key in sorted(list(v.keys()),
+										   key=lambda x: (len(str(v[x])),
+														 len(x),str.lower(x))):
+							file_txt.write('%s:  %s \n \n \n'%(str(key),
+															   str(v[key])))
+					else:
+						file_txt.write(str(v))
+		return
             
         
         
