@@ -7,10 +7,11 @@ Created on Mon Apr 23 02:43:27 2018
 import numpy as np
 import copy
 import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib.ticker import MaxNLocator
+#from matplotlib.ticker import MaxNLocator
 matplotlib.rcParams['text.usetex'] = True
 
 
@@ -143,7 +144,9 @@ def plot_decorator(plot_func):
         # Set Figure Properties
 		plot_not_set_props = ['other','data','plot']
 		if plot_func.__name__ =='plot_histogram':
-			ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+			ax.yaxis.set_major_locator(plt.MultipleLocator(1))
+			
+		ax.yaxis.set_major_locator(plt.MultipleLocator(1/2))
 		for prop in np.setdiff1d(list(plot_props.keys()),plot_not_set_props):
 			if '_attr' in prop:
 				obj = locals()[prop.replace('_attr','')]
@@ -177,7 +180,9 @@ def plot_plot(x,y,props):
 
 @plot_decorator
 def plot_histogram(x,y,props):
-	props['bins'] = 20 #int(1+3.322*np.log10(np.size(y))
+	if np.size(y) <= 1:
+		return plt.plot([],label=props['label'])
+	props['bins'] = min(20,int(1+3.322*np.log10(np.size(y))))
 	plot = plt.hist(y,**props)
 	return plot
 

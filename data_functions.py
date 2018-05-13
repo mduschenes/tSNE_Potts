@@ -3,7 +3,8 @@
 Created on Sat Mar 24 19:54:38 2018
 @author: Matt
 """
-
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import os.path

@@ -55,7 +55,8 @@ class system(object):
 				process_props = {'disp_updates': 1, 'data_save': 1}):
 
 		# Initialize model class, lattice class
-		m = Model(model=model_props, observe=observe_props['observables'][1:])
+		m = Model(model=model_props, 
+		          observe=observe_props['observables_mean'][1:])
 		l = Lattice(L=model_props['L'], d=model_props['d'])
 
 		# Initialize System Attributes
@@ -117,6 +118,15 @@ parser.add_argument('-T','--T',help = 'System Temperature',
 parser.add_argument('-v','--version',help = 'Version: Python or Cython',
 						type=str,choices=['py','cy'],default='py')
 
+parser.add_argument('-Ne','--Neqb',help = 'Equilibrium Sweeps',
+					type=int,default=10)
+					
+parser.add_argument('-Nm','--Nmeas',help = 'Measurement Sweeps',
+					type=int,default=10)
+					
+parser.add_argument('-Nf','--Nmeas_f',help = 'Measurement Sweeps Frequency',
+					type=int,default=1)
+						
 # Parse Args Command
 args = parser.parse_args()
 
@@ -135,30 +145,32 @@ if __name__ == "__main__":
 		from MonteCarloUpdate_python import MonteCarloUpdate
 	elif args.version == 'cy':
 		from MonteCarloUpdate_cython import MonteCarloUpdate
-	del args.version
 	
-	model_props.update(vars(args))
-
-	update_props = {'update_bool':True,'Neqb':5, 'Nmeas':5, 
-					                'Nmeas_f':1, 'Ncluster':1}
+	# Update, Observe, Process Parameters
+	update_props = {'update_bool':True,'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 
+					                   'Nmeas_f':args.Nmeas_f, 'Ncluster':1}
 
 	observe_props = {'configurations': [False,'sites','cluster'],
-			         'observables': [True,'energy','order','specific_heat',
-									                          'susceptibility'],
-                     'observables_mean': [True]}
+			         'observables': [True,'energy','order'],
+                     'observables_mean': [True,'energy','order','specific_heat',
+									                          'susceptibility']}
 
 	process_props = {'disp_updates': True, 'data_save': True}
 
+	# Delete non keyword arg attributes
+	for k in ['version','Neqb','Nmeas','Nmeas_f']:
+		delattr(args,k)
+	
+	model_props.update(vars(args))
 	s = system(model_props=model_props,     update_props=update_props,
 			   observe_props=observe_props, process_props=process_props)
 
+	
 	
 	# Monte Carlo Simulation Parameters
 	iter_props = {'algorithm':['wolff','metropolis']}	
 	s.data,s.model_props = s.MonteCarlo.MC_update(iter_props) 
 		
-	
-	
 	
 	# Plot Observables
 	plot_obj = MonteCarloPlot(s.model_props['observe_props'],

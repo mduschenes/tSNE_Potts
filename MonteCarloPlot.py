@@ -26,8 +26,6 @@ class MonteCarloPlot(object):
 		for K,V in model_keys.items():
 			if K == 'configurations':
 				plot_keys[K] = [[(k,t) for t in args[0]] for k in V[1:]]
-			elif K == 'observables_mean':			
-				plot_keys[K] = [[k for k in model_keys['observables'][1:]]]
 			else:
 				plot_keys[K] = [[k for k in V[1:]]]
 			plot_bool[K] = V[0]
@@ -68,10 +66,10 @@ class MonteCarloPlot(object):
 				self.plot_obj.plotter(
 					data = {k: {a: data['observables'][ia][k] 
 							for ia,a in enumerate(args[1])}
-							for k in flatten(self.plot_keys['observables'])},
+							for k in flatten(self.plot_keys[K])},
 					domain = {k: {a: args[0] 
 							for ia,a in enumerate(args[1])}
-							for k in flatten(self.plot_keys['observables'])},
+							for k in flatten(self.plot_keys[K])},
 					plot_props = self.MC_plot_props(K,self.plot_keys[K],
 														*args[2:]),
 							data_key = K)

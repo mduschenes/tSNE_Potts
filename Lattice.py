@@ -78,11 +78,11 @@ class Lattice(object):
             Rrange = r
         else:
             Rrange = [r]
-                            
-        return np.stack((np.concatenate(
+        return np.array([np.concatenate(
                             (self.site(np.mod(sitepos+R*self.I,self.L)),
                              self.site(np.mod(sitepos-R*self.I,self.L))),1)
-                                for R in Rrange)) 
+                                for R in Rrange])                     
+
         
     def neighbours(self,r=1,sites=None):
         # Return spins of r-distance neighbours for all spin sites
