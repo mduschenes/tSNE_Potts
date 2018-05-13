@@ -145,8 +145,11 @@ def plot_decorator(plot_func):
 		plot_not_set_props = ['other','data','plot']
 		if plot_func.__name__ =='plot_histogram':
 			ax.yaxis.set_major_locator(plt.MultipleLocator(1))
-			
-		ax.yaxis.set_major_locator(plt.MultipleLocator(1/2))
+			ax.xaxis.set_major_locator(plt.MultipleLocator(1/4))
+		else:
+			ax.yaxis.set_major_locator(plt.MultipleLocator(1/2))
+			ax.xaxis.set_major_locator(plt.MultipleLocator(1/4))
+		
 		for prop in np.setdiff1d(list(plot_props.keys()),plot_not_set_props):
 			if '_attr' in prop:
 				obj = locals()[prop.replace('_attr','')]

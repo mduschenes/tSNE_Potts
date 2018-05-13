@@ -201,7 +201,7 @@ class MonteCarloUpdate(object):
 			
 		display(print_it=disp_updates,m='Observables Calculated')
 		display(print_it=disp_updates,time_it=False,
-				m='Monte Carlo Simulation Complete...')
+				m='Monte Carlo Simulation Complete...',line_break=True)
 				
 		return data, self.model_props
 
