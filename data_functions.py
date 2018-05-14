@@ -13,16 +13,19 @@ from misc_functions import flatten,dict_check, one_hot,caps,list_sort,str_check
 import plot_functions
 
 NP_FILE = 'npy'
-
+IMG_FILE = 'pdf'
 
 class Data_Process(object):
     
     # Create figure and axes dictionaries for dataset keys
-	def __init__(self,keys=[None],plot=[False],NP_FILE = 'npy'):
+	def __init__(self,keys=[None],plot=[False],np_file = None,img_file=None):
 		 
 		# Standardized numpy file format
-		self.NP_FILE = NP_FILE
-		 
+		for f in ['np_file','img_file']:
+			F = locals().get(f)
+			F = globals().get(f.upper()) if  F is None else F
+			setattr(self,f.upper(),F)
+			
 		# Initialize figures and axes dictionaries
 		if not None in keys:
 			self.figs = {}
@@ -140,12 +143,11 @@ class Data_Process(object):
 	# Save all current figures
 	def plot_save(self,data_params={'data_dir':'dataset/',
 									'figure_format':None},
-					   fig_keys = None, 
-					   label = ''):
+					   fig_keys = None, label = '',read_write='w'):
         
         # Save Figures for current Data_Process Instance
 		
-		
+		format = data_params.get('figure_format',IMG_FILE)
 		# Data Directory
 		if not data_params.get('data_dir'):
 			data_params['data_dir'] = 'dataset/'
@@ -172,23 +174,25 @@ class Data_Process(object):
 				# Set File Name and ensure no Overwriting
 				file = ''.join([data_params.get('data_dir','dataset/'),
 								data_params.get('data_file',''),
-								caps(label),'_',caps(fig_k),'_',
-								'_'.join(set([k if isinstance(k,str) 
-										  else '' 
-										  for k in fig_i.keys() 
-										  if fig_i[k].number == ifig]))])
+								label,'_',fig_k])
+								# ,'_',
+								# '_'.join(set([k if isinstance(k,str) 
+										  # else '' 
+										  # for k in sorted(fig_i.keys()) 
+										  # if fig_i[k].number == ifig]))])
 				
 		
 				i = 0
 				file_end = ''
-				while os.path.isfile(file + file_end + 
-									 data_params.get('figure_format','.pdf')):
+				while os.path.isfile(file + file_end + '.'+format):
 					file_end = '_%d'%i
 					i+=1
 
 				# Save Figure as File_Format
-				plt.savefig(file + 
-							file_end+data_params.get('figure_format','.pdf'),
+				if read_write == 'w': 
+					if i > 0: return 
+					else: file_end = ''
+				plt.savefig(file + file_end+'.'+format,
 							bbox_inches='tight',dpi=500)
 				fig.set_size_inches(plot_size) 
 			
@@ -373,6 +377,9 @@ class Data_Process(object):
 		# Data Format
 		if format is None:
 			format = data_params.get('data_format',self.NP_FILE)
+		
+		data_params['data_format'] = format
+		
 		# Check if Data is dict type
 		data = dict_check(data,'')    
 
@@ -410,6 +417,8 @@ class Data_Process(object):
 															   str(v[key])))
 					else:
 						file_txt.write(str(v))
+			
+			
 		return
 	
 	def format(self,data_params,new_dir=False):
@@ -438,6 +447,7 @@ class Data_Process(object):
 		data_params['data_file'] += '_'+file_footer 
 		
 		data_params['data_file'] = data_params['data_file'].replace('.','f')
+		
 		
 		return
 			

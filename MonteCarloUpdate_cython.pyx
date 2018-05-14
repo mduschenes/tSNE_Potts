@@ -165,7 +165,7 @@ cdef class MonteCarloUpdate(object):
 				'Monte Carlo Simulation... \n%s: q = %d \nT = %s'%(
 					  (self.model_props['model_name'],self.model_props['q'],
 					   str(self.model_props['T'])))+'\nNeqb = %d, Nmeas = %d'%(
-						Neqb,Nmeas),line_break=True)
+						Neqb,Nmeas),line_break=1)
 					  
 					  
 
@@ -219,7 +219,7 @@ cdef class MonteCarloUpdate(object):
 											  'cluster':np.asarray(cluster)}},
 						*[[t],[],i_mc])                
 			  
-				display(print_it=disp_updates,m='Updates: T = %0.2f'%t)
+				display(print_it=disp_updates, m='Updates: T = %0.2f'%t)
 				
 			# Save Current Data
 			if self.model_props.get('data_save',True):
@@ -234,11 +234,11 @@ cdef class MonteCarloUpdate(object):
 							   self.model_props, read_write='a')  
 		
 			display(print_it=disp_updates,
-					m='Runtime: ',t0=-(i_t+2),line_break=True)
+					m='Runtime: ',t0=-(i_t+2),line_break=1)
 				
 			
 		display(print_it=disp_updates,time_it=False,
-				m='Monte Carlo Simulation Complete...',line_break=True)
+				m='Monte Carlo Simulation Complete... ',line_break=1)
 								   
 		return
 			

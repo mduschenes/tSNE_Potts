@@ -185,7 +185,7 @@ def plot_plot(x,y,props):
 def plot_histogram(x,y,props):
 	if np.size(y) <= 1:
 		return plt.plot([],label=props['label'])
-	props['bins'] = min(20,int(1+3.322*np.log10(np.size(y))))
+	props['bins'] = min(10,int(1+3.322*np.log10(np.size(y))))
 	plot = plt.hist(y,**props)
 	return plot
 

@@ -3,24 +3,31 @@ Created on Sun May 13 10:48:34 2018
 @author: Matt
 """
 import numpy as np
-import subprocess,argparse,datetime,time,itertools
+import subprocess,argparse,datetime,time,itertools,os
 
 # Parser Object
 parser = argparse.ArgumentParser(description = "Parse Arguments")
 
 # Known Arguments
 parser.add_argument('-c','--command',help = 'Job Command',
-					type=str,nargs = '*',default='qsub')
+					type=str,nargs = '*',default='')
 parser.add_argument('-j','--job',help = 'Job Executable',
 					type=str,nargs='*',default='')
 parser.add_argument('-arg','--script_args',help = 'Script Arguments File',
 					type=str,default='')					
 
 parser.add_argument('-q','--q',help = 'Job Queue',
-					type=str)
+					type=str,default='')
 parser.add_argument('-o','--o',help = 'Output File',
-					type=str)
+					type=str, default = '')
 
+parser.add_argument('-rw','--rw',help = 'Write or Run Bash Commands',
+					type=str,choices=['run','write','run-write','execute'],
+					default='write')
+
+parser.add_argument('-rw_f','--rw_file',help = 'Bash Script File',
+					type=str, default='command_script.sh')
+					
 _, unparsed = parser.parse_known_args()
 
 # Unknown Arguments
@@ -58,14 +65,15 @@ def arg_parse(kwargs):
 	else:
 		return str_check(kwargs)
 
-def file_write(file, label=''):
-	if file is not None and file is not 'None':
-		try:
-			with open(file,'a') as file_txt:
-				file_txt.write(label)
-			return
-		except IOError:
-			return
+def file_write(file='output_file.txt', text='',read_write='a'):
+	if file is None or file == '':
+		return
+	try:
+		with open(file,read_write) as f:
+			f.write(text)
+		return
+	except IOError:
+		return
 
 def file_read(file):
 	str_header = lambda s: s.replace('\t','').split(' ')[0]
@@ -120,6 +128,8 @@ def str_check(v):
 def cmd_run(cmd_args):
 	
 	# Command and Job Args
+	rw = cmd_args.pop('rw')
+	file_bash = cmd_args.pop('rw_file')
 	job = arg_parse(cmd_args.pop('job'))
 	command = arg_parse(cmd_args.pop('command'))
 	
@@ -144,16 +154,30 @@ def cmd_run(cmd_args):
 		
 		# Bash Command
 		cmd_bash = ' '.join([command,arg_parse(cmd_args),
-							 job, arg_parse(script_arg)]) 
+							 job, arg_parse(script_arg)]).replace('\n','') 
 		
 		# Update Output File
 		file_write(cmd_args.get('o'),job_header([i,cmd_bash]))
 		
+		if rw == 'run':
+			os.system(cmd_bash)
+			# process = subprocess.Popen(cmd_bash.split(), stdout=subprocess.PIPE)
+			# output, error = process.communicate()
+			#print(cmd_bash)
+		elif rw == 'write':
+			file_write(file_bash, text=cmd_bash,read_write='w')
+		elif rw == 'write_run':
+			file_write(file_bash, text=cmd_bash,read_write='w')
+			os.system(cmd_bash)
+			# process = subprocess.Popen(cmd_bash.split(), stdout=subprocess.PIPE)
+			# output, error = process.communicate()
+			#print(cmd_bash)
+		elif rw == 'execute':
+			subprocess.call(['./'+file_bash])
 		
-		print(cmd_bash)
-		time.sleep(5.5) 
-		# process = subprocess.run(cmd_bash.split(), stdout=subprocess.PIPE)
-		# output, error = process.communicate()
+		# Pause to not overload system
+		time.sleep(1) 
+		
 		
  
 

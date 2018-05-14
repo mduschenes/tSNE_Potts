@@ -2437,7 +2437,7 @@ static const char __pyx_k_pyx_unpickle_MonteCarloUpdate[] = "__pyx_unpickle_Mont
 static const char __pyx_k_unable_to_allocate_array_data[] = "unable to allocate array data.";
 static const char __pyx_k_Created_on_Tue_Feb_20_14_18_39[] = "\nCreated on Tue Feb 20 14:18:39 2018\n@author: Matt\n";
 static const char __pyx_k_strided_and_direct_or_indirect[] = "<strided and direct or indirect>";
-static const char __pyx_k_Monte_Carlo_Simulation_Complete[] = "Monte Carlo Simulation Complete...";
+static const char __pyx_k_Monte_Carlo_Simulation_Complete[] = "Monte Carlo Simulation Complete... ";
 static const char __pyx_k_numpy_core_multiarray_failed_to[] = "numpy.core.multiarray failed to import";
 static const char __pyx_k_unknown_dtype_code_in_numpy_pxd[] = "unknown dtype code in numpy.pxd (%d)";
 static const char __pyx_k_Buffer_view_does_not_expose_stri[] = "Buffer view does not expose strides";
@@ -4046,7 +4046,7 @@ static PyObject *__pyx_pf_23MonteCarloUpdate_cython_16MonteCarloUpdate_2MC_updat
  * 				'Monte Carlo Simulation... \n%s: q = %d \nT = %s'%(
  * 					  (self.model_props['model_name'],self.model_props['q'],             # <<<<<<<<<<<<<<
  * 					   str(self.model_props['T'])))+'\nNeqb = %d, Nmeas = %d'%(
- * 						Neqb,Nmeas),line_break=True)
+ * 						Neqb,Nmeas),line_break=1)
  */
   if (unlikely(__pyx_v_self->model_props == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
@@ -4065,7 +4065,7 @@ static PyObject *__pyx_pf_23MonteCarloUpdate_cython_16MonteCarloUpdate_2MC_updat
  * 				'Monte Carlo Simulation... \n%s: q = %d \nT = %s'%(
  * 					  (self.model_props['model_name'],self.model_props['q'],
  * 					   str(self.model_props['T'])))+'\nNeqb = %d, Nmeas = %d'%(             # <<<<<<<<<<<<<<
- * 						Neqb,Nmeas),line_break=True)
+ * 						Neqb,Nmeas),line_break=1)
  * 
  */
   if (unlikely(__pyx_v_self->model_props == Py_None)) {
@@ -4083,7 +4083,7 @@ static PyObject *__pyx_pf_23MonteCarloUpdate_cython_16MonteCarloUpdate_2MC_updat
  * 				'Monte Carlo Simulation... \n%s: q = %d \nT = %s'%(
  * 					  (self.model_props['model_name'],self.model_props['q'],             # <<<<<<<<<<<<<<
  * 					   str(self.model_props['T'])))+'\nNeqb = %d, Nmeas = %d'%(
- * 						Neqb,Nmeas),line_break=True)
+ * 						Neqb,Nmeas),line_break=1)
  */
   __pyx_t_12 = PyTuple_New(3); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 166, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_12);
@@ -4111,7 +4111,7 @@ static PyObject *__pyx_pf_23MonteCarloUpdate_cython_16MonteCarloUpdate_2MC_updat
   /* "MonteCarloUpdate_cython.pyx":168
  * 					  (self.model_props['model_name'],self.model_props['q'],
  * 					   str(self.model_props['T'])))+'\nNeqb = %d, Nmeas = %d'%(
- * 						Neqb,Nmeas),line_break=True)             # <<<<<<<<<<<<<<
+ * 						Neqb,Nmeas),line_break=1)             # <<<<<<<<<<<<<<
  * 
  * 
  */
@@ -4132,7 +4132,7 @@ static PyObject *__pyx_pf_23MonteCarloUpdate_cython_16MonteCarloUpdate_2MC_updat
  * 				'Monte Carlo Simulation... \n%s: q = %d \nT = %s'%(
  * 					  (self.model_props['model_name'],self.model_props['q'],
  * 					   str(self.model_props['T'])))+'\nNeqb = %d, Nmeas = %d'%(             # <<<<<<<<<<<<<<
- * 						Neqb,Nmeas),line_break=True)
+ * 						Neqb,Nmeas),line_break=1)
  * 
  */
   __pyx_t_4 = __Pyx_PyString_Format(__pyx_kp_s_Neqb_d_Nmeas_d, __pyx_t_5); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 167, __pyx_L1_error)
@@ -4165,13 +4165,13 @@ static PyObject *__pyx_pf_23MonteCarloUpdate_cython_16MonteCarloUpdate_2MC_updat
   /* "MonteCarloUpdate_cython.pyx":168
  * 					  (self.model_props['model_name'],self.model_props['q'],
  * 					   str(self.model_props['T'])))+'\nNeqb = %d, Nmeas = %d'%(
- * 						Neqb,Nmeas),line_break=True)             # <<<<<<<<<<<<<<
+ * 						Neqb,Nmeas),line_break=1)             # <<<<<<<<<<<<<<
  * 
  * 
  */
   __pyx_t_5 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 168, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_line_break, Py_True) < 0) __PYX_ERR(0, 168, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_line_break, __pyx_int_1) < 0) __PYX_ERR(0, 168, __pyx_L1_error)
 
   /* "MonteCarloUpdate_cython.pyx":164
  * 							            self.model_props,format=f)
@@ -5141,7 +5141,7 @@ if (unlikely(__pyx_memoryview_copy_contents(__pyx_v_sites, __pyx_t_11, 1, 1, 0) 
  * 											  'cluster':np.asarray(cluster)}},
  * 						*[[t],[],i_mc])             # <<<<<<<<<<<<<<
  * 
- * 				display(print_it=disp_updates,m='Updates: T = %0.2f'%t)
+ * 				display(print_it=disp_updates, m='Updates: T = %0.2f'%t)
  */
           __pyx_t_15 = PyFloat_FromDouble(__pyx_v_t); if (unlikely(!__pyx_t_15)) __PYX_ERR(0, 220, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_15);
@@ -5199,7 +5199,7 @@ if (unlikely(__pyx_memoryview_copy_contents(__pyx_v_sites, __pyx_t_11, 1, 1, 0) 
       /* "MonteCarloUpdate_cython.pyx":222
  * 						*[[t],[],i_mc])
  * 
- * 				display(print_it=disp_updates,m='Updates: T = %0.2f'%t)             # <<<<<<<<<<<<<<
+ * 				display(print_it=disp_updates, m='Updates: T = %0.2f'%t)             # <<<<<<<<<<<<<<
  * 
  * 			# Save Current Data
  */
@@ -5562,7 +5562,7 @@ __pyx_t_32 = __pyx_memoryview_fromslice(__pyx_t_35, 3, (PyObject *(*)(char *)) _
  * 							   self.model_props, read_write='a')
  * 
  * 			display(print_it=disp_updates,             # <<<<<<<<<<<<<<
- * 					m='Runtime: ',t0=-(i_t+2),line_break=True)
+ * 					m='Runtime: ',t0=-(i_t+2),line_break=1)
  * 
  */
     __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_display); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 236, __pyx_L1_error)
@@ -5578,7 +5578,7 @@ __pyx_t_32 = __pyx_memoryview_fromslice(__pyx_t_35, 3, (PyObject *(*)(char *)) _
     /* "MonteCarloUpdate_cython.pyx":237
  * 
  * 			display(print_it=disp_updates,
- * 					m='Runtime: ',t0=-(i_t+2),line_break=True)             # <<<<<<<<<<<<<<
+ * 					m='Runtime: ',t0=-(i_t+2),line_break=1)             # <<<<<<<<<<<<<<
  * 
  * 
  */
@@ -5586,13 +5586,13 @@ __pyx_t_32 = __pyx_memoryview_fromslice(__pyx_t_35, 3, (PyObject *(*)(char *)) _
     __Pyx_GOTREF(__pyx_t_4);
     if (PyDict_SetItem(__pyx_t_21, __pyx_n_s_t0, __pyx_t_4) < 0) __PYX_ERR(0, 236, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    if (PyDict_SetItem(__pyx_t_21, __pyx_n_s_line_break, Py_True) < 0) __PYX_ERR(0, 236, __pyx_L1_error)
+    if (PyDict_SetItem(__pyx_t_21, __pyx_n_s_line_break, __pyx_int_1) < 0) __PYX_ERR(0, 236, __pyx_L1_error)
 
     /* "MonteCarloUpdate_cython.pyx":236
  * 							   self.model_props, read_write='a')
  * 
  * 			display(print_it=disp_updates,             # <<<<<<<<<<<<<<
- * 					m='Runtime: ',t0=-(i_t+2),line_break=True)
+ * 					m='Runtime: ',t0=-(i_t+2),line_break=1)
  * 
  */
     __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_empty_tuple, __pyx_t_21); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 236, __pyx_L1_error)
@@ -5606,7 +5606,7 @@ __pyx_t_32 = __pyx_memoryview_fromslice(__pyx_t_35, 3, (PyObject *(*)(char *)) _
  * 
  * 
  * 		display(print_it=disp_updates,time_it=False,             # <<<<<<<<<<<<<<
- * 				m='Monte Carlo Simulation Complete...',line_break=True)
+ * 				m='Monte Carlo Simulation Complete... ',line_break=1)
  * 
  */
   __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_display); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 240, __pyx_L1_error)
@@ -5619,23 +5619,7 @@ __pyx_t_32 = __pyx_memoryview_fromslice(__pyx_t_35, 3, (PyObject *(*)(char *)) _
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (PyDict_SetItem(__pyx_t_21, __pyx_n_s_time_it, Py_False) < 0) __PYX_ERR(0, 240, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_21, __pyx_n_s_m, __pyx_kp_s_Monte_Carlo_Simulation_Complete) < 0) __PYX_ERR(0, 240, __pyx_L1_error)
-
-  /* "MonteCarloUpdate_cython.pyx":241
- * 
- * 		display(print_it=disp_updates,time_it=False,
- * 				m='Monte Carlo Simulation Complete...',line_break=True)             # <<<<<<<<<<<<<<
- * 
- * 		return
- */
-  if (PyDict_SetItem(__pyx_t_21, __pyx_n_s_line_break, Py_True) < 0) __PYX_ERR(0, 240, __pyx_L1_error)
-
-  /* "MonteCarloUpdate_cython.pyx":240
- * 
- * 
- * 		display(print_it=disp_updates,time_it=False,             # <<<<<<<<<<<<<<
- * 				m='Monte Carlo Simulation Complete...',line_break=True)
- * 
- */
+  if (PyDict_SetItem(__pyx_t_21, __pyx_n_s_line_break, __pyx_int_1) < 0) __PYX_ERR(0, 240, __pyx_L1_error)
   __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_empty_tuple, __pyx_t_21); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 240, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
@@ -5643,7 +5627,7 @@ __pyx_t_32 = __pyx_memoryview_fromslice(__pyx_t_35, 3, (PyObject *(*)(char *)) _
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
   /* "MonteCarloUpdate_cython.pyx":243
- * 				m='Monte Carlo Simulation Complete...',line_break=True)
+ * 				m='Monte Carlo Simulation Complete... ',line_break=1)
  * 
  * 		return             # <<<<<<<<<<<<<<
  * 

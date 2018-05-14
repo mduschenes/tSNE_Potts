@@ -15,11 +15,12 @@ import time
 
 times = [time.clock()]
 def display(print_it=True,time_it=True,m='',
-			t0=-2,line_break=False,time_check=False):
-	if line_break:
-		line_break = '\n'
-	else:
-		line_break = ''
+			t0=-2,line_break=0,line_tab=0,time_check=False):
+	
+	line_break *= '\n' 
+	line_tab *= '\t'
+	m = line_tab+str_check(m)
+	
 	if time_it or time_check:
 		times.append(time.clock())
 		if print_it and not time_check:

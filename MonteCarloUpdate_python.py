@@ -111,8 +111,7 @@ class MonteCarloUpdate(object):
 				'Monte Carlo Simulation... \n%s: q = %d \nT = %s'%(
 					  (self.model_props['model_name'],self.model_props['q'],
 					   str(self.model_props['T'])))+'\nNeqb = %d, Nmeas = %d'%(
-								 Neqb/N_sites,Nmeas/N_sites),
-					   line_break=True,time_check=True)
+						Neqb,Nmeas),line_break=1)
 					  
 		# Save Model_Props
 		if self.model_props.get('data_save',True):
@@ -183,10 +182,10 @@ class MonteCarloUpdate(object):
 							   self.model_props,read_write='a')  
 		
 			display(print_it=disp_updates,
-					m='Runtime: ',t0=-(i_t+2),line_break=True)
+					m='Runtime: ',t0=-(i_t+2),line_break=1)
 				                                                  
 		display(print_it=disp_updates,time_it=False,
-				m='Monte Carlo Simulation Complete...',line_break=True)
+				m='Monte Carlo Simulation Complete...',line_break=1)
 		
 		return
 

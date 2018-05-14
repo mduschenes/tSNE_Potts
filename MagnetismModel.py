@@ -131,6 +131,9 @@ parser.add_argument('-Nf','--Nmeas_f',help = 'Measurement Sweeps Frequency',
 parser.add_argument('-Nr','--Nratio',help = 'Measurement Sweeps Ratio',
 					type=int,default=1)
 					
+parser.add_argument('-MC','--MC',help = 'Perform Monte Carlo Sweeeps',
+					action='store_true')
+					
 parser.add_argument('-v','--version',help = 'Version: Python or Cython',
 						type=str,choices=['py','cy'],default='py')
 						
@@ -161,7 +164,7 @@ if __name__ == "__main__":
 				   'data_date':datetime.datetime.now().strftime(
 										    			   '%Y-%m-%d-%H-%M-%S')}
 	
-	update_props = {'update_bool':True, 'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 
+	update_props = {'update_bool':args.MC, 'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 
 					'Nratio': 0.9,'Nmeas_f':args.Nmeas_f, 'Ncluster':1}
 	
 	observe_props = {'configurations':   [False,'sites','cluster'],
@@ -181,7 +184,7 @@ if __name__ == "__main__":
 	
 	
 	# Delete non keyword arg attributes
-	for k in ['version','Neqb','Nmeas','Nmeas_f']:
+	for k in ['version','MC','Neqb','Nmeas','Nmeas_f']:
 		delattr(args,k)
 	model_props.update(vars(args))
 	
@@ -194,7 +197,8 @@ if __name__ == "__main__":
 
 	# Analyse Results
 	data_props['data_files'] = '*.' + data_props['data_format'] 
-	Model_Analysis(data_props)
+	a = Model_Analysis(data_props)
+	a.analyse()
 	
 	
 	

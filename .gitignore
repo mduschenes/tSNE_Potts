@@ -2,22 +2,22 @@
 # ignore all Data files in the doc/ directory and any of its subdirectories
 
 
-# Specific Files
-*Data/
+# Specific Folders
 
 **/*cython*\**
 **/Neural_Network\**
-
+**/__pycache__
+**/pycall*
 OLD*/
 **/OLD*/
 **/*dataset*/
+*Data/
 
+# Specific File Formats
+*.txt
+*.pdf
+*.sh
 *.ipynb
-
-**/__pycache__
-
-
-**/pycall*
 
 # Windows image file caches
 Thumbs.db

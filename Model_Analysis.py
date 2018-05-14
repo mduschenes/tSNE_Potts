@@ -23,9 +23,17 @@ class Model_Analysis(object):
 		# Import Data
 		_,_,self.data,_ = Data_Process().importer(data_params)
 			
-			
+		return
+				
+	
+	def analyse(self):
+	
 		# Process Each Data Set
 		for k,sites in self.data['sites'].items():
+			
+			# Check if Data exists
+			if self.data['observables'].get(k) is not None:
+				break
 
 			model_props = self.data['model_props'][k]
 
@@ -33,18 +41,15 @@ class Model_Analysis(object):
 			observables = self.measure(sites, model_props['neighbour_sites'],
 									model_props['T'],model_props['observables'])
 			self.data['observables'][k] = observables
-		
+	
 			# Save Data
 			if model_props.get('data_save',True):
 				Data_Process().exporter({'observables':observables},model_props)
 			
 			# Plot Data
 			self.plot(observables,model_props)		
-			
+		
 		display(print_it=True,time_it=False,m='Observables Processed')
-		return
-				
-	
 	
 	def measure(self,sites,neighbours,T,observables):
 
@@ -79,4 +84,4 @@ class Model_Analysis(object):
 		
 		# Save Data
 		if model_props.get('data_save',True):
-			plot_obj.plot_save(model_props)
+			plot_obj.plot_save(model_props,read_write='w')
