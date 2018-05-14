@@ -61,6 +61,11 @@ class Model(object):
 		
 		# Define model specific functions                                
 		for t in self.model_types:
+		
+			self.models_params[t]['metropolis_wolff'] = {
+						       'metropolis': self.model_params[t]['metropolis'],
+								'wolff': self.model_params[t]['wolff']}
+		
 			for k in ['value','int','order','twoptcorr']:
 				self.models_params[t][k] = getattr(self,t+'_'+k,
 												   lambda *args:[])

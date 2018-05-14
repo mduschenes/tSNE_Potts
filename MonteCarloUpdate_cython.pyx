@@ -49,10 +49,6 @@ cdef class MonteCarloUpdate(object):
 	# Declare Class Attributes
 
 	# Define System Configuration
-	cdef object sites, cluster
-	cdef int N_sites
-
-	# Define Configurations and Observables Data Dictionaries
 	cdef dict model_props
 
 	def __init__(self,dict model_props):
@@ -98,23 +94,6 @@ cdef class MonteCarloUpdate(object):
 
 
 		# Define System Configuration
-		model_props['T'] = np.atleast_1d(model_props['T'])
-		model_props['N_sites'] = np.shape(model_props['neighbour_sites'])[1]
-		self.N_sites = np.shape(model_props['neighbour_sites'])[1]
-		
-		self.sites = np.zeros(self.N_sites,dtype=np.int_)
-		self.cluster = np.zeros(self.N_sites,dtype=int)
-
-		# Define Monte Carlo Update Parameters:
-		# Number of updates to reach "equilibrium" before measurement, 
-		# Number of measurement updates.
-		# Each sweep consists of Nsites updates
-		
-		for n in ['Neqb','Nmeas','Nmeas_f']:
-			model_props['update_props'][n] *= self.N_sites
-
-
-		# Define Configurations and Observables Data Dictionaries
 		self.model_props = model_props
 
 		return
@@ -137,16 +116,17 @@ cdef class MonteCarloUpdate(object):
 		
 		# Declare Update Variable Types
 		cdef int disp_updates = self.model_props['disp_updates']
-		cdef int i_iter=0,i_t=0,i_mc=0,i_mc_meas=0
+		cdef int i_iter=0,i_t=0,i_mc=0,i_sweep=0,i_mc_meas=0
 		cdef int Neqb = self.model_props['update_props']['Neqb']
 		cdef int Nmeas = self.model_props['update_props']['Nmeas']
 		cdef int Nmeas_f = self.model_props['update_props']['Nmeas_f']
+		cdef double Nratio = self.model_props['update_props']['Nratio']
 		cdef object state_update
 		cdef object state_int = self.model_props['state_int']
 		cdef object state_gen = self.model_props['state_gen']
 
 		# Declare Model Variable Types
-		cdef int N_sites = self.N_sites
+		cdef int N_sites = self.model_props['N_sites']
 		cdef int N_neighbours = len(self.model_props['neighbour_sites'][0,0,:])
 		cdef SITE_TYPE[::1] sites = np.zeros(self.N_sites,
 									        dtype=self.model_props['data_type'])
@@ -159,6 +139,7 @@ cdef class MonteCarloUpdate(object):
 		# Initialize Plotting and Data Types
 		cdef dict data = {}
 		cdef int n_T = len(self.model_props['T'])
+		cdef double t = self.model_props['T'][0]
 		cdef int n_meas = Nmeas//Nmeas_f
 		cdef SITE_TYPE[:,:,:,::1] data_sites = np.empty((n_iter,n_T,
 														 n_meas,N_sites), 
@@ -178,8 +159,7 @@ cdef class MonteCarloUpdate(object):
 				'Monte Carlo Simulation... \n%s: q = %d \nT = %s'%(
 					  (self.model_props['model_name'],self.model_props['q'],
 					   str(self.model_props['T'])))+'\nNeqb = %d, Nmeas = %d'%(
-								 Neqb/N_sites,Nmeas/N_sites),
-					   line_break=True)
+						Neqb,Nmeas),line_break=True)
 					  
 					  
 
@@ -207,27 +187,31 @@ cdef class MonteCarloUpdate(object):
 			for i_t,t in enumerate(self.model_props['T']):
 				# Perform Equilibration Monte Carlo steps initially
 				for i_mc in range(Neqb):
-					MC_alg(sites,cluster.copy(),cluster_bool.copy(),neighbours,
-						   N_sites,N_neighbours,t, 
-						   state_update, state_gen, state_int)					
+					for i_sweep in range(N_sites):
+						MC_alg(sites, cluster.copy(), cluster_bool.copy(),
+							   neighbours, N_sites, N_neighbours,
+							   t, (i_sweep/N_sites)/Nratio, 
+						       state_update, state_gen, state_int)					
 					
 				# Perform Measurement Monte Carlo Steps
 				for i_mc in range(Nmeas):
-					MC_alg(sites,cluster.copy(),cluster_bool.copy(),neighbours,
-						   N_sites,N_neighbours,t, 
-						   state_update, state_gen, state_int)
+					for i_sweep in range(N_sites):
+						MC_alg(sites, cluster.copy(), cluster_bool.copy(),
+							   neighbours, N_sites, N_neighbours,
+							   t, (i_sweep/N_sites)/Nratio, 
+						       state_update, state_gen, state_int)
 
 					# Update Configurations and Observables
 					if i_mc % Nmeas_f == 0:
 						i_mc_meas = i_mc//Nmeas_f
 						data_sites[i_iter,i_t,i_mc_meas] = sites
 						# display(print_it=disp_updates,
-								# m='Monte Carlo Step: %d'%(i_mc//N_sites))
+								# m='Monte Carlo Step: %d'%(i_mc))
 						
 						plot_obj.MC_plotter( 
 						  {'configurations': {'sites': np.asarray(sites),
 											  'cluster':np.asarray(cluster)}},
-						*[[t],[],i_mc/N_sites])                
+						*[[t],[],i_mc])                
 			  
 				display(print_it=disp_updates,m='Updates: T = %0.2f'%t)
 				
@@ -248,10 +232,7 @@ cdef class MonteCarloUpdate(object):
 		display(print_it=disp_updates,time_it=False,
 				m='Monte Carlo Simulation Complete...',line_break=True)
 								   
-		if self.model_props.get('return_data'):
-			return np.asarray(data_sites), self.model_props
-		else:
-			return
+		return
 			
 			
 	# Update Algorithms
@@ -263,7 +244,8 @@ cdef class MonteCarloUpdate(object):
 							  int [::1] cluster_bool,
 							  int[:,::1] neighbours,
 							  int N_sites,int N_neighbours,
-							  double T, 
+							  double T,
+							  double update_bool,
 							  dict state_update, 
 							  object state_gen,
 							  object state_int):  
@@ -300,7 +282,8 @@ cdef class MonteCarloUpdate(object):
 							  int [::1] cluster_bool,
 							  int[:,::1] neighbours,
 							  int N_sites,int N_neighbours,
-							  double T, 
+							  double T,
+							  double update_bool,							  
 							  dict state_update, 
 							  object state_gen,
 							  object state_int):  
@@ -339,3 +322,29 @@ cdef class MonteCarloUpdate(object):
 				sites[i] = val
 
 		return
+		
+		
+	@cython.boundscheck(False)
+	@cython.wraparound(False)
+	@cython.cdivision(True)
+	cdef metropolis_wolff(self,SITE_TYPE[::1] sites,
+							  SITE_TYPE[::1]  cluster,
+							  int [::1] cluster_bool,
+							  int[:,::1] neighbours,
+							  int N_sites,int N_neighbours,
+							  double T,
+						      double update_bool,							  
+							  dict state_update, 
+							  object state_gen,
+							  object state_int):
+
+		if update_bool < 1:
+			self.metropolis(sites, cluster, cluster_bool,
+							   neighbours, N_sites, N_neighbours,T, update_bool, 
+						       state_update['metropolis'], state_gen, state_int)
+		else:
+			self.wolff(sites, cluster, cluster_bool,
+							   neighbours, N_sites, N_neighbours,T, update_bool, 
+						       state_update['wolff'], state_gen, state_int)
+		return
+							   

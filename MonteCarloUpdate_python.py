@@ -60,24 +60,6 @@ class MonteCarloUpdate(object):
 
 
 		# Define System Configuration
-		model_props['T'] = np.atleast_1d(model_props['T'])
-		model_props['N_sites'] = np.shape(model_props['neighbour_sites'])[1]
-		self.N_sites = np.shape(model_props['neighbour_sites'])[1]
-		
-		self.sites = np.zeros(self.N_sites,dtype=np.int_)
-		self.cluster = np.zeros(self.N_sites,dtype=int)
-
-		# Define Monte Carlo Update Parameters:
-		# Number of updates to reach "equilibrium" before measurement, 
-		# Number of measurement updates.
-		# Each sweep consists of Nsites updates
-		
-		for n in ['Neqb','Nmeas','Nmeas_f']:
-			model_props['update_props'][n] *= self.N_sites
-
-
-		# Define Configurations and Observables Data Dictionaries
-		self.model_props = model_props 
 		Data_Proc().plot_close()
 
 		return
@@ -96,14 +78,15 @@ class MonteCarloUpdate(object):
 		Neqb = self.model_props['update_props']['Neqb']
 		Nmeas = self.model_props['update_props']['Nmeas']
 		Nmeas_f = self.model_props['update_props']['Nmeas_f']
+		Nratio = self.model_props['update_props']['Nratio']
 		state_int = self.model_props['state_int']
 		state_gen = self.model_props['state_gen']
 
 		# Declare Model Variable Types
-		N_sites = self.N_sites
+		N_sites = self.model_props['N_sites']
 		N_neighbours = len(self.model_props['neighbour_sites'][0,0,:])
-		sites = np.zeros(self.N_sites,dtype=self.model_props['data_type'])
-		cluster = np.zeros(self.N_sites, dtype=self.model_props['data_type'])
+		sites = np.zeros(N_sites,dtype=self.model_props['data_type'])
+		cluster = np.zeros(N_sites, dtype=self.model_props['data_type'])
 		cluster_bool = np.zeros(N_sites,dtype=bool)
 		neighbours = self.model_props['neighbour_sites'][0]
 
@@ -138,10 +121,10 @@ class MonteCarloUpdate(object):
 				
 			# Update dictionary and plotting for each Iteration
 			self.model_props.update(iter_props[i_iter])
-
+			Data_Proc().format(self.model_props)
 			
 			# Initialize sites with random spin at each site for each Iteration
-			sites = state_gen(self.N_sites)
+			sites = state_gen(N_sites)
 			state_update = self.model_props['state_update'][
 									   self.model_props['algorithm']]
 
@@ -155,26 +138,30 @@ class MonteCarloUpdate(object):
 			for i_t,t in enumerate(self.model_props['T']):
 				# Perform Equilibration Monte Carlo steps initially
 				for i_mc in range(Neqb):
-					MC_alg(sites,cluster.copy(),cluster_bool.copy(),neighbours,
-						   N_sites,N_neighbours,t, 
-						   state_update, state_gen, state_int)					
+					for i_sweep in range(N_sites):
+						MC_alg(sites, cluster.copy(), cluster_bool.copy(),
+							   neighbours, N_sites, N_neighbours,
+							   t, (i_sweep/N_sites)/Nratio, 
+						       state_update, state_gen, state_int)
 					
 				# Perform Measurement Monte Carlo Steps
 				for i_mc in range(Nmeas):
-					MC_alg(sites,cluster.copy(),cluster_bool.copy(),neighbours,
-						   N_sites,N_neighbours,t, 
-						   state_update, state_gen, state_int)
+					for i_sweep in range(N_sites):
+						MC_alg(sites, cluster.copy(), cluster_bool.copy(),
+							   neighbours, N_sites, N_neighbours,
+							   t, (i_sweep/N_sites)/Nratio,
+						       state_update, state_gen, state_int)
 
 					if i_mc % Nmeas_f == 0:
 						i_mc_meas = i_mc//Nmeas_f
 						data_sites[i_iter,i_t,i_mc_meas] = sites
 						# display(print_it=disp_updates,
-								# m='Monte Carlo Step: %d'%(i_mc//N_sites))
+								# m='Monte Carlo Step: %d'%(i_mc))
 						
 						plot_obj.MC_plotter(
 						  {'configurations': {'sites': np.asarray(sites),
 											  'cluster':np.asarray(cluster)}},
-						*[[t],[],i_mc/N_sites])                
+						*[[t],[],i_mc])                
 			  
 				display(print_it=disp_updates,m='Updates: T = %0.2f'%t)
 				
@@ -189,33 +176,17 @@ class MonteCarloUpdate(object):
 		
 			display(print_it=disp_updates,
 					m='Runtime: ',t0=-(i_t+2),line_break=True)
-				
-			
-		# Compute Data
-		data['sites'] = data_sites
-		data['observables'] = self.MC_measurements(data['sites'],
-											self.model_props['neighbour_sites'],
-											self.model_props['T'],
-											self.model_props['observables'])                                                   
-		display(print_it=disp_updates,m='Observables Calculated')
-			
-		if self.model_props.get('data_save',True):
-			Data_Proc().exporter({'observables':data['observables']},
-							     self.model_props) 
-			
+				                                                  
 		display(print_it=disp_updates,time_it=False,
 				m='Monte Carlo Simulation Complete...',line_break=True)
 		
-		if self.model_props.get('return_data'):
-			return np.asarray(data_sites), self.model_props
-		else:
-			return
+		return
 
 			
 			
 	# Update Algorithms
 	def metropolis(self,sites, cluster, cluster_bool, neighbours,
-						N_sites,N_neighbours, T, 
+						N_sites,N_neighbours, T, update_bool,
 						state_update, state_gen, state_int):
 		# Randomly alter random spin sites and accept spin alterations
 		# if energetically favourable or probabilistically likely
@@ -240,7 +211,7 @@ class MonteCarloUpdate(object):
 
 
 	def wolff(self,sites, cluster, cluster_bool, neighbours,
-						N_sites,N_neighbours, T, 
+						N_sites,N_neighbours, T, update_bool,
 						state_update, state_gen, state_int):      
 		
 		# Cluster Function
@@ -273,21 +244,19 @@ class MonteCarloUpdate(object):
 
 			   
 
+	def metropolis_wolff(self,sites, cluster, cluster_bool, neighbours,
+						N_sites,N_neighbours, T, update_bool,
+						state_update, state_gen, state_int):      
 
+		if update_bool < 1:
+			self.metropolis(sites, cluster, cluster_bool,
+							   neighbours, N_sites, N_neighbours,T, update_bool, 
+						       state_update['metropolis'], state_gen, state_int)
+		else:
+			self.wolff(sites, cluster, cluster_bool,
+							   neighbours, N_sites, N_neighbours,T, update_bool, 
+						       state_update['wolff'], state_gen, state_int)
+		return
 
-	def MC_measurements(self,sites,neighbours,T,observables):
-
-		if sites.ndim < 4:
-			sites = sites[np.newaxis,:]
-
-		n_iter = np.shape(sites)[0]
-
-		data = [{} for _ in range(n_iter)]
-
-		for i_iter in range(n_iter):        
-			for k,obs in observables.items():
-				data[i_iter][k] = obs(sites[i_iter],neighbours,T)
-
-		return data
 
 	

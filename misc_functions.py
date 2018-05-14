@@ -70,6 +70,11 @@ def attr_wrapper(attribute={}):
 def str_split(word,split_char='_',sep_char=' '):
     return sep_char.join(word.split(split_char))
 
+def str_check(v):
+	if not isinstance(v,str): 
+		return str(v).replace('[','').replace(']','')
+	else: 
+		return v.replace('[','').replace(']','')
 
 def list_sort(a,j):
     return list(zip(*sorted(list(zip(*a)),key=lambda i:i[j])))
@@ -95,11 +100,13 @@ def dict_modify(D,T=None,f=lambda k,v: v,i=[0,None],j=[0,None]):
 
 def array_dict(d):
     # Convert dictionary of arrays into array of dictionaries
-    if isinstance(d,dict):
+    if isinstance(d,dict) and d != {}:
         n = min([len(np.atleast_1d(v)) for v in d.values()])
         return [{k:np.atleast_1d(v)[i]for k,v in d.items()}for i in range(n)],n
-    else:
+    elif d != {}:
         return np.atleast_1d(d),np.size(d)
+	else:
+		return [{}],1
 
 # Check if variable is dictionary
 def dict_check(dictionary,key):

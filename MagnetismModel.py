@@ -10,7 +10,7 @@ import argparse
 
 from Lattice import Lattice
 from Model import Model
-from MonteCarloPlot import MonteCarloPlot
+import Model_Analysis
 from misc_functions import caps,display
 
 
@@ -41,19 +41,28 @@ class system(object):
     # Data File and Directory        
     
     
-	def __init__(self,
+	def __init__(self):
+		return
+
+	def MonteCarlo(self,
 				model_props =   {'model_name':'potts','q':2, 'd':2, 'L': 15, 
 							     'T': 1.13,'coupling_param':[0,1],
 								 'data_type':np.int_},
-                update_props =  {'update_bool':True,'Neqb':5, 'Nmeas':5, 
+                update_props =  {'Nsweep': 0.95,'Neqb':5, 'Nmeas':5, 
 								 'Nmeas_f':1, 'Ncluster':1},
                 observe_props = {'configurations':   [False,'sites','cluster'],
                                  'observables':      [True,'energy', 'order',
 													  'specific_heat',
 													  'susceptibility'],
                                  'observables_mean': [True]},
-				process_props = {'disp_updates': 1, 'data_save': 1}):
-
+				data_props = {'data_files': '*.npz',
+							'data_types': ['sites','observables','model_props'],
+							'data_typed': 'dict_split',
+							'data_format': 'npz',
+							'data_dir': 'dataset/',
+							},
+				iter_props={'algorithm':['wolff','metropolis']}):
+		
 		# Initialize model class, lattice class
 		m = Model(model=model_props, 
 		          observe=observe_props['observables_mean'][1:])
@@ -64,32 +73,25 @@ class system(object):
 		self.l = l
 
 		# Update model_props
-		model_props.update({
+		model_props.update({'T': np.atleast_1d(model_props['T']).
+							'N_sites': np.shape(l.neighbour_sites)[1]
 							'neighbour_sites': l.neighbour_sites,
 							'state_range': m.state_range,
 							'state_gen': m.state_gen,
 							'state_int': m.model_params['int'],
 							'state_update': m.model_params['state_update'],
-							'algorithm': 'wolff',
-							'algorithms': ['metropolis','wolff'],
 							'update_props': update_props,
 							'observe_props': observe_props,
 							'observables': m.observables_functions,
 							'observables_props': m.observables_props,
-							'data_dir': '%s_Data/'%(caps(m.model_name)),
-							'data_file': '%s_d%d_L%d_T%s_%s' %(
-										 caps(m.model_name),model_props['d'], 
-										 model_props['L'],str(model_props['T']),
-										 datetime.datetime.now().strftime(
-														   '%Y-%m-%d-%H-%M'))
 						   })
-		model_props.update(process_props)
+		model_props.update(data_props)
 		
+		Data_Proc().format(model_props)
 		
 		# Perform Monte Carlo Updates for various Temperatures
-		self.MonteCarlo = MonteCarloUpdate(model_props = model_props)
-		self.Analysis = Model_Analysis()
-		self.model_props = model_props
+		MonteCarloUpdate(model_props).MC_update(iter_props)
+		
 		return
     
 	
@@ -128,6 +130,16 @@ parser.add_argument('-Nm','--Nmeas',help = 'Measurement Sweeps',
 					
 parser.add_argument('-Nf','--Nmeas_f',help = 'Measurement Sweeps Frequency',
 					type=int,default=1)
+					
+parser.add_argument('-Nr','--Nratio',help = 'Measurement Sweeps Ratio',
+					type=int,default=1)
+						
+_, unparsed = parser.parse_known_args()
+
+# Unknown Arguments
+for arg in unparsed:
+    if arg.startswith(("-", "--")):
+        parser.add_argument(arg, type=str,help = arg+' Argument')
 						
 # Parse Args Command
 args = parser.parse_args()
@@ -135,84 +147,56 @@ args = parser.parse_args()
 if __name__ == "__main__":
     
     # System Parameters
-	# L=15
-	# d=2
-	# q = 2
-	# T = [3.0,2.5,1.75,1.2,1.0,0.8,0.5]
-	# m = 'potts'
-	model_props={'coupling_param':[0,1],'data_type':np.int_}
-	
+
 	# Check for Version
 	if args.version == 'py':
 		from MonteCarloUpdate_python import MonteCarloUpdate
 	elif args.version == 'cy':
 		from MonteCarloUpdate_cython import MonteCarloUpdate
-	
-	# Update, Observe, Process Parameters
-	update_props = {'update_bool':True,'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 
-					                   'Nmeas_f':args.Nmeas_f, 'Ncluster':1}
 
-	observe_props = {'configurations': [False,'sites','cluster'],
-			         'observables': [True,'energy','order'],
+	# Update, Observe, Process, Simulate Parameters
+	model_props = {'coupling_param':[0,1],'data_type':np.int_,
+				   'disp_updates':True, 'data_save':True, 'return_data':False,
+				   'data_date':datetime.datetime.now().strftime(
+										    			   '%Y-%m-%d-%H-%M-%S')}
+	
+	update_props = {'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 'Nratio': 0.9,
+					                   'Nmeas_f':args.Nmeas_f, 'Ncluster':1}
+	
+	observe_props = {'configurations':   [False,'sites','cluster'],
+			         'observables':      [True,'energy','order'],
                      'observables_mean': [True,'energy','order','specific_heat',
 									                          'susceptibility']}
-
-	process_props = {'disp_updates':True, 'data_save':True, 'return_data':False,
-					data_params = 
-					{'data_files': '*.npz',
-					 'data_types': ['sites','observables''model_props'],
-					 'data_typed': 'dict',
-					 'data_format': 'npz',
-					 'data_dir': 'dataset/',
-					}}
+	data_props = {'data_files': '*.npz',
+				  'data_types': ['sites','observables''model_props'],
+				  'data_format': 'npz',
+				  'data_typed': 'dict_split',
+				  'data_dir': 'dataset/',
+				  'data_file_format':['model_name','L','d','q','T','data_date']
+				 }
+	
+	iter_props = {}#'algorithm':['wolff','metropolis']}
 	
 	
-
 	# Delete non keyword arg attributes
 	for k in ['version','Neqb','Nmeas','Nmeas_f']:
 		delattr(args,k)
-	
 	model_props.update(vars(args))
-	s = system(model_props=model_props,     update_props=update_props,
-			   observe_props=observe_props, process_props=process_props)
+	
+	# Define System
+	s = system()
+	
+	# Perform Monte Carlo
+	s.MonteCarlo(model_props,update_props,observe_props,data_props,iter_props)
+	
 
-	
-	
-	# Monte Carlo Simulation Parameters
-	iter_props = {'algorithm':['wolff','metropolis']}
-	results = s.MonteCarlo.MC_update(iter_props)
-	if s.model_props.get('return_data'):
-			s.data, s.model_props = results
-		else:
-			del results
-		
-	
 	# Analyse Results
-	
-	data['sites'] = s.data
-	data['observables'] = self.MC_measurements(data['sites'],
-											self.model_props['neighbour_sites'],
-											self.model_props['T'],
-											self.model_props['observables'])                                                   
-	display(print_it=disp_updates,m='Observables Calculated')
-			
-		if self.model_props.get('data_save',True):
-			Data_Proc().exporter({'observables':data['observables']},
-							     self.model_props)
-	
-	
-	plot_obj = MonteCarloPlot(s.model_props['observe_props'],
-							  s.model_props, s.model_props['T'])
+	Model_Analysis(data_props)
 	
 	
 	
-	plot_obj.MC_plotter({'observables': s.data['observables'],
-						 'observables_mean': s.data['observables']},
-					  *[s.model_props['T'],
-					    [p['algorithm'] for p in s.model_props['iter_props']]])
 
-	display(print_it=True,time_it=False,m='Observables Figures Plotted')
+	
 
 		
-	if s.model_props['data_save']:
-		plot_obj.plot_save(s.model_props)
+	

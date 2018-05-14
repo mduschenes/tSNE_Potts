@@ -1,29 +1,33 @@
-{ 'T': np.linspace(2.5,0.2,10)}
-{ 'q': [2,3,4,6,10]}
-{ 'L': [6,10,15,20]}
+{ 'T': [[1.1, 0.5, 3, 6]]} #np.linspace(2.5,0.2,10)}
+{ 'q': [4]}
+{ 'L': [5]}
 { 'Nb': [int(1e5)]}
 { 'Nm': [int(1e6)]}
 { 'Nf': [int(1e1)]}
+{ 'Nr': [0.9]}
 
 def r(**kwargs):
-	if   kwargs['Nm'] < 1e4 and kwargs['L'] < 12 and (
-		 kwargs['T'] > 1.1/(1+np.sqrt(kwargs['q']))) : return '6h'
-	elif kwargs['Nm'] < 1e4 and kwargs['L'] < 12 and (
-		 kwargs['T'] < 1.1/(1+np.sqrt(kwargs['q']))) : return '10h'
-
-	elif kwargs['Nm'] < 1e4 and kwargs['L'] > 12 and (
-		 kwargs['T'] > 1.1/(1+np.sqrt(kwargs['q']))) : return '15h'
-	elif kwargs['Nm'] < 1e4 and kwargs['L'] > 12 and (
-		 kwargs['T'] < 1.1/(1+np.sqrt(kwargs['q']))) : return '20h'
-
-	elif kwargs['Nm'] > 1e4 and kwargs['L'] < 12 and (
-		 kwargs['T'] > 1.1/(1+np.sqrt(kwargs['q']))) : return '14h'
-	elif kwargs['Nm'] > 1e4 and kwargs['L'] < 12 and (
-		 kwargs['T'] < 1.1/(1+np.sqrt(kwargs['q']))) : return '24h'
-
-	elif kwargs['Nm'] > 1e4 and kwargs['L'] > 12 and (
-		 kwargs['T'] > 1.1/(1+np.sqrt(kwargs['q']))) : return '24h'
-	elif kwargs['Nm'] > 1e4 and kwargs['L'] > 12 and (
-		 kwargs['T'] < 1.1/(1+np.sqrt(kwargs['q']))) : return '24h
-	else:
-		return
+	import numpy as np
+	
+	kwargs = kwargs.copy()
+	
+	# Ensure items are 1d
+	for k,v in kwargs.items():
+		if not isinstance(v,(str,dict,set)):
+			kwargs[k] = np.max(v)
+	
+	Nm0 = 1e4
+	L0 = 12
+	T0 = 1.1/(1+np.sqrt(kwargs['q']))
+	
+	if  (kwargs['Nm']<Nm0) and (kwargs['L']<L0) and (kwargs['T']>T0):return '6h'
+	elif(kwargs['Nm']<Nm0) and (kwargs['L']<L0) and (kwargs['T']<T0):return'12h'
+	elif(kwargs['Nm']<Nm0) and (kwargs['L']>L0) and (kwargs['T']>T0):return'20h'
+	elif(kwargs['Nm']<Nm0) and (kwargs['L']>L0) and (kwargs['T']<T0):return'20h'
+	
+	elif(kwargs['Nm']>Nm0) and (kwargs['L']<L0) and (kwargs['T']>T0):return'20h'
+	elif(kwargs['Nm']>Nm0) and (kwargs['L']<L0) and (kwargs['T']<T0):return'20h'
+	elif(kwargs['Nm']>Nm0) and (kwargs['L']>L0) and (kwargs['T']>T0):return'24h'
+	elif(kwargs['Nm']>Nm0) and (kwargs['L']>L0) and (kwargs['T']<T0):return'24h'
+	
+	else: return ''

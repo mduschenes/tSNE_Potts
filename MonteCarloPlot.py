@@ -112,12 +112,9 @@ class MonteCarloPlot(object):
 				str(self.model_props['T'])) + '\n'\
 					'$N_{eqb} = %d \hspace{1cm} N_{meas} = %d \hspace{1cm}'\
 					'N_{meas_{freq}} = %d$'%(
-					self.model_props['update_props']['Neqb']/(
-												   self.model_props['N_sites']), 
-					self.model_props['update_props']['Nmeas']/(
-												   self.model_props['N_sites']),
-					self.model_props['update_props']['Nmeas_f']/(
-												   self.model_props['N_sites']))
+					self.model_props['update_props']['Neqb'], 
+					self.model_props['update_props']['Nmeas'],
+					self.model_props['update_props']['Nmeas_f'])
 
 		if plot_type == 'configurations':
 			

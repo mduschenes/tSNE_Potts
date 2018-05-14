@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os,glob
 
-from misc_functions import flatten,dict_check, one_hot,caps,list_sort
+from misc_functions import flatten,dict_check, one_hot,caps,list_sort,str_check
 import plot_functions
 
 
@@ -134,7 +134,8 @@ class Data_Process(object):
 	# Save all current figures
 	def plot_save(self,data_params={'data_dir':'dataset/',
 									'figure_format':None},
-					   fig_keys = None,label = ''):
+					   fig_keys = None, 
+					   label = ''):
         
         # Save Figures for current Data_Process Instance
 		
@@ -230,6 +231,7 @@ class Data_Process(object):
 	def importer(self,data_params = 
 					{'data_files': ['x_train','y_train','x_test','y_test'],
 					 'data_sets': ['x_train','y_train','x_test','y_test'],
+					 'data_typed':'dict_split',
 					 'data_format': 'npz',
 					 'data_dir': 'dataset/',
 					 'one_hot': False
@@ -295,11 +297,15 @@ class Data_Process(object):
 			data_params['data_types'] = list(data.keys())
 			data_typed = data.copy()
 			
-		elif data_params.get('data_typed') == 'dict'
+		elif data_params.get('data_typed','dict_split') == 'dict'
 			data_typed = {t: {k: data[k].copy() 
                           for k in data_params['data_sets'] if t in k}
                           for t in data_params['data_types']}
-			
+		
+		elif data_params.get('data_typed','dict_split') == 'dict_split'
+			data_typed = {t: {k.split(t)[0]: data[k].copy() 
+                          for k in data_params['data_sets'] if t in k}
+                          for t in data_params['data_types']}	
 		else:
 			data_typed = {t: [data[k].copy() 
                           for k in data_params['data_sets'] if t in k]
@@ -350,8 +356,8 @@ class Data_Process(object):
 			
 			i = 0
 			file_end = ''
-			while os.path.isfile(file(k)+
-								 label+file_end+ '.' +format):
+			while os.path.isfile(data_params['data_dir']+label+file(k)+
+								 file_end+ '.' +format):
 				file_end = '_%d'%i
 				i+=1
 			if format == 'npz':
@@ -362,15 +368,40 @@ class Data_Process(object):
 				with open(data_params['data_dir'] + file(k) +
 						 label + file_end+ '.' +format, 'w') as file_txt:
 					if isinstance(v,dict):
-						for key in sorted(list(v.keys()),
-										   key=lambda x: (len(str(v[x])),
-														 len(x),str.lower(x))):
+						for key in sorted(
+							list(v.keys()),
+							key=lambda x: (len(str(v[x])),len(x),str.lower(x))):
+							
 							file_txt.write('%s:  %s \n \n \n'%(str(key),
 															   str(v[key])))
 					else:
 						file_txt.write(str(v))
 		return
-            
+	
+	def format(self,data_params,new_dir=False):
+			
+		# Data File Format
+		file_format = np.atleast_1d(data_params['data_file_format'])
+			
+		file_header = caps(str_check(data_params.get(file_format[0],
+													 file_format[0])))
+		# Format Data Directory
+		if new_dir:
+			data_params['data_dir'] = '%s_Data/'%(file_header)
+		elif not data_params.get('data_dir'):
+			data_params['data_dir'] = 'dataset/'
+		
+		# Format Data File
+		data_params['data_file'] = file_header
+		
+		for w in data_params['data_file_format'][1:]:
+			data_params['data_file'] += '_'+str_check(data_params.get(w,w))
+		
+		return
+			
+			
+			
+		
         
         
                 

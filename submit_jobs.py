@@ -16,11 +16,11 @@ parser.add_argument('-c','--command',help = 'Job Command',
 					type=str,default='qsub')
 parser.add_argument('-j','--job',help = 'Job Executable',
 					type=str,default='python None')
-parser.add_argument('-a','--script_args',help = 'Script Arguments File',
+parser.add_argument('-arg','--script_args',help = 'Script Arguments File',
 					type=str,default='args_file.txt')					
 
 parser.add_argument('-q','--q',help = 'Job Queue',
-					type=str,default='None')
+					type=str,default='serial')
 parser.add_argument('-o','--o',help = 'Output File',
 					type=str,default='output_file.txt')
 
@@ -43,6 +43,7 @@ def arg_parse(kwargs):
 			t = ''
 			for val in v:
 				t +=str_check(val)+' '
+			t = t[:-1]
 		else:
 			t = str_check(v)
 		
@@ -51,19 +52,20 @@ def arg_parse(kwargs):
 	
 	return ' '.join(args)
 
-def file_write(file,
-			   text='\n Job: '+
-						datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')+
-						'\n'):
+def file_write(file, label=''):
 	if file is not None and file is not 'None':
 		try:
 			with open(file,'a') as file_txt:
-				file_txt.write(text)
+				file_txt.write(label)
 			return
 		except IOError:
 			return
 
 def file_read(file):
+	str_header = lambda s: s.replace('\t','').split(' ')[0]
+	str_comment = lambda s: s.split('#')[0]+' \n'
+	str_eol = lambda s: s.replace('(\n','(')
+	
 	if file is not None and file is not 'None':
 		try:
 			with open(file,'r') as file_txt:
@@ -72,23 +74,29 @@ def file_read(file):
 				data_func = [None]*len(data)
 				data_text = [None]*len(data)
 				f = ''
-				h = data[0].split(' ')[0]
+				h = str_header(data[0])
 				for i,line in enumerate(data):
+					if h == '#':
+						f = ''
+						h = str_header(data[i+1])
+						pass
 					if line != '\n' and i < len(data)-1:
 						if h == '{':
-							data_dict.update(eval(line))
+							data_dict.update(eval(str_comment(line)))
 						else:
-							f += line
+							f += str_comment(line)
 					else:
 						if h == 'def':
 							f_ = {}
-							exec(f.replace('(\n','('),locals(),f_)
+							exec(str_eol(f),locals(),f_)
 							data_func[i] = f_
 						elif h != '{':
 							data_text[i] = f
+						elif line != '\n':
+							data_dict.update(eval(str_comment(line)))
 						if i < len(data)-1:
 							f = ''
-							h = data[i+1].split(' ')[0]
+							h = str_header(data[i+1])
 			data_func = [d for d in data_func if d]
 			data_text = [d for d in data_text if d]
 			return data_dict,data_func,data_text
@@ -98,9 +106,9 @@ def file_read(file):
 
 def str_check(v):
 	if not isinstance(v,str): 
-		return str(v)
+		return str(v).replace('[','').replace(']','')
 	else: 
-		return v
+		return v.replace('[','').replace(']','')
 
 	
 def cmd_run(cmd_args):
@@ -112,48 +120,35 @@ def cmd_run(cmd_args):
 	# Read Script args from File
 	script_args,script_args_func,_ = file_read(cmd_args.pop('script_args'))
 
+	# Job Output Header
+	job_header = lambda s: '\n' + 'Job %s: '%str_check(s[0]) + (
+							datetime.datetime.now().strftime(
+							'%Y-%m-%d-%H-%M-%S-%f'))+(
+					       '\n %s'%str_check(s[1])+'\n')
+	
 	# Loop over Model Args
 	script_key = script_args.keys()	
-	for arg in list(itertools.product(*list(script_args.values()))):
+	for i,arg in enumerate(itertools.product(*list(script_args.values()))):
 		
 		# Update Args
 		script_arg = dict(zip(script_key,arg))
 		for f in script_args_func:
-			cmd_args.update({k: v(**script_arg) for k,v in f.items()})
-	
-		# Update Output File
-		file_write(cmd_args.get('o'))
+			for k,v in f.items():
+				cmd_args.update({k: v(**script_arg)})
 		
 		# Bash Command
 		cmd_bash = ' '.join([command,arg_parse(cmd_args),
 							 job, arg_parse(script_arg)]) 
+		
+		# Update Output File
+		file_write(cmd_args.get('o'),job_header([i,cmd_bash]))
+		
+		
 		print(cmd_bash)
 		
 		# process = subprocess.run(cmd_bash.split(), stdout=subprocess.PIPE)
 		# output, error = process.communicate()
 		
-
-def cmd_runtime(**kwargs):
-	if   kwargs['Nm'] < 1e4 and kwargs['L'] < 12 and (
-		 kwargs['T'] > 1.1/(1+np.sqrt(kwargs['q']))) : return '6h'
-	elif kwargs['Nm'] < 1e4 and kwargs['L'] < 12 and (
-		 kwargs['T'] < 1.1/(1+np.sqrt(kwargs['q']))) : return '10h'
-	
-	elif kwargs['Nm'] < 1e4 and kwargs['L'] > 12 and (
-		 kwargs['T'] > 1.1/(1+np.sqrt(kwargs['q']))) : return '15h'
-	elif kwargs['Nm'] < 1e4 and kwargs['L'] > 12 and (
-		 kwargs['T'] < 1.1/(1+np.sqrt(kwargs['q']))) : return '20h'
-	
-	elif kwargs['Nm'] > 1e4 and kwargs['L'] < 12 and (
-		 kwargs['T'] > 1.1/(1+np.sqrt(kwargs['q']))) : return '14h'
-	elif kwargs['Nm'] > 1e4 and kwargs['L'] < 12 and (
-		 kwargs['T'] < 1.1/(1+np.sqrt(kwargs['q']))) : return '24h'
-	
-	elif kwargs['Nm'] > 1e4 and kwargs['L'] > 12 and (
-		 kwargs['T'] > 1.1/(1+np.sqrt(kwargs['q']))) : return '24h'
-	elif kwargs['Nm'] > 1e4 and kwargs['L'] > 12 and (
-		 kwargs['T'] < 1.1/(1+np.sqrt(kwargs['q']))) : return '24h'
-	   
  
 
 # Run Command
