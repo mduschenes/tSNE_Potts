@@ -60,6 +60,7 @@ class MonteCarloUpdate(object):
 
 
 		# Define System Configuration
+		self.model_props = model_props
 		Data_Proc().plot_close()
 
 		return
@@ -69,6 +70,9 @@ class MonteCarloUpdate(object):
 	# Perform Monte Carlo Update Algorithm and Plot Sites and Observables 
 	def MC_update(self,iter_props={'algorithm':'wolff'}):
 
+		if not self.model_props['update_props'].get('update_bool'):
+			return
+	
 		# Initialize iter_props as array of dictionaries
 		iter_props,n_iter = array_dict(iter_props)
 		self.model_props['iter_props'] =  iter_props
@@ -112,8 +116,10 @@ class MonteCarloUpdate(object):
 					  
 		# Save Model_Props
 		if self.model_props.get('data_save',True):
-			for f in ['txt','npz']:
-				Data_Proc().exporter({'model_props':self.model_props},
+			for var_type in self.model_props['data_types']:
+				if 'model_props' in var_type: break
+			for f in ['txt',self.model_props.get('data_format','npy')]:
+				Data_Proc().exporter({var_type:self.model_props},
 							            self.model_props,format=f)
 
 		# Perform Monte Carlo Algorithm for n_iter configurations        
@@ -154,7 +160,7 @@ class MonteCarloUpdate(object):
 
 					if i_mc % Nmeas_f == 0:
 						i_mc_meas = i_mc//Nmeas_f
-						data_sites[i_iter,i_t,i_mc_meas] = sites
+						data_sites[i_iter,i_t,i_mc_meas,:] = sites
 						# display(print_it=disp_updates,
 								# m='Monte Carlo Step: %d'%(i_mc))
 						
@@ -167,12 +173,14 @@ class MonteCarloUpdate(object):
 				
 			# Save Current Data
 			if self.model_props.get('data_save',True):
+				for var_type in self.model_props['data_types']:
+					if 'sites' in var_type: break
 				plot_obj.plot_save(self.model_props,
 								        label=self.model_props['algorithm'],
 										fig_keys='configurations')
 				Data_Proc().exporter(
-							  {'configurations':np.asarray(data_sites[i_iter])},
-							   self.model_props, self.model_props['algorithm'])  
+							  {var_type:np.asarray(data_sites[i_iter])},
+							   self.model_props,read_write='a')  
 		
 			display(print_it=disp_updates,
 					m='Runtime: ',t0=-(i_t+2),line_break=True)
@@ -186,7 +194,7 @@ class MonteCarloUpdate(object):
 			
 	# Update Algorithms
 	def metropolis(self,sites, cluster, cluster_bool, neighbours,
-						N_sites,N_neighbours, T, update_bool,
+						N_sites,N_neighbours, T, update_status,
 						state_update, state_gen, state_int):
 		# Randomly alter random spin sites and accept spin alterations
 		# if energetically favourable or probabilistically likely
@@ -211,7 +219,7 @@ class MonteCarloUpdate(object):
 
 
 	def wolff(self,sites, cluster, cluster_bool, neighbours,
-						N_sites,N_neighbours, T, update_bool,
+						N_sites,N_neighbours, T, update_status,
 						state_update, state_gen, state_int):      
 		
 		# Cluster Function
@@ -245,17 +253,17 @@ class MonteCarloUpdate(object):
 			   
 
 	def metropolis_wolff(self,sites, cluster, cluster_bool, neighbours,
-						N_sites,N_neighbours, T, update_bool,
+						N_sites,N_neighbours, T, update_status,
 						state_update, state_gen, state_int):      
 
-		if update_bool < 1:
+		if update_status < 1:
 			self.metropolis(sites, cluster, cluster_bool,
-							   neighbours, N_sites, N_neighbours,T, update_bool, 
-						       state_update['metropolis'], state_gen, state_int)
+							neighbours, N_sites, N_neighbours, T, update_status, 
+						    state_update['metropolis'], state_gen, state_int)
 		else:
 			self.wolff(sites, cluster, cluster_bool,
-							   neighbours, N_sites, N_neighbours,T, update_bool, 
-						       state_update['wolff'], state_gen, state_int)
+					   neighbours, N_sites, N_neighbours,T, update_status, 
+					   state_update['wolff'], state_gen, state_int)
 		return
 
 

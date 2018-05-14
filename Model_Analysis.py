@@ -14,23 +14,24 @@ class Model_Analysis(object):
 					{'data_files': '*.npz',
 					 'data_types': ['sites','observables','model_props'],
 					 'data_typed': 'dict_split',
-					 'data_format': 'npz',
+					 'data_format': 'npy',
 					 'data_dir': 'dataset/',
 					}):
 		
 		display(print_it=True,time_it=False,m='Model Analysis...')
 		
 		# Import Data
-		self.data = importer(data_params)
-		
+		_,_,self.data,_ = Data_Process().importer(data_params)
+			
+			
 		# Process Each Data Set
 		for k,sites in self.data['sites'].items():
 
 			model_props = self.data['model_props'][k]
-		
+
 			# Measure Data
-			observables = self.measure(
-					sites,model_props['neighbour_sites'],model_props['T'])
+			observables = self.measure(sites, model_props['neighbour_sites'],
+									model_props['T'],model_props['observables'])
 			self.data['observables'][k] = observables
 		
 			# Save Data
@@ -43,10 +44,6 @@ class Model_Analysis(object):
 		display(print_it=True,time_it=False,m='Observables Processed')
 		return
 				
-				
-	def importer(self,data_params):
-		_,_,data,_ = Data_Process().importer(data_params)
-		return data		
 	
 	
 	def measure(self,sites,neighbours,T,observables):
@@ -70,14 +67,15 @@ class Model_Analysis(object):
 		# Plot Instance
 		plot_obj = MonteCarloPlot(model_props['observe_props'],
 							      model_props, model_props['T'])
-	
+		plot_args = [
+				model_props['T'],
+					    [p.get('algorithm',model_props['algorithm'])
+							for p in model_props['iter_props']]]
 	
 		# Plot Data
 		plot_obj.MC_plotter({'observables':      data,
 						     'observables_mean': data},
-					  *[model_props['T'],
-					    [p.get('algorithm',model_props['algorithm'])
-							for p in model_props['iter_props']]])
+						     *plot_args)
 		
 		# Save Data
 		if model_props.get('data_save',True):

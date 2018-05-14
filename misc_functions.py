@@ -32,31 +32,31 @@ def display(print_it=True,time_it=True,m='',
 
 
 def flatten(x,flattenint=True):
-    # Return a 1d list of all elements in inner lists of x of arbirtrary shape
-    if not (isinstance(x,list)):
-        return x
-    elif len(x) == 1 and flattenint:
-        if isinstance(x[0],tuple) or isinstance(x[0],str):
-            return x
-        else:
-            return x[0]
-    xlist = []
-    for y in x:
-        if isinstance(y,type([])):
-            xlist.extend(flatten(y))
-        else: 
-            xlist.append(y)
-    return xlist
+	# Return a 1d list of all elements in inner lists of x of arbirtrary shape
+	if not (isinstance(x,list)):
+		return x
+	elif len(x) == 1 and flattenint:
+		if isinstance(x[0],tuple) or isinstance(x[0],str):
+			return x
+		else:
+			return x[0]
+	xlist = []
+	for y in x:
+		if isinstance(y,type([])):
+			xlist.extend(flatten(y))
+		else: 
+			xlist.append(y)
+	return xlist
 
 def caps(word,every_word=False,sep_char=' ',split_char=' '):
-    try:
-        if not every_word:
-            return word[0].upper()+word[1:].lower()
-        else:
-            return sep_char.join([w[0].upper()+w[1:].lower() 
-                                 for w in word.split(split_char)])
-    except IndexError:
-        return word
+	try:
+		if not every_word:
+			return word[0].upper()+word[1:].lower()
+		else:
+			return sep_char.join([w[0].upper()+w[1:].lower() 
+								 for w in word.split(split_char)])
+	except IndexError:
+		return word
 
 def attr_wrapper(attribute={}):
 	def attr_decorator(func):
@@ -77,103 +77,103 @@ def str_check(v):
 		return v.replace('[','').replace(']','')
 
 def list_sort(a,j):
-    return list(zip(*sorted(list(zip(*a)),key=lambda i:i[j])))
+	return list(zip(*sorted(list(zip(*a)),key=lambda i:i[j])))
 
 
 def get_attr(f,attr=None,f0=None,*args):
 
-    try:
-        if attr == 'size':
-            return getattr(f(*args),attr,lambda : 1)()
-        else:
-            return getattr(f,attr)
-        
-    except AttributeError:
-        return f0 
+	try:
+		if attr == 'size':
+			return getattr(f(*args),attr,lambda : 1)()
+		else:
+			return getattr(f,attr)
+		
+	except AttributeError:
+		return f0 
 
 def dict_modify(D,T=None,f=lambda k,v: v,i=[0,None],j=[0,None]): 
-   if T:
-       return  {t[j[0]:j[1]]: {k[i[0]:i[1]]: f(k,v) for k,v in D.items() 
-                if t in k} for t in T}
-   else:
-       return {k[i[0]:i[1]]: f(v) for k,v in D.items()}
+	if T:
+	   return  {t[j[0]:j[1]]: {k[i[0]:i[1]]: f(k,v) for k,v in D.items() 
+				if t in k} for t in T}
+	else:
+	   return {k[i[0]:i[1]]: f(v) for k,v in D.items()}
 
 def array_dict(d):
-    # Convert dictionary of arrays into array of dictionaries
-    if isinstance(d,dict) and d != {}:
-        n = min([len(np.atleast_1d(v)) for v in d.values()])
-        return [{k:np.atleast_1d(v)[i]for k,v in d.items()}for i in range(n)],n
-    elif d != {}:
-        return np.atleast_1d(d),np.size(d)
+	# Convert dictionary of arrays into array of dictionaries
+	if isinstance(d,dict) and d != {}:
+		n = min([len(np.atleast_1d(v)) for v in d.values()])
+		return [{k:np.atleast_1d(v)[i]for k,v in d.items()}for i in range(n)],n
+	elif d != {}:
+		return np.atleast_1d(d),np.size(d)
 	else:
 		return [{}],1
 
 # Check if variable is dictionary
 def dict_check(dictionary,key):
-                
-    # Check if dict is a dictionary
-    if not isinstance(dictionary,dict):
-        return dict(zip(key,dictionary))
-    else:
-        return dictionary
+				
+	# Check if dict is a dictionary
+	if not isinstance(dictionary,dict):
+		return dict(zip(key,dictionary))
+	else:
+		return dictionary
     
 
 def dict_make(vals,keys,val_type='constant'):
-    if len(keys)>1 and np.size(keys[0])>1:
-        return {k: dict_make(vals,keys[1:],val_type) 
-                for k in np.atleast_1d(keys[0])}
-    else:
-        keys = np.atleast_1d(keys[0])
-        if val_type=='callable':
-            return {k: vals(k) for k in keys}
-        elif val_type=='iterable':
-            return {k: vals[i] for i,k in enumerate(keys)}
-        elif val_type == 'constant':
-            return {k: vals for k in keys}
+	if len(keys)>1 and np.size(keys[0])>1:
+		return {k: dict_make(vals,keys[1:],val_type) 
+				for k in np.atleast_1d(keys[0])}
+	else:
+		keys = np.atleast_1d(keys[0])
+		if val_type=='callable':
+			return {k: vals(k) for k in keys}
+		elif val_type=='iterable':
+			return {k: vals[i] for i,k in enumerate(keys)}
+		elif val_type == 'constant':
+			return {k: vals for k in keys}
 
 # Sort 2-dimensional a by elements in 1-d array b
 def array_sort(a,b,axis=0,dtype='list'):
-    b = np.reshape(b,(-1,))
-    
-    if dtype == 'dict':
-        return {i: np.reshape(np.take(a,np.where(b==i),axis),
-                              (-1,)+np.shape(a)[1:]) 
-                                for i in sorted(set(b))},sorted(set(b))
-    
-    elif dtype == 'list':
-        return ([np.reshape(np.take(a,np.where(b==i),axis),
-                       (-1,)+np.shape(a)[1:]) for i in sorted(set(b))],
-                         sorted(set(b)))
-    elif dtype == 'ndarray':
-        return (np.array([np.reshape(np.take(a,np.where(b==i),axis),
-                       (-1,)+np.shape(a)[1:]) for i in sorted(set(b))]),
-                         sorted(set(b)))
-    elif dtype == 'sorted':
-        return np.concatenate(
-                            [np.reshape(np.take(a,np.where(b==i),axis),
-                                       (-1,)+np.shape(a)[1:])
-                            for i in sorted(set(b))],1), sorted(set(b))
-    
-    else:
-        return a,sorted(set(b))
+	b = np.reshape(b,(-1,))
+
+	if dtype == 'dict':
+		return {i: np.reshape(np.take(a,np.where(b==i),axis),
+							  (-1,)+np.shape(a)[1:]) 
+								for i in sorted(set(b))},sorted(set(b))
+
+	elif dtype == 'list':
+		return ([np.reshape(np.take(a,np.where(b==i),axis),
+					   (-1,)+np.shape(a)[1:]) for i in sorted(set(b))],
+						 sorted(set(b)))
+	elif dtype == 'ndarray':
+		return (np.array([np.reshape(np.take(a,np.where(b==i),axis),
+					   (-1,)+np.shape(a)[1:]) for i in sorted(set(b))]),
+						 sorted(set(b)))
+	elif dtype == 'sorted':
+		return np.concatenate(
+							[np.reshape(np.take(a,np.where(b==i),axis),
+									   (-1,)+np.shape(a)[1:])
+							for i in sorted(set(b))],1), sorted(set(b))
+
+	else:
+		return a,sorted(set(b))
 
  # Converts data X to n+1-length one-hot form        
 def one_hot(X,n=None):
-   
-    n = int(np.amax(X))+1 if n is None else int(n)+1
-    
-    sx = np.shape(np.atleast_1d(X))
-    
-   
-    y = np.zeros(sx+(n,),dtype=np.int32)
-    
-    for i in range(n):
-        p = np.zeros(n)
-        np.put(p,i,1)
-        y[X==i,:] = p
-    
 
-    return np.reshape(y,(-1,n))
+	n = int(np.amax(X))+1 if n is None else int(n)+1
+
+	sx = np.shape(np.atleast_1d(X))
+
+
+	y = np.zeros(sx+(n,),dtype=np.int32)
+
+	for i in range(n):
+		p = np.zeros(n)
+		np.put(p,i,1)
+		y[X==i,:] = p
+
+
+	return np.reshape(y,(-1,n))
 
 
 

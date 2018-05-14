@@ -42,8 +42,11 @@ class MonteCarloPlot(object):
 
 	# Define plotting function
 	def MC_plotter(self,data,*args):
-
 		for K in data.keys():
+		
+			if not self.plot_obj.plot.get(K,False):
+				return
+				
 			if K == 'configurations':
 				self.plot_obj.plotter(
 							data = {kt: data[K][kt[0]] 

@@ -10,7 +10,8 @@ import argparse
 
 from Lattice import Lattice
 from Model import Model
-import Model_Analysis
+from Model_Analysis import Model_Analysis
+from data_functions import Data_Process
 from misc_functions import caps,display
 
 
@@ -55,15 +56,17 @@ class system(object):
 													  'specific_heat',
 													  'susceptibility'],
                                  'observables_mean': [True]},
-				data_props = {'data_files': '*.npz',
+				data_props = {'data_files': '*.npy',
 							'data_types': ['sites','observables','model_props'],
 							'data_typed': 'dict_split',
-							'data_format': 'npz',
+							'data_format': 'npy',
 							'data_dir': 'dataset/',
 							},
 				iter_props={'algorithm':['wolff','metropolis']}):
 		
 		# Initialize model class, lattice class
+		model_props.update(data_props)
+		
 		m = Model(model=model_props, 
 		          observe=observe_props['observables_mean'][1:])
 		l = Lattice(L=model_props['L'], d=model_props['d'])
@@ -73,8 +76,8 @@ class system(object):
 		self.l = l
 
 		# Update model_props
-		model_props.update({'T': np.atleast_1d(model_props['T']).
-							'N_sites': np.shape(l.neighbour_sites)[1]
+		model_props.update({'T': np.atleast_1d(model_props['T']),
+							'N_sites': np.shape(l.neighbour_sites)[1],
 							'neighbour_sites': l.neighbour_sites,
 							'state_range': m.state_range,
 							'state_gen': m.state_gen,
@@ -83,11 +86,8 @@ class system(object):
 							'update_props': update_props,
 							'observe_props': observe_props,
 							'observables': m.observables_functions,
-							'observables_props': m.observables_props,
 						   })
-		model_props.update(data_props)
-		
-		Data_Proc().format(model_props)
+		Data_Process().format(model_props)
 		
 		# Perform Monte Carlo Updates for various Temperatures
 		MonteCarloUpdate(model_props).MC_update(iter_props)
@@ -119,9 +119,6 @@ parser.add_argument('-m','--model_name',help = 'Model Name',
 parser.add_argument('-T','--T',help = 'System Temperature',
 					nargs = '+',type=float)
 
-parser.add_argument('-v','--version',help = 'Version: Python or Cython',
-						type=str,choices=['py','cy'],default='py')
-
 parser.add_argument('-Ne','--Neqb',help = 'Equilibrium Sweeps',
 					type=int,default=10)
 					
@@ -133,6 +130,9 @@ parser.add_argument('-Nf','--Nmeas_f',help = 'Measurement Sweeps Frequency',
 					
 parser.add_argument('-Nr','--Nratio',help = 'Measurement Sweeps Ratio',
 					type=int,default=1)
+					
+parser.add_argument('-v','--version',help = 'Version: Python or Cython',
+						type=str,choices=['py','cy'],default='py')
 						
 _, unparsed = parser.parse_known_args()
 
@@ -156,26 +156,28 @@ if __name__ == "__main__":
 
 	# Update, Observe, Process, Simulate Parameters
 	model_props = {'coupling_param':[0,1],'data_type':np.int_,
+				   'algorithm':'wolff',
 				   'disp_updates':True, 'data_save':True, 'return_data':False,
 				   'data_date':datetime.datetime.now().strftime(
 										    			   '%Y-%m-%d-%H-%M-%S')}
 	
-	update_props = {'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 'Nratio': 0.9,
-					                   'Nmeas_f':args.Nmeas_f, 'Ncluster':1}
+	update_props = {'update_bool':True, 'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 
+					'Nratio': 0.9,'Nmeas_f':args.Nmeas_f, 'Ncluster':1}
 	
 	observe_props = {'configurations':   [False,'sites','cluster'],
 			         'observables':      [True,'energy','order'],
                      'observables_mean': [True,'energy','order','specific_heat',
 									                          'susceptibility']}
-	data_props = {'data_files': '*.npz',
-				  'data_types': ['sites','observables''model_props'],
-				  'data_format': 'npz',
+	data_props = {'data_types': ['sites','observables','model_props'],
+				  'data_formats': {'sites':np.ndarray,'observables':np.ndarray,
+								  'model_props':dict},
+				  'data_format': 'npy',
 				  'data_typed': 'dict_split',
 				  'data_dir': 'dataset/',
 				  'data_file_format':['model_name','L','d','q','T','data_date']
 				 }
 	
-	iter_props = {}#'algorithm':['wolff','metropolis']}
+	iter_props = {'algorithm':['wolff','metropolis']}
 	
 	
 	# Delete non keyword arg attributes
@@ -191,6 +193,7 @@ if __name__ == "__main__":
 	
 
 	# Analyse Results
+	data_props['data_files'] = '*.' + data_props['data_format'] 
 	Model_Analysis(data_props)
 	
 	

@@ -95,7 +95,7 @@ cdef class MonteCarloUpdate(object):
 
 		# Define System Configuration
 		self.model_props = model_props
-
+		Data_Proc().plot_close()
 		return
 
 
@@ -106,6 +106,9 @@ cdef class MonteCarloUpdate(object):
 	@cython.cdivision(True)
 	def MC_update(self,iter_props={'algorithm':'wolff'}):
 
+		if not self.model_props.get('update_bool'):
+			return
+		
 		# Monte Carlo Update Function
 		cdef object MC_alg 
 
@@ -138,6 +141,7 @@ cdef class MonteCarloUpdate(object):
 
 		# Initialize Plotting and Data Types
 		cdef dict data = {}
+		cdef str var_type
 		cdef int n_T = len(self.model_props['T'])
 		cdef double t = self.model_props['T'][0]
 		cdef int n_meas = Nmeas//Nmeas_f
@@ -151,8 +155,10 @@ cdef class MonteCarloUpdate(object):
 
 		# Save Model_Props
 		if self.model_props.get('data_save',True):
-			for f in ['txt','npz']:
-				Data_Proc().exporter({'model_props':self.model_props},
+			for var_type in self.model_props['data_types']:
+					if 'model_props' in var_type: break
+			for f in ['txt',self.model_props.get('data_format','npy')]:
+				Data_Proc().exporter({var_type:self.model_props},
 							            self.model_props,format=f)
 						   
 		display(disp_updates,False,
@@ -204,7 +210,7 @@ cdef class MonteCarloUpdate(object):
 					# Update Configurations and Observables
 					if i_mc % Nmeas_f == 0:
 						i_mc_meas = i_mc//Nmeas_f
-						data_sites[i_iter,i_t,i_mc_meas] = sites
+						data_sites[i_iter,i_t,i_mc_meas,:] = sites
 						# display(print_it=disp_updates,
 								# m='Monte Carlo Step: %d'%(i_mc))
 						
@@ -217,13 +223,15 @@ cdef class MonteCarloUpdate(object):
 				
 			# Save Current Data
 			if self.model_props.get('data_save',True):
+				for var_type in self.model_props['data_types']:
+					if 'sites' in var_type: break
 				plot_obj.plot_save(self.model_props,
 								        label=self.model_props['algorithm'],
 										fig_keys='configurations')
 										
 				Data_Proc().exporter(
-							  {'sites':np.asarray(data_sites[i_iter])},
-							   self.model_props, self.model_props['algorithm'])  
+							  {var_type:np.asarray(data_sites[i_iter])},
+							   self.model_props, read_write='a')  
 		
 			display(print_it=disp_updates,
 					m='Runtime: ',t0=-(i_t+2),line_break=True)
@@ -245,7 +253,7 @@ cdef class MonteCarloUpdate(object):
 							  int[:,::1] neighbours,
 							  int N_sites,int N_neighbours,
 							  double T,
-							  double update_bool,
+							  double update_status,
 							  dict state_update, 
 							  object state_gen,
 							  object state_int):  
@@ -283,7 +291,7 @@ cdef class MonteCarloUpdate(object):
 							  int[:,::1] neighbours,
 							  int N_sites,int N_neighbours,
 							  double T,
-							  double update_bool,							  
+							  double update_status,							  
 							  dict state_update, 
 							  object state_gen,
 							  object state_int):  
@@ -333,18 +341,18 @@ cdef class MonteCarloUpdate(object):
 							  int[:,::1] neighbours,
 							  int N_sites,int N_neighbours,
 							  double T,
-						      double update_bool,							  
+						      double update_status,							  
 							  dict state_update, 
 							  object state_gen,
 							  object state_int):
 
-		if update_bool < 1:
+		if update_status < 1:
 			self.metropolis(sites, cluster, cluster_bool,
-							   neighbours, N_sites, N_neighbours,T, update_bool, 
-						       state_update['metropolis'], state_gen, state_int)
+							neighbours, N_sites, N_neighbours, T, update_status, 
+						    state_update['metropolis'], state_gen, state_int)
 		else:
 			self.wolff(sites, cluster, cluster_bool,
-							   neighbours, N_sites, N_neighbours,T, update_bool, 
-						       state_update['wolff'], state_gen, state_int)
+					   neighbours, N_sites, N_neighbours,T, update_status, 
+					   state_update['wolff'], state_gen, state_int)
 		return
 							   

@@ -62,9 +62,9 @@ class Model(object):
 		# Define model specific functions                                
 		for t in self.model_types:
 		
-			self.models_params[t]['metropolis_wolff'] = {
-						       'metropolis': self.model_params[t]['metropolis'],
-								'wolff': self.model_params[t]['wolff']}
+			self.models_params[t]['state_update']['metropolis_wolff'] = {
+			  'metropolis': self.models_params[t]['state_update']['metropolis'],
+			  'wolff': self.models_params[t]['state_update']['wolff']}
 		
 			for k in ['value','int','order','twoptcorr']:
 				self.models_params[t][k] = getattr(self,t+'_'+k,
@@ -83,8 +83,8 @@ class Model(object):
 		self.observables_functions = {k: getattr(self,k,lambda *args:[]) 
 										 for k in observe}
 		
-		self.observables_props = {k: lambda prop,*arg: get_attr(v,prop,v,*arg) 
-								 for k,v in self.observables_functions.items()}
+		# self.observables_props = {k: lambda prop,*arg: get_attr(v,prop,v,*arg) 
+								 # for k,v in self.observables_functions.items()}
 		
 		return
 		

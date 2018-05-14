@@ -3,54 +3,60 @@ Created on Sun May 13 10:48:34 2018
 @author: Matt
 """
 import numpy as np
-import argparse
-import subprocess
-import datetime
-import itertools
+import subprocess,argparse,datetime,time,itertools
 
 # Parser Object
 parser = argparse.ArgumentParser(description = "Parse Arguments")
 
 # Known Arguments
 parser.add_argument('-c','--command',help = 'Job Command',
-					type=str,default='qsub')
+					type=str,nargs = '*',default='qsub')
 parser.add_argument('-j','--job',help = 'Job Executable',
-					type=str,default='python None')
+					type=str,nargs='*',default='')
 parser.add_argument('-arg','--script_args',help = 'Script Arguments File',
-					type=str,default='args_file.txt')					
+					type=str,default='')					
 
 parser.add_argument('-q','--q',help = 'Job Queue',
-					type=str,default='serial')
+					type=str)
 parser.add_argument('-o','--o',help = 'Output File',
-					type=str,default='output_file.txt')
+					type=str)
 
 _, unparsed = parser.parse_known_args()
 
 # Unknown Arguments
 for arg in unparsed:
     if arg.startswith(("-", "--")):
-        parser.add_argument(arg, type=str,help = arg+' Argument')
+        parser.add_argument(arg, type=str,nargs='*',help = arg+' Argument')
 		
 args = parser.parse_args()
 
 
 def arg_parse(kwargs):
-	args = []
-	for k,v in kwargs.items():
-		if isinstance(v,dict):
-			exit()
-		if isinstance(v,(list,np.ndarray,tuple,set)):
-			t = ''
-			for val in v:
-				t +=str_check(val)+' '
-			t = t[:-1]
-		else:
-			t = str_check(v)
+
+	if isinstance(kwargs,dict):
+		args = []
+		for k,v in [(k,v) for k,v in kwargs.items() if v not in [None, '']]:
+			if isinstance(v,dict):
+				exit()
+			if isinstance(v,(list,np.ndarray,tuple,set)):
+				t = ''
+				for val in v:
+					t +=str_check(val)+' '
+				t = t[:-1]
+			else:
+				t = str_check(v)
+			
+			args.append('-'+str_check(k)+' '+t)
+		return ' '.join(args)
 		
-		args.append('-'+str_check(k)+' '+t)
+	elif isinstance(kwargs,(list,np.ndarray,tuple,set)):
+		t = ''
+		for val in kwargs:
+			t +=str_check(val)+' '
+		return t[:-1]
 		
-	
-	return ' '.join(args)
+	else:
+		return str_check(kwargs)
 
 def file_write(file, label=''):
 	if file is not None and file is not 'None':
@@ -114,8 +120,8 @@ def str_check(v):
 def cmd_run(cmd_args):
 	
 	# Command and Job Args
-	job = cmd_args.pop('job')
-	command = cmd_args.pop('command')
+	job = arg_parse(cmd_args.pop('job'))
+	command = arg_parse(cmd_args.pop('command'))
 	
 	# Read Script args from File
 	script_args,script_args_func,_ = file_read(cmd_args.pop('script_args'))
@@ -145,7 +151,7 @@ def cmd_run(cmd_args):
 		
 		
 		print(cmd_bash)
-		
+		time.sleep(5.5) 
 		# process = subprocess.run(cmd_bash.split(), stdout=subprocess.PIPE)
 		# output, error = process.communicate()
 		

@@ -7,17 +7,21 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-import os,glob
+import os,glob,copy
 
 from misc_functions import flatten,dict_check, one_hot,caps,list_sort,str_check
 import plot_functions
 
+NP_FILE = 'npy'
 
 
 class Data_Process(object):
     
     # Create figure and axes dictionaries for dataset keys
-	def __init__(self,keys=[None],plot=[False]):
+	def __init__(self,keys=[None],plot=[False],NP_FILE = 'npy'):
+		 
+		# Standardized numpy file format
+		self.NP_FILE = NP_FILE
 		 
 		# Initialize figures and axes dictionaries
 		if not None in keys:
@@ -26,7 +30,6 @@ class Data_Process(object):
 			
 			self.keys = keys
 			self.plot = plot
-			
 			self.data_key = 'data_key'
 			
 			# Create Figures and Axes with keys
@@ -39,84 +42,87 @@ class Data_Process(object):
      # Plot Data by keyword
 	def plotter(self,data,domain=None,plot_props={},data_key=None,keys=None):
 
-		if self.plot.get(data_key,True):
+		if not self.plot.get(data_key,True):
+			return
 
-			# Ensure Data, Domain and Keys are Dictionaries
+		# Ensure Data, Domain and Keys are Dictionaries
 
-			self.plot[data_key] = True
+		self.plot[data_key] = True
 
-			plot_key = ''
-			if not isinstance(data,dict):
-				data = {plot_key: data}
+		plot_key = ''
+		if not isinstance(data,dict):
+			data = {plot_key: data}
 
-			if data_key is None:
-				data_key = self.data_key
-
-
-
-			if keys is None:
-				keys = [k for k in data.keys() if k in self.axes.get(data_key,
-															   data.keys())
-										   or k == plot_key]
-
-			keys = [k for k in keys if data.get(k,[]) != []]
+		if data_key is None:
+			data_key = self.data_key
 
 
-			dom = {}
-			for k in keys:    
-				if not isinstance(domain,dict) and isinstance(data[k],dict):
-					dom[k] =  {ki: domain for ki in data[k].keys()}
-				elif not isinstance(domain,dict):
-					dom[k] = domain
-				elif isinstance(data[k],dict):
-					if isinstance(domain[k],dict):
-						dom[k] = {ki: domain[k][ki] for ki in data[k].keys()}
-					else:
-						dom[k] = {ki: domain[k] for ki in data[k].keys()}
+
+		if keys is None:
+			keys = [k for k in data.keys() if k in self.axes.get(data_key,
+														   data.keys())
+									   or k == plot_key]
+
+		keys = [k for k in keys if data.get(k,[]) != []]
+
+
+		dom = {}
+		for k in keys:    
+			if not isinstance(domain,dict) and isinstance(data[k],dict):
+				dom[k] =  {ki: domain for ki in data[k].keys()}
+			elif not isinstance(domain,dict):
+				dom[k] = domain
+			elif isinstance(data[k],dict):
+				if isinstance(domain[k],dict):
+					dom[k] = {ki: domain[k][ki] for ki in data[k].keys()}
 				else:
-					dom = domain
+					dom[k] = {ki: domain[k] for ki in data[k].keys()}
+			else:
+				dom = domain
 
-			domain = dom
+		domain = dom
+			
+
+
+		# Create Figures and Axes
+		self.figures_axes({data_key:keys})            
+
+		#            display(m='Figures Created')
+		# Plot for each data key
+		for key in keys:
+			props = plot_props.get(key,plot_props)
+
+			try:
+				ax = self.axes[data_key][key]
+				fig = self.figs[data_key][key]
+				plt.figure(fig.number)
+				fig.sca(ax)
+			except:
+				self.figures_axes({data_key:keys})
 				
+				ax = self.axes[data_key][key]
+				fig = self.figs[data_key][key]
+				plt.figure(fig.number)
+				fig.sca(ax)
 
-
-			# Create Figures and Axes
-			self.figures_axes({data_key:keys})            
-
-			#            display(m='Figures Created')
-			# Plot for each data key
-			for key in keys:
-				props = plot_props.get(key,plot_props)
-
-				try:
-					ax = self.axes[data_key][key]
-					fig = self.figs[data_key][key]
-					plt.figure(fig.number)
-					fig.sca(ax)
-				except:
-					self.figures_axes({data_key:keys})
-					
-					ax = self.axes[data_key][key]
-					fig = self.figs[data_key][key]
-					plt.figure(fig.number)
-					fig.sca(ax)
-
-				# Plot Data
-				#                try:
+			# Plot Data
+			try:
 				getattr(plot_functions,'plot_' + props.get('data',{}).get(
 						'plot_type','plot'))(data[key],domain[key],fig,ax,props)
 
-				#                except AttributeError:
-				#                    props.get('data',{}).get('plot_type')(
-				#                                data[key],domain[key],fig,ax,props)
+			except AttributeError:
+				props.get('data',{}).get('plot_type')(
+							   data[key],domain[key],fig,ax,props)
 
-				#                display(m='Figure %s Created'%(
-				#                                         plot_props[key]['data']['plot_type']))
+				display(m='Figure %s Created'%(
+										plot_props[key]['data']['plot_type']))
 
-				plt.suptitle(**plot_props[key].get(
-											'other',{}).get('sup_title',{}))
-				if plot_props[key].get('other',{}).get('sup_legend'):
-					fig.legend(*(list_sort(ax.get_legend_handles_labels(),1)))
+										
+										
+			plt.suptitle(**plot_props[key].get(
+										'other',{}).get('sup_title',{}))
+			if plot_props[key].get('other',{}).get('sup_legend'):
+				fig.legend(*(list_sort(ax.get_legend_handles_labels(),1)))
 
 		return
             
@@ -232,21 +238,25 @@ class Data_Process(object):
 					{'data_files': ['x_train','y_train','x_test','y_test'],
 					 'data_sets': ['x_train','y_train','x_test','y_test'],
 					 'data_typed':'dict_split',
-					 'data_format': 'npz',
+					 'data_format': None,
 					 'data_dir': 'dataset/',
+					 'data_lists': False,
 					 'one_hot': False
 					}):
 
 		# Data Files Dictionary
+		
+		if not data_params.get('data_format'):
+			data_params['data_format'] = self.NP_FILE
 		
 		# Check of importing batch of files
 		data_params = dict_check(data_params,'data_files')            
 
 		if isinstance(data_params['data_files'],str) and (
 		   '*' in data_params['data_files']) :
-		data_params['data_files'] = [os.path.basename(x) 
-									for x in glob.glob(data_params['data_dir']+
-									    			 data_params['data_files'])]
+			data_params['data_files'] = [os.path.basename(x) 
+									for x in glob.glob(data_params['data_dir']+(
+									    			data_params['data_files']))]
 		elif isinstance(data_params['data_files'],str):
 			data_params['data_files'] = [f for f in os.listdir(
 									     data_params['data_dir']) 
@@ -265,8 +275,8 @@ class Data_Process(object):
 		
 		import_func['values'] = lambda v:v
 		
-		import_func['npz'] = lambda v: np.load(data_params['data_dir']+
-								 v + '.' + data_params['data_format'])['a'] 
+		import_func[self.NP_FILE] = lambda v: np.load(data_params['data_dir']+
+								 v )
 		
 		import_func['txt'] = lambda v: np.loadtxt(data_params['data_dir']+
 									  v + '.' + data_params['data_format']) 
@@ -287,7 +297,8 @@ class Data_Process(object):
 		for k in data.keys():
 			data[k] = np.atleast_2d(data[k])
 			v_shape = np.shape(data[k])
-			if v_shape[0] == 1 and v_shape[1:] != 1:
+			if data_params.get('data_lists') and (v_shape[0] == 1) and (
+			   v_shape[1:] != 1) and (np.size(v_shape)<=2):
 				data[k] = np.transpose(data[k])
 			data_sizes[k] = np.shape(data[k])
 				
@@ -297,15 +308,28 @@ class Data_Process(object):
 			data_params['data_types'] = list(data.keys())
 			data_typed = data.copy()
 			
-		elif data_params.get('data_typed','dict_split') == 'dict'
+		elif data_params.get('data_typed','dict_split') == 'dict':
 			data_typed = {t: {k: data[k].copy() 
                           for k in data_params['data_sets'] if t in k}
                           for t in data_params['data_types']}
 		
-		elif data_params.get('data_typed','dict_split') == 'dict_split'
-			data_typed = {t: {k.split(t)[0]: data[k].copy() 
-                          for k in data_params['data_sets'] if t in k}
-                          for t in data_params['data_types']}	
+		
+		elif data_params.get('data_typed','dict_split') == 'dict_split':
+			def process(key,data,dtype):
+				if data_params.get('data_formats',{}).get(dtype) is dict and (
+					data_params.get('data_format') == self.NP_FILE):
+					return key.split(dtype)[0],data[0][0]
+				else:
+					return key.split(dtype)[0],data
+			data_typed = {}
+			for t in data_params['data_types']:
+				data_typed[t] = {}
+				for k in data_params['data_sets']:
+					if t in k:
+						k,d = process(k,data[k].copy(),t)
+						data_typed[t][k] = d 
+		
+		
 		else:
 			data_typed = {t: [data[k].copy() 
                           for k in data_params['data_sets'] if t in k]
@@ -316,10 +340,10 @@ class Data_Process(object):
 					  for t in data_params['data_types']}
 		
 		
-		# If not npz format, Export as npz for easier subsequent importing
-		if data_params['data_format'] != 'npz':
+		# If not NP_FILE format, Export as NP_FILE for easier subsequent importing
+		if data_params['data_format'] != self.NP_FILE:
 			
-			data_params['data_format'] = 'npz'
+			data_params['data_format'] = self.NP_FILE
 			self.exporter(data,data_params)
 				
 		return data, data_sizes, data_typed, data_keys
@@ -330,8 +354,7 @@ class Data_Process(object):
 	# Export Data
 	def exporter(self,data,
 				 data_params={'data_dir':'dataset/','data_file':None},
-				 label = '',
-				 format='npz'):
+				 label = '', format = None,read_write='w'):
 	   
 		# Data Directory
 		if not data_params.get('data_dir'):
@@ -347,7 +370,9 @@ class Data_Process(object):
 			g = data_params['data_file']
 			file  = lambda k: g + k
 		
-
+		# Data Format
+		if format is None:
+			format = data_params.get('data_format',self.NP_FILE)
 		# Check if Data is dict type
 		data = dict_check(data,'')    
 
@@ -356,21 +381,30 @@ class Data_Process(object):
 			
 			i = 0
 			file_end = ''
-			while os.path.isfile(data_params['data_dir']+label+file(k)+
+			while os.path.isfile(data_params['data_dir']+file(k)+label+
 								 file_end+ '.' +format):
 				file_end = '_%d'%i
 				i+=1
-			if format == 'npz':
-				np.savez_compressed(data_params['data_dir'] + 
-									file(k) +
-									label + file_end,a=v)
+			
+			file_path = data_params['data_dir'] + label + file(k) 
+			
+			if format == self.NP_FILE:
+				if read_write == 'a' and i>0:
+					v0 = np.load(file_path+ '.' + format)
+					file_end = ''
+					np.save(file_path+file_end+'.'+format,np.array([v0,v]))
+				else: 
+					np.save(file_path+file_end+'.'+format,v)
+				
 			elif format == 'txt':
+				if read_write == 'a':
+					file_end = ''
 				with open(data_params['data_dir'] + file(k) +
-						 label + file_end+ '.' +format, 'w') as file_txt:
+						 label + file_end+ '.' +format, read_write) as file_txt:
 					if isinstance(v,dict):
 						for key in sorted(
 							list(v.keys()),
-							key=lambda x: (len(str(v[x])),len(x),str.lower(x))):
+							key=lambda x: (len(x),len(str(v[x])),str.lower(x))):
 							
 							file_txt.write('%s:  %s \n \n \n'%(str(key),
 															   str(v[key])))
@@ -385,6 +419,9 @@ class Data_Process(object):
 			
 		file_header = caps(str_check(data_params.get(file_format[0],
 													 file_format[0])))
+		
+		file_footer = caps(str_check(data_params.get(file_format[-1],
+													 file_format[-1])))
 		# Format Data Directory
 		if new_dir:
 			data_params['data_dir'] = '%s_Data/'%(file_header)
@@ -394,8 +431,13 @@ class Data_Process(object):
 		# Format Data File
 		data_params['data_file'] = file_header
 		
-		for w in data_params['data_file_format'][1:]:
-			data_params['data_file'] += '_'+str_check(data_params.get(w,w))
+		for w in data_params['data_file_format'][1:-1]:
+			data_params['data_file'] += '_' + str_check(w)[0] + (
+									str_check(data_params.get(w,w)))
+		
+		data_params['data_file'] += '_'+file_footer 
+		
+		data_params['data_file'] = data_params['data_file'].replace('.','f')
 		
 		return
 			
