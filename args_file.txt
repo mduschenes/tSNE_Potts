@@ -1,10 +1,11 @@
-{ 'T': [[1.1, 0.5, 3, 6]]} #np.linspace(2.5,0.2,10)}
-{ 'q': [4]}
+{ 'T': [2,1.5,1.1]}#np.linspace(2.5,0.2,10)}
+{ 'q': [2]}
 { 'L': [5]}
-{ 'Nb': [int(1e5)]}
-{ 'Nm': [int(1e6)]}
-{ 'Nf': [int(1e1)]}
-{ 'Nr': [0.9]}
+{ 'Nb': [5]}#[int(1e5)]}
+{ 'Nm': [5]}#[int(1e6)]}
+{ 'Nf': [1]}#[int(1e1)]}
+{ 'Nr': [0.001] }#[0.9]}
+{ 'a': ['wolff']}
 
 def r(**kwargs):
 	import numpy as np
@@ -20,7 +21,7 @@ def r(**kwargs):
 	L0 = 12
 	T0 = 1.1/(1+np.sqrt(kwargs['q']))
 	
-	if  (kwargs['Nm']<Nm0) and (kwargs['L']<L0) and (kwargs['T']>T0):return '6h'
+	if  (kwargs['Nm']<Nm0) and (kwargs['L']<L0) and (kwargs['T']>T0):return '1h'
 	elif(kwargs['Nm']<Nm0) and (kwargs['L']<L0) and (kwargs['T']<T0):return'12h'
 	elif(kwargs['Nm']<Nm0) and (kwargs['L']>L0) and (kwargs['T']>T0):return'20h'
 	elif(kwargs['Nm']<Nm0) and (kwargs['L']>L0) and (kwargs['T']<T0):return'20h'

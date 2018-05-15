@@ -5,14 +5,18 @@ Created on Sun May 13 10:48:34 2018
 import numpy as np
 import subprocess,argparse,datetime,time,itertools,os
 
+date_ = lambda: datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
+
 # Parser Object
 parser = argparse.ArgumentParser(description = "Parse Arguments")
 
 # Known Arguments
 parser.add_argument('-c','--command',help = 'Job Command',
 					type=str,nargs = '*',default='')
+
 parser.add_argument('-j','--job',help = 'Job Executable',
 					type=str,nargs='*',default='')
+
 parser.add_argument('-arg','--script_args',help = 'Script Arguments File',
 					type=str,default='')					
 
@@ -23,7 +27,7 @@ parser.add_argument('-o','--o',help = 'Output File',
 
 parser.add_argument('-rw','--rw',help = 'Write or Run Bash Commands',
 					type=str,choices=['run','write','run-write','execute'],
-					default='write')
+					default='run')
 
 parser.add_argument('-rw_f','--rw_file',help = 'Bash Script File',
 					type=str, default='command_script.sh')
@@ -137,10 +141,9 @@ def cmd_run(cmd_args):
 	script_args,script_args_func,_ = file_read(cmd_args.pop('script_args'))
 
 	# Job Output Header
-	job_header = lambda s: '\n' + 'Job %s: '%str_check(s[0]) + (
-							datetime.datetime.now().strftime(
-							'%Y-%m-%d-%H-%M-%S-%f'))+(
-					       '\n %s'%str_check(s[1])+'\n')
+	job_header = lambda s: 'Job %s: \n%s \n%s'%(tuple(str_check(i) for i in s))
+	
+	
 	
 	# Loop over Model Args
 	script_key = script_args.keys()	
@@ -156,27 +159,32 @@ def cmd_run(cmd_args):
 		cmd_bash = ' '.join([command,arg_parse(cmd_args),
 							 job, arg_parse(script_arg)]).replace('\n','') 
 		
+				
+		# Do Process, with Pause to not overload system
+		
+		if rw == 'write':
+			file_write(file_bash, 
+					   text= 'echo '+job_header([i,'date',cmd_bash])+'\n\n', 
+					   read_write='w' if i==0 else 'a')
+			continue
+		
+		
 		# Update Output File
-		file_write(cmd_args.get('o'),job_header([i,cmd_bash]))
+		file_write(cmd_args.get('o'),'\n'+job_header([i,date_(),cmd_bash]),
+				   read_write='a')
 		
 		if rw == 'run':
 			os.system(cmd_bash)
 			# process = subprocess.Popen(cmd_bash.split(), stdout=subprocess.PIPE)
-			# output, error = process.communicate()
-			#print(cmd_bash)
-		elif rw == 'write':
-			file_write(file_bash, text=cmd_bash,read_write='w')
 		elif rw == 'write_run':
-			file_write(file_bash, text=cmd_bash,read_write='w')
+			file_write(file_bash,text=cmd_bash,read_write='w'if i==0 else 'a')
 			os.system(cmd_bash)
-			# process = subprocess.Popen(cmd_bash.split(), stdout=subprocess.PIPE)
-			# output, error = process.communicate()
-			#print(cmd_bash)
 		elif rw == 'execute':
-			subprocess.call(['./'+file_bash])
+			os.system('sh '+file_bash)
 		
-		# Pause to not overload system
-		time.sleep(1) 
+		
+		time.sleep(1)
+		 
 		
 		
  

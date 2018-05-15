@@ -2389,7 +2389,6 @@ static const char __pyx_k_MemoryError[] = "MemoryError";
 static const char __pyx_k_PickleError[] = "PickleError";
 static const char __pyx_k_data_format[] = "data_format";
 static const char __pyx_k_model_props[] = "model_props";
-static const char __pyx_k_update_bool[] = "update_bool";
 static const char __pyx_k_Data_Process[] = "Data_Process";
 static const char __pyx_k_N_neighbours[] = "N_neighbours";
 static const char __pyx_k_RuntimeError[] = "RuntimeError";
@@ -2636,7 +2635,6 @@ static PyObject *__pyx_kp_s_unable_to_allocate_shape_and_str;
 static PyObject *__pyx_kp_u_unknown_dtype_code_in_numpy_pxd;
 static PyObject *__pyx_n_s_unpack;
 static PyObject *__pyx_n_s_update;
-static PyObject *__pyx_n_s_update_bool;
 static PyObject *__pyx_n_s_update_props;
 static PyObject *__pyx_n_s_update_status;
 static PyObject *__pyx_n_s_warnings;
@@ -2925,7 +2923,7 @@ static int __pyx_pf_23MonteCarloUpdate_cython_16MonteCarloUpdate___init__(struct
  * 	@cython.cdivision(True)
  * 	def MC_update(self,iter_props={'algorithm':'wolff'}):             # <<<<<<<<<<<<<<
  * 
- * 		if not self.model_props.get('update_bool'):
+ * 		if not self.model_props.get('update'):
  */
 
 /* Python wrapper */
@@ -3057,7 +3055,7 @@ static PyObject *__pyx_pf_23MonteCarloUpdate_cython_16MonteCarloUpdate_2MC_updat
   /* "MonteCarloUpdate_cython.pyx":109
  * 	def MC_update(self,iter_props={'algorithm':'wolff'}):
  * 
- * 		if not self.model_props.get('update_bool'):             # <<<<<<<<<<<<<<
+ * 		if not self.model_props.get('update'):             # <<<<<<<<<<<<<<
  * 			return
  * 
  */
@@ -3065,7 +3063,7 @@ static PyObject *__pyx_pf_23MonteCarloUpdate_cython_16MonteCarloUpdate_2MC_updat
     PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "get");
     __PYX_ERR(0, 109, __pyx_L1_error)
   }
-  __pyx_t_1 = __Pyx_PyDict_GetItemDefault(__pyx_v_self->model_props, __pyx_n_s_update_bool, Py_None); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 109, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyDict_GetItemDefault(__pyx_v_self->model_props, __pyx_n_s_update, Py_None); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 109, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 109, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -3074,7 +3072,7 @@ static PyObject *__pyx_pf_23MonteCarloUpdate_cython_16MonteCarloUpdate_2MC_updat
 
     /* "MonteCarloUpdate_cython.pyx":110
  * 
- * 		if not self.model_props.get('update_bool'):
+ * 		if not self.model_props.get('update'):
  * 			return             # <<<<<<<<<<<<<<
  * 
  * 		# Monte Carlo Update Function
@@ -3086,7 +3084,7 @@ static PyObject *__pyx_pf_23MonteCarloUpdate_cython_16MonteCarloUpdate_2MC_updat
     /* "MonteCarloUpdate_cython.pyx":109
  * 	def MC_update(self,iter_props={'algorithm':'wolff'}):
  * 
- * 		if not self.model_props.get('update_bool'):             # <<<<<<<<<<<<<<
+ * 		if not self.model_props.get('update'):             # <<<<<<<<<<<<<<
  * 			return
  * 
  */
@@ -5642,7 +5640,7 @@ __pyx_t_32 = __pyx_memoryview_fromslice(__pyx_t_35, 3, (PyObject *(*)(char *)) _
  * 	@cython.cdivision(True)
  * 	def MC_update(self,iter_props={'algorithm':'wolff'}):             # <<<<<<<<<<<<<<
  * 
- * 		if not self.model_props.get('update_bool'):
+ * 		if not self.model_props.get('update'):
  */
 
   /* function exit code */
@@ -24782,7 +24780,6 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_kp_u_unknown_dtype_code_in_numpy_pxd, __pyx_k_unknown_dtype_code_in_numpy_pxd, sizeof(__pyx_k_unknown_dtype_code_in_numpy_pxd), 0, 1, 0, 0},
   {&__pyx_n_s_unpack, __pyx_k_unpack, sizeof(__pyx_k_unpack), 0, 0, 1, 1},
   {&__pyx_n_s_update, __pyx_k_update, sizeof(__pyx_k_update), 0, 0, 1, 1},
-  {&__pyx_n_s_update_bool, __pyx_k_update_bool, sizeof(__pyx_k_update_bool), 0, 0, 1, 1},
   {&__pyx_n_s_update_props, __pyx_k_update_props, sizeof(__pyx_k_update_props), 0, 0, 1, 1},
   {&__pyx_n_s_update_status, __pyx_k_update_status, sizeof(__pyx_k_update_status), 0, 0, 1, 1},
   {&__pyx_n_s_warnings, __pyx_k_warnings, sizeof(__pyx_k_warnings), 0, 0, 1, 1},
@@ -25721,7 +25718,7 @@ if (!__Pyx_RefNanny) {
  * 	@cython.cdivision(True)
  * 	def MC_update(self,iter_props={'algorithm':'wolff'}):             # <<<<<<<<<<<<<<
  * 
- * 		if not self.model_props.get('update_bool'):
+ * 		if not self.model_props.get('update'):
  */
   __pyx_t_2 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 107, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);

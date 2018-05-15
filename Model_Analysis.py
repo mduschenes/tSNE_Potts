@@ -10,8 +10,8 @@ from misc_functions import display
 
 
 class Model_Analysis(object):
-	def __init__(self,data_params = 
-					{'data_files': '*.npz',
+	def __init__(self,data_props = 
+					{'data_files': '*.npy',
 					 'data_types': ['sites','observables','model_props'],
 					 'data_typed': 'dict_split',
 					 'data_format': 'npy',
@@ -21,19 +21,19 @@ class Model_Analysis(object):
 		display(print_it=True,time_it=False,m='Model Analysis...')
 		
 		# Import Data
-		_,_,self.data,_ = Data_Process().importer(data_params)
-			
+		_,_,self.data,_ = Data_Process().importer(data_props)
+		self.data_props = data_props
 		return
 				
 	
-	def analyse(self):
+	def process(self):
 	
 		# Process Each Data Set
 		for k,sites in self.data['sites'].items():
 			
 			# Check if Data exists
 			if self.data['observables'].get(k) is not None:
-				break
+				continue
 
 			model_props = self.data['model_props'][k]
 
@@ -72,16 +72,17 @@ class Model_Analysis(object):
 		# Plot Instance
 		plot_obj = MonteCarloPlot(model_props['observe_props'],
 							      model_props, model_props['T'])
-		plot_args = [
-				model_props['T'],
-					    [p.get('algorithm',model_props['algorithm'])
-							for p in model_props['iter_props']]]
+		plot_args = [model_props['T'],
+					 [p.get('algorithm',model_props['algorithm'])
+						for p in model_props['iter_props']]]
 	
 		# Plot Data
 		plot_obj.MC_plotter({'observables':      data,
 						     'observables_mean': data},
 						     *plot_args)
 		
-		# Save Data
+		# Save Figures
 		if model_props.get('data_save',True):
 			plot_obj.plot_save(model_props,read_write='w')
+			
+		return

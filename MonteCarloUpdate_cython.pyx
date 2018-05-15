@@ -106,7 +106,7 @@ cdef class MonteCarloUpdate(object):
 	@cython.cdivision(True)
 	def MC_update(self,iter_props={'algorithm':'wolff'}):
 
-		if not self.model_props.get('update_bool'):
+		if not self.model_props.get('update'):
 			return
 		
 		# Monte Carlo Update Function

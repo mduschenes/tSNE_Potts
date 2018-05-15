@@ -45,7 +45,11 @@ class system(object):
 	def __init__(self):
 		return
 
-	def MonteCarlo(self,
+	def process(self,data_props):
+		self.process = Model_Analysis(data_props)		
+		return
+		
+	def update(self,
 				model_props =   {'model_name':'potts','q':2, 'd':2, 'L': 15, 
 							     'T': 1.13,'coupling_param':[0,1],
 								 'data_type':np.int_},
@@ -100,9 +104,7 @@ class system(object):
 
 # Parser Object
 parser = argparse.ArgumentParser(description = "Parse Arguments")
-# group = parser.add_mutually_exclusive_group()
-# group.add_argument("-v","--verbose",help = "verbosity measure",
-                     # action='count')# choices=[0,1,2])#action="store_true")
+
 # Add Args
 parser.add_argument('-L','--L',help = 'System Length Scale',
 					type=int,default=15)# choices=[0,1,2])#action="store_true")
@@ -119,6 +121,10 @@ parser.add_argument('-m','--model_name',help = 'Model Name',
 parser.add_argument('-T','--T',help = 'System Temperature',
 					nargs = '+',type=float)
 
+parser.add_argument('-alg','--algorithm',help='Update Algorithm',
+					default='wolff',type=str,
+					choices=['wolff','metropolis','metropolis_wolff'])
+					
 parser.add_argument('-Ne','--Neqb',help = 'Equilibrium Sweeps',
 					type=int,default=10)
 					
@@ -131,7 +137,10 @@ parser.add_argument('-Nf','--Nmeas_f',help = 'Measurement Sweeps Frequency',
 parser.add_argument('-Nr','--Nratio',help = 'Measurement Sweeps Ratio',
 					type=int,default=1)
 					
-parser.add_argument('-MC','--MC',help = 'Perform Monte Carlo Sweeeps',
+parser.add_argument('-u','--update',help = 'Perform Monte Carlo Updates',
+					action='store_true')
+					
+parser.add_argument('-an','--analysis',help = 'Perform Analysis',
 					action='store_true')
 					
 parser.add_argument('-v','--version',help = 'Version: Python or Cython',
@@ -160,12 +169,14 @@ if __name__ == "__main__":
 	# Update, Observe, Process, Simulate Parameters
 	model_props = {'coupling_param':[0,1],'data_type':np.int_,
 				   'algorithm':'wolff',
+				   'algorithms':['wolff','metropolis','metropolis_wolff'],
 				   'disp_updates':True, 'data_save':True, 'return_data':False,
 				   'data_date':datetime.datetime.now().strftime(
 										    			   '%Y-%m-%d-%H-%M-%S')}
 	
-	update_props = {'update_bool':args.MC, 'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 
-					'Nratio': 0.9,'Nmeas_f':args.Nmeas_f, 'Ncluster':1}
+	update_props = {'update':args.update, 
+					'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 'Nratio': 0.9,
+					'Nmeas_f':args.Nmeas_f, 'Ncluster':1}
 	
 	observe_props = {'configurations':   [False,'sites','cluster'],
 			         'observables':      [True,'energy','order'],
@@ -179,26 +190,27 @@ if __name__ == "__main__":
 				  'data_dir': 'dataset/',
 				  'data_file_format':['model_name','L','d','q','T','data_date']
 				 }
+	data_props['data_files'] = '*.' + data_props['data_format'] 
 	
 	iter_props = {'algorithm':['wolff','metropolis']}
 	
 	
 	# Delete non keyword arg attributes
-	for k in ['version','MC','Neqb','Nmeas','Nmeas_f']:
+	for k in ['version','Neqb','Nmeas','Nmeas_f']:
 		delattr(args,k)
 	model_props.update(vars(args))
 	
 	# Define System
 	s = system()
-	
-	# Perform Monte Carlo
-	s.MonteCarlo(model_props,update_props,observe_props,data_props,iter_props)
-	
 
+	# Perform Monte Carlo
+	if args.update:
+		s.update(model_props,update_props,observe_props,data_props,iter_props)
+	
 	# Analyse Results
-	data_props['data_files'] = '*.' + data_props['data_format'] 
-	a = Model_Analysis(data_props)
-	a.analyse()
+	if args.analysis:
+		s.process(data_props)
+		s.process.process() 
 	
 	
 	
