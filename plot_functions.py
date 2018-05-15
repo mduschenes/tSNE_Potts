@@ -76,7 +76,6 @@ def plot_decorator(plot_func):
 			plot = {}
 			for k,d in data.items():
 				if (d is not None) or (d != []):
-					
 					plot_props.get('plot',{})['label'] = plot_props.get(
 														'other',{}).get(
 														'label',lambda x:x)(k)

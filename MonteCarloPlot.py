@@ -108,11 +108,12 @@ class MonteCarloPlot(object):
 				# return region
 
 		def sup_title(label):
-			return label +  ' - %s - $q = %d$ \n $T =  %s$ '%(
+			return caps(label,every_word=True,sep_char=' ',split_char='_') + (
+				' - %s - $q = %d$ \n $T =  %s$ '%(
 				caps(self.model_props['model_name']),
 				self.model_props['q'] + (1 if 
 					self.model_props['model_name']=='ising' else 0),
-				str(self.model_props['T'])) + '\n'\
+				str(self.model_props['T']))) + '\n'\
 					'$N_{eqb} = %d \hspace{1cm} N_{meas} = %d \hspace{1cm}'\
 					'N_{meas_{freq}} = %d$'%(
 					self.model_props['update_props']['Neqb'], 
@@ -141,7 +142,8 @@ class MonteCarloPlot(object):
 								'plot_range': '',
 								'data_process':lambda data: np.real(data)},
 								
-					  'other': {'label': lambda x='':x,
+					  'other': {'label': lambda x='':caps(x,every_word=True,
+												   sep_char=' ',split_char='_'),
 								'cbar_plot':False,
 								'cbar_title':'Spin Values',
 								'cbar_color':'bone',
@@ -241,7 +243,8 @@ class MonteCarloPlot(object):
 								'plot_range': '',
 								'data_process':lambda data: np.real(data)},
 								
-					  'other': {'label': lambda x='':x,
+					  'other': {'label': lambda x='':caps(x,every_word=True,
+												   sep_char=' ',split_char='_'),
 								'sup_legend': True,
 								'sup_title': {'t':
 											sup_title('Observables Histogram')},
@@ -275,7 +278,10 @@ class MonteCarloPlot(object):
 				return caps(k,every_word=True,sep_char=' ',split_char='_')
 			
 			def plot_label(k,*args):
-				return lambda k: 'T = %0.2f   %s'%(k[1],caps(k[0]))                                             
+				return lambda k: 'T = %0.2f   %s'%(k[1],caps(k[0],
+																every_word=True,
+																sep_char=' ',
+																split_char='_'))
 
 			
 			
@@ -312,8 +318,10 @@ class MonteCarloPlot(object):
 								'data_process':''
 							   },
 								
-					  'other': {'label': lambda x='':x,'pause':0.01,
-								 'sup_legend': True,
+					  'other': {'label': lambda x='':caps(x,every_word=True,
+												   sep_char=' ',split_char='_'),
+								'pause':0.01,
+								'sup_legend': True,
 								'sup_title': {'t':
 											sup_title('Observables')}
 								}
@@ -343,7 +351,8 @@ class MonteCarloPlot(object):
 				return 'Temperature'
 			
 			def plot_label(k,*args):
-				return lambda k: caps(k)
+				return lambda k: caps(k,every_word=True,
+												   sep_char=' ',split_char='_')
 
 			
 			def data_process(k,*args):

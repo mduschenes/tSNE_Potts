@@ -69,7 +69,6 @@ class system(object):
 				iter_props={'algorithm':['wolff','metropolis']}):
 		
 		# Initialize model class, lattice class
-		model_props.update(data_props)
 		
 		m = Model(model=model_props, 
 		          observe=observe_props['observables_mean'][1:])
@@ -80,7 +79,7 @@ class system(object):
 		self.l = l
 
 		# Update model_props
-		model_props.update({'T': np.atleast_1d(model_props['T']),
+		model_props.update({
 							'N_sites': np.shape(l.neighbour_sites)[1],
 							'neighbour_sites': l.neighbour_sites,
 							'state_range': m.state_range,
@@ -91,7 +90,6 @@ class system(object):
 							'observe_props': observe_props,
 							'observables': m.observables_functions,
 						   })
-		Data_Process().format(model_props)
 		
 		# Perform Monte Carlo Updates for various Temperatures
 		MonteCarloUpdate(model_props).MC_update(iter_props)
@@ -119,7 +117,7 @@ parser.add_argument('-m','--model_name',help = 'Model Name',
 					type=str,default='potts')
 
 parser.add_argument('-T','--T',help = 'System Temperature',
-					nargs = '+',type=float)
+					nargs = '+',type=float,default=1.1)
 
 parser.add_argument('-alg','--algorithm',help='Update Algorithm',
 					default='wolff',type=str,
@@ -135,13 +133,16 @@ parser.add_argument('-Nf','--Nmeas_f',help = 'Measurement Sweeps Frequency',
 					type=int,default=1)
 					
 parser.add_argument('-Nr','--Nratio',help = 'Measurement Sweeps Ratio',
-					type=int,default=1)
+					type=float,default=1)
 					
 parser.add_argument('-u','--update',help = 'Perform Monte Carlo Updates',
-					action='store_true')
+					action='store_false')
 					
 parser.add_argument('-an','--analysis',help = 'Perform Analysis',
 					action='store_true')
+					
+parser.add_argument('-j','--job',help = 'Job Number',
+					type=int,default=0)
 					
 parser.add_argument('-v','--version',help = 'Version: Python or Cython',
 						type=str,choices=['py','cy'],default='py')
@@ -174,8 +175,7 @@ if __name__ == "__main__":
 				   'data_date':datetime.datetime.now().strftime(
 										    			   '%Y-%m-%d-%H-%M-%S')}
 	
-	update_props = {'update':args.update, 
-					'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 'Nratio': 0.9,
+	update_props = {'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 'Nratio': 0.9,
 					'Nmeas_f':args.Nmeas_f, 'Ncluster':1}
 	
 	observe_props = {'configurations':   [False,'sites','cluster'],
@@ -191,14 +191,25 @@ if __name__ == "__main__":
 				  'data_file_format':['model_name','L','d','q','T','data_date']
 				 }
 	data_props['data_files'] = '*.' + data_props['data_format'] 
-	
+		
 	iter_props = {'algorithm':['wolff','metropolis']}
 	
-	
+	if any(k in vars(args) for k in iter_props.keys()):
+		for k in iter_props.keys():
+			iter_props[k] = np.atleast_1d(getattr(args,k,iter_props[k]))[0]
+
 	# Delete non keyword arg attributes
 	for k in ['version','Neqb','Nmeas','Nmeas_f']:
 		delattr(args,k)
 	model_props.update(vars(args))
+	model_props['T'] = np.atleast_1d(model_props['T']).astype(np.float32)
+	model_props.update(data_props)
+	Data_Process().format(model_props)
+	
+	
+	display(time_it=False,
+			m='Job: '+str(model_props['job'])+'\n'+
+						  model_props['data_file']+'\n')
 	
 	# Define System
 	s = system()
@@ -208,9 +219,9 @@ if __name__ == "__main__":
 		s.update(model_props,update_props,observe_props,data_props,iter_props)
 	
 	# Analyse Results
-	if args.analysis:
-		s.process(data_props)
-		s.process.process() 
+	# if args.analysis:
+		# s.process(data_props)
+		# s.process.process() 
 	
 	
 	

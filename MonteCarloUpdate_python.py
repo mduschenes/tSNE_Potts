@@ -70,7 +70,7 @@ class MonteCarloUpdate(object):
 	# Perform Monte Carlo Update Algorithm and Plot Sites and Observables 
 	def MC_update(self,iter_props={'algorithm':'wolff'}):
 
-		if not self.model_props['update_props'].get('update_bool'):
+		if not self.model_props.get('update'):
 			return
 	
 		# Initialize iter_props as array of dictionaries

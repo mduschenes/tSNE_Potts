@@ -8,28 +8,29 @@ import subprocess,argparse,datetime,time,itertools,os
 date_ = lambda: datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
 
 # Parser Object
-parser = argparse.ArgumentParser(description = "Parse Arguments")
+parser = argparse.ArgumentParser(description = 'Parse Arguments',
+								 conflict_handler='resolve')
 
 # Known Arguments
 parser.add_argument('-c','--command',help = 'Job Command',
-					type=str,nargs = '*',default='')
+					type=str,nargs = '*',default='sqsub')
 
 parser.add_argument('-j','--job',help = 'Job Executable',
-					type=str,nargs='*',default='')
+					type=str,nargs='*',default='python3 MagnetismModel.py')
 
 parser.add_argument('-arg','--script_args',help = 'Script Arguments File',
-					type=str,default='')					
+					type=str,default='args_file.txt')					
 
 parser.add_argument('-q','--q',help = 'Job Queue',
-					type=str,default='')
+					type=str,default='serial')
 parser.add_argument('-o','--o',help = 'Output File',
-					type=str, default = '')
+					type=str, default = 'output_file.txt')
 
-parser.add_argument('-rw','--rw',help = 'Write or Run Bash Commands',
+parser.add_argument('-wr','--wr',help = 'Write or Run Bash Commands',
 					type=str,choices=['run','write','run-write','execute'],
-					default='run')
+					default='write')
 
-parser.add_argument('-rw_f','--rw_file',help = 'Bash Script File',
+parser.add_argument('-wr_f','--wr_file',help = 'Bash Script File',
 					type=str, default='command_script.sh')
 					
 _, unparsed = parser.parse_known_args()
@@ -44,11 +45,15 @@ args = parser.parse_args()
 
 def arg_parse(kwargs):
 
+	dash = '-'
 	if isinstance(kwargs,dict):
 		args = []
-		for k,v in [(k,v) for k,v in kwargs.items() if v not in [None, '']]:
+		for k,v in sorted([(k,v) for k,v in kwargs.items() 
+								 if v not in [None, '']],
+							key=lambda k: (len(k[0]),np.size(k[1]),k[0])):
 			if isinstance(v,dict):
-				exit()
+				dash = v.pop('dash','--')
+				v = list(v.values())[0]
 			if isinstance(v,(list,np.ndarray,tuple,set)):
 				t = ''
 				for val in v:
@@ -57,7 +62,7 @@ def arg_parse(kwargs):
 			else:
 				t = str_check(v)
 			
-			args.append('-'+str_check(k)+' '+t)
+			args.append(dash+str_check(k)+' '+t)
 		return ' '.join(args)
 		
 	elif isinstance(kwargs,(list,np.ndarray,tuple,set)):
@@ -132,10 +137,12 @@ def str_check(v):
 def cmd_run(cmd_args):
 	
 	# Command and Job Args
-	rw = cmd_args.pop('rw')
-	file_bash = cmd_args.pop('rw_file')
+	wr = cmd_args.pop('wr')
+	file_bash = cmd_args.pop('wr_file')
 	job = arg_parse(cmd_args.pop('job'))
 	command = arg_parse(cmd_args.pop('command'))
+	
+	
 	
 	# Read Script args from File
 	script_args,script_args_func,_ = file_read(cmd_args.pop('script_args'))
@@ -143,43 +150,52 @@ def cmd_run(cmd_args):
 	# Job Output Header
 	job_header = lambda s: 'Job %s: \n%s \n%s'%(tuple(str_check(i) for i in s))
 	
-	
-	
+		
 	# Loop over Model Args
 	script_key = script_args.keys()	
 	for i,arg in enumerate(itertools.product(*list(script_args.values()))):
+		
+		c_args = cmd_args.copy()
 		
 		# Update Args
 		script_arg = dict(zip(script_key,arg))
 		for f in script_args_func:
 			for k,v in f.items():
-				cmd_args.update({k: v(**script_arg)})
+				if k not in c_args:
+					c_args.update({k: v(**script_arg)})
+		
+		
+		# Keep valid args
+		for k in c_args.copy():
+			if c_args.get(k) in ['',None,[]]:
+					c_args.pop(k);
+		
 		
 		# Bash Command
-		cmd_bash = ' '.join([command,arg_parse(cmd_args),
-							 job, arg_parse(script_arg)]).replace('\n','') 
+		cmd_bash = ' '.join([command,arg_parse(c_args),
+							 job, arg_parse(script_arg),
+							 '--job %d'%i]).replace('\n','') 
 		
 				
 		# Do Process, with Pause to not overload system
 		
-		if rw == 'write':
-			file_write(file_bash, 
-					   text= 'echo '+job_header([i,'date',cmd_bash])+'\n\n', 
+		if wr == 'write':
+			file_write(file_bash,text=cmd_bash+'\nsleep 1s \n', 
 					   read_write='w' if i==0 else 'a')
 			continue
 		
 		
 		# Update Output File
-		file_write(cmd_args.get('o'),'\n'+job_header([i,date_(),cmd_bash]),
+		file_write(c_args.get('o'),'\n'+job_header([i,date_(),cmd_bash]),
 				   read_write='a')
 		
-		if rw == 'run':
+		if wr == 'run':
 			os.system(cmd_bash)
 			# process = subprocess.Popen(cmd_bash.split(), stdout=subprocess.PIPE)
-		elif rw == 'write_run':
+		elif wr == 'write_run':
 			file_write(file_bash,text=cmd_bash,read_write='w'if i==0 else 'a')
 			os.system(cmd_bash)
-		elif rw == 'execute':
+		elif wr == 'execute':
 			os.system('sh '+file_bash)
 		
 		

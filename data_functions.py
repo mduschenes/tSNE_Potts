@@ -346,7 +346,6 @@ class Data_Process(object):
 		
 		# If not NP_FILE format, Export as NP_FILE for easier subsequent importing
 		if data_params['data_format'] != self.NP_FILE:
-			
 			data_params['data_format'] = self.NP_FILE
 			self.exporter(data,data_params)
 				
@@ -422,7 +421,8 @@ class Data_Process(object):
 		return
 	
 	def format(self,data_params,new_dir=False):
-			
+				
+		
 		# Data File Format
 		file_format = np.atleast_1d(data_params['data_file_format'])
 			
@@ -431,6 +431,7 @@ class Data_Process(object):
 		
 		file_footer = caps(str_check(data_params.get(file_format[-1],
 													 file_format[-1])))
+		
 		# Format Data Directory
 		if new_dir:
 			data_params['data_dir'] = '%s_Data/'%(file_header)
@@ -446,7 +447,8 @@ class Data_Process(object):
 		
 		data_params['data_file'] += '_'+file_footer 
 		
-		data_params['data_file'] = data_params['data_file'].replace('.','f')
+		for c,d in [('.','f'),(', ',''),('f ','f0')]:
+			data_params['data_file'] = data_params['data_file'].replace(c,d)
 		
 		
 		return

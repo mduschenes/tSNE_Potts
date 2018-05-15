@@ -1,11 +1,11 @@
-{ 'T': [2,1.5,1.1]}#np.linspace(2.5,0.2,10)}
-{ 'q': [2]}
-{ 'L': [5]}
-{ 'Nb': [5]}#[int(1e5)]}
-{ 'Nm': [5]}#[int(1e6)]}
-{ 'Nf': [1]}#[int(1e1)]}
-{ 'Nr': [0.001] }#[0.9]}
-{ 'a': ['wolff']}
+{ 'T': np.linspace(2.5,0.2,10)}
+{ 'q': [2,3,4]}
+{ 'L': [10]}
+{ 'Ne': [int(1e5)]}
+{ 'Nm': [int(1e5)]}
+{ 'Nf': [int(0.5e1)]}
+{ 'Nr': [0.8]}
+{ 'alg': ['metropolis_wolff']}
 
 def r(**kwargs):
 	import numpy as np
@@ -17,11 +17,11 @@ def r(**kwargs):
 		if not isinstance(v,(str,dict,set)):
 			kwargs[k] = np.max(v)
 	
-	Nm0 = 1e4
-	L0 = 12
+	Nm0 = 1e3
+	L0 = 8
 	T0 = 1.1/(1+np.sqrt(kwargs['q']))
 	
-	if  (kwargs['Nm']<Nm0) and (kwargs['L']<L0) and (kwargs['T']>T0):return '1h'
+	if  (kwargs['Nm']<Nm0) and (kwargs['L']<L0) and (kwargs['T']>T0):return '6h'
 	elif(kwargs['Nm']<Nm0) and (kwargs['L']<L0) and (kwargs['T']<T0):return'12h'
 	elif(kwargs['Nm']<Nm0) and (kwargs['L']>L0) and (kwargs['T']>T0):return'20h'
 	elif(kwargs['Nm']<Nm0) and (kwargs['L']>L0) and (kwargs['T']<T0):return'20h'
@@ -32,3 +32,6 @@ def r(**kwargs):
 	elif(kwargs['Nm']>Nm0) and (kwargs['L']>L0) and (kwargs['T']<T0):return'24h'
 	
 	else: return ''
+	
+#def memperproc(**kwargs):
+#	return {'':'1.5G','dash':'--'}
