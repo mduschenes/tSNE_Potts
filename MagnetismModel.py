@@ -60,10 +60,10 @@ class system(object):
 													  'specific_heat',
 													  'susceptibility'],
                                  'observables_mean': [True]},
-				data_props = {'data_files': '*.npy',
+				data_props = {'data_files': '*.npz',
 							'data_types': ['sites','observables','model_props'],
 							'data_typed': 'dict_split',
-							'data_format': 'npy',
+							'data_format': 'npz',
 							'data_dir': 'dataset/',
 							},
 				iter_props={'algorithm':['wolff','metropolis']}):
@@ -72,14 +72,14 @@ class system(object):
 		
 		m = Model(model=model_props, 
 		          observe=observe_props['observables_mean'][1:])
-		l = Lattice(L=model_props['L'], d=model_props['d'])
-
+		l = Lattice(L=model_props['L'], d=model_props['d'])		
+		
 		# Initialize System Attributes
 		self.m = m
 		self.l = l
 
 		# Update model_props
-		model_props.update({
+		model_props.update({'T': m.T,
 							'N_sites': np.shape(l.neighbour_sites)[1],
 							'neighbour_sites': l.neighbour_sites,
 							'state_range': m.state_range,
@@ -92,6 +92,14 @@ class system(object):
 						   })
 		
 		# Perform Monte Carlo Updates for various Temperatures
+		Data_Process().format(model_props)
+		
+		display(time_it=False,
+			m='Job: '+str(model_props['job_id'])+'\n'+
+						  model_props['data_file']+'\n')
+		
+		
+		
 		MonteCarloUpdate(model_props).MC_update(iter_props)
 		
 		return
@@ -141,8 +149,11 @@ parser.add_argument('-u','--update',help = 'Perform Monte Carlo Updates',
 parser.add_argument('-an','--analysis',help = 'Perform Analysis',
 					action='store_true')
 					
-parser.add_argument('-j','--job',help = 'Job Number',
+parser.add_argument('-j','--job_id',help = 'Job Number',
 					type=int,default=0)
+					
+parser.add_argument('--data_dir',help = 'Data Directory',
+					type=str,default='dataset/')
 					
 parser.add_argument('-v','--version',help = 'Version: Python or Cython',
 						type=str,choices=['py','cy'],default='py')
@@ -175,7 +186,7 @@ if __name__ == "__main__":
 				   'data_date':datetime.datetime.now().strftime(
 										    			   '%Y-%m-%d-%H-%M-%S')}
 	
-	update_props = {'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 'Nratio': 0.9,
+	update_props = {'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 'Nratio': args.Nratio,
 					'Nmeas_f':args.Nmeas_f, 'Ncluster':1}
 	
 	observe_props = {'configurations':   [False,'sites','cluster'],
@@ -185,12 +196,15 @@ if __name__ == "__main__":
 	data_props = {'data_types': ['sites','observables','model_props'],
 				  'data_formats': {'sites':np.ndarray,'observables':np.ndarray,
 								  'model_props':dict},
-				  'data_format': 'npy',
+				  'data_dir':args.data_dir,
+				  'data_format': 'npz',
+				  'props_format': 'npy',
 				  'data_typed': 'dict_split',
-				  'data_dir': 'dataset/',
-				  'data_file_format':['model_name','L','d','q','T','data_date']
+				  'data_file_format':['model_name','L','d','q','T','job_id',
+									  'data_date']
 				 }
-	data_props['data_files'] = '*.' + data_props['data_format'] 
+	data_props['data_files'] = ('*.' + data_props['data_format'],
+								'*.' + data_props['props_format']) 
 		
 	iter_props = {'algorithm':['wolff','metropolis']}
 	
@@ -199,18 +213,14 @@ if __name__ == "__main__":
 			iter_props[k] = np.atleast_1d(getattr(args,k,iter_props[k]))[0]
 
 	# Delete non keyword arg attributes
-	for k in ['version','Neqb','Nmeas','Nmeas_f']:
+	for k in ['version','data_dir','Neqb','Nmeas','Nmeas_f']:
 		delattr(args,k)
+	
+	# Update Model Props
 	model_props.update(vars(args))
-	model_props['T'] = np.atleast_1d(model_props['T']).astype(np.float32)
 	model_props.update(data_props)
-	Data_Process().format(model_props)
-	
-	
-	display(time_it=False,
-			m='Job: '+str(model_props['job'])+'\n'+
-						  model_props['data_file']+'\n')
-	
+
+				
 	# Define System
 	s = system()
 
@@ -218,15 +228,15 @@ if __name__ == "__main__":
 	if args.update:
 		s.update(model_props,update_props,observe_props,data_props,iter_props)
 	
+	
 	# Analyse Results
-	# if args.analysis:
-		# s.process(data_props)
-		# s.process.process() 
+	if args.analysis:
+		s.process(data_props)
+		s.process.process() 
 	
 	
 	
-
-	
+		
 
 		
 	

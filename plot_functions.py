@@ -142,13 +142,17 @@ def plot_decorator(plot_func):
 
         # Set Figure Properties
 		plot_not_set_props = ['other','data','plot']
-		if plot_func.__name__ =='plot_histogram':
-			ax.yaxis.set_major_locator(plt.MultipleLocator(1))
-			ax.xaxis.set_major_locator(plt.MultipleLocator(1/4))
-		else:
-			ax.yaxis.set_major_locator(plt.MultipleLocator(1/2))
-			ax.xaxis.set_major_locator(plt.MultipleLocator(1/4))
 		
+		for w,wlim in plot_props.get('other',{}).get('axis_ticks',{}).items():
+			if wlim.get('lim'):
+				wmin,wmax = plt.getp(ax,w+'lim')
+				if wmax-wmin > wlim.get('lim') and wlim.get('ticksmax') != None:
+					getattr(ax,w+'axis').set_major_locator(
+									      plt.MultipleLocator(wlim['ticksmax']))
+				elif wlim.get('ticksmin') != None:
+					getattr(ax,w+'axis').set_major_locator(
+										  plt.MultipleLocator(wlim['ticksmin']))
+
 		for prop in np.setdiff1d(list(plot_props.keys()),plot_not_set_props):
 			if '_attr' in prop:
 				obj = locals()[prop.replace('_attr','')]

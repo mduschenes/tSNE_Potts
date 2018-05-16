@@ -1,37 +1,73 @@
-{ 'T': np.linspace(2.5,0.2,10)}
-{ 'q': [2,3,4]}
-{ 'L': [10]}
+{ 'T': [-1]}#np.linspace(2.5,0.2,10)}
+{ 'd': [2]}
+{ 'q': [2,3,4,6,10]}
+{ 'L': [5,10,15,20]}
 { 'Ne': [int(1e5)]}
 { 'Nm': [int(1e5)]}
 { 'Nf': [int(0.5e1)]}
-{ 'Nr': [0.8]}
+{ 'Nr': [0.75]}
+{ '-model_name': ['potts']}
 { 'alg': ['metropolis_wolff']}
+{'-data_dir': ['dataset/test_TqLN10e5/']}
 
 def r(**kwargs):
 	import numpy as np
+	from Model import Model
 	
 	kwargs = kwargs.copy()
 	
+	if kwargs.get('T'):
+		kwargs['T'] = Model(kwargs).T
+	
 	# Ensure items are 1d
 	for k,v in kwargs.items():
-		if not isinstance(v,(str,dict,set)):
+		if not isinstance(v,(str,dict,set,int,float)):
 			kwargs[k] = np.max(v)
-	
+		
 	Nm0 = 1e3
 	L0 = 8
-	T0 = 1.1/(1+np.sqrt(kwargs['q']))
+	T0 = 1.1/np.log(1.0+np.sqrt(kwargs['q']))
+		
+	if  (kwargs['Nm']<Nm0) and (kwargs['L']<L0) and (kwargs['T']>T0):r= '6h'
+	elif(kwargs['Nm']<Nm0) and (kwargs['L']<L0) and (kwargs['T']<T0):r='12h'
+	elif(kwargs['Nm']<Nm0) and (kwargs['L']>L0) and (kwargs['T']>T0):r='20h'
+	elif(kwargs['Nm']<Nm0) and (kwargs['L']>L0) and (kwargs['T']<T0):r='20h'
 	
-	if  (kwargs['Nm']<Nm0) and (kwargs['L']<L0) and (kwargs['T']>T0):return '6h'
-	elif(kwargs['Nm']<Nm0) and (kwargs['L']<L0) and (kwargs['T']<T0):return'12h'
-	elif(kwargs['Nm']<Nm0) and (kwargs['L']>L0) and (kwargs['T']>T0):return'20h'
-	elif(kwargs['Nm']<Nm0) and (kwargs['L']>L0) and (kwargs['T']<T0):return'20h'
+	elif(kwargs['Nm']>Nm0) and (kwargs['L']<L0) and (kwargs['T']>T0):r='20h'
+	elif(kwargs['Nm']>Nm0) and (kwargs['L']<L0) and (kwargs['T']<T0):r='20h'
+	elif(kwargs['Nm']>Nm0) and (kwargs['L']>L0) and (kwargs['T']>T0):r='24h'
+	elif(kwargs['Nm']>Nm0) and (kwargs['L']>L0) and (kwargs['T']<T0):r='24h'
 	
-	elif(kwargs['Nm']>Nm0) and (kwargs['L']<L0) and (kwargs['T']>T0):return'20h'
-	elif(kwargs['Nm']>Nm0) and (kwargs['L']<L0) and (kwargs['T']<T0):return'20h'
-	elif(kwargs['Nm']>Nm0) and (kwargs['L']>L0) and (kwargs['T']>T0):return'24h'
-	elif(kwargs['Nm']>Nm0) and (kwargs['L']>L0) and (kwargs['T']<T0):return'24h'
+	else: r= '9999h'
+		
+	return r
+
+def memperproc_(**kwargs):
+	return '1.5G'
+
+def q(**kwargs):
+	return 'serial'
+
+def o(**kwargs):
 	
-	else: return ''
+	import numpy as np
 	
-#def memperproc(**kwargs):
-#	return {'':'1.5G','dash':'--'}
+	args = kwargs.copy()
+	
+	from data_functions import Data_Process
+	from Model import Model
+	
+	props = {'data_file_format': ['-model_name','L','d','q','T','']}
+	
+	if args.get('-data_dir'):
+		args['data_dir'] = args.pop('-data_dir')
+	
+	if args.get('T'):
+		args['T'] = Model(args).T
+		
+	props.update(args)
+	Data_Process().format(props)
+	file = 'output_file'
+	file += props['data_file']+'_'+ str(args.get('-job_id',0))
+	
+	return props['data_dir']+file+'.txt'

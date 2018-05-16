@@ -21,17 +21,15 @@ parser.add_argument('-j','--job',help = 'Job Executable',
 parser.add_argument('-arg','--script_args',help = 'Script Arguments File',
 					type=str,default='args_file.txt')					
 
-parser.add_argument('-q','--q',help = 'Job Queue',
-					type=str,default='serial')
-parser.add_argument('-o','--o',help = 'Output File',
-					type=str, default = 'output_file.txt')
-
 parser.add_argument('-wr','--wr',help = 'Write or Run Bash Commands',
 					type=str,choices=['run','write','run-write','execute'],
 					default='write')
 
 parser.add_argument('-wr_f','--wr_file',help = 'Bash Script File',
 					type=str, default='command_script.sh')
+					
+parser.add_argument('--double_dash',help = 'Double Dash parsing',
+					action='store_true')
 					
 _, unparsed = parser.parse_known_args()
 
@@ -43,17 +41,12 @@ for arg in unparsed:
 args = parser.parse_args()
 
 
-def arg_parse(kwargs):
-
-	dash = '-'
+def arg_parse(kwargs,dash='-'):
 	if isinstance(kwargs,dict):
 		args = []
 		for k,v in sorted([(k,v) for k,v in kwargs.items() 
 								 if v not in [None, '']],
-							key=lambda k: (len(k[0]),np.size(k[1]),k[0])):
-			if isinstance(v,dict):
-				dash = v.pop('dash','--')
-				v = list(v.values())[0]
+							key=lambda k: (len(k[0]),np.size(k[1]),k[0])):		
 			if isinstance(v,(list,np.ndarray,tuple,set)):
 				t = ''
 				for val in v:
@@ -110,6 +103,8 @@ def file_read(file):
 							f += str_comment(line)
 					else:
 						if h == 'def':
+							if i == len(data)-1:
+								f += str_comment(line)
 							f_ = {}
 							exec(str_eol(f),locals(),f_)
 							data_func[i] = f_
@@ -136,12 +131,12 @@ def str_check(v):
 	
 def cmd_run(cmd_args):
 	
-	# Command and Job Args
+	# System Args
+	dash = '--' if cmd_args['double_dash'] else '-';cmd_args.pop('double_dash');
 	wr = cmd_args.pop('wr')
 	file_bash = cmd_args.pop('wr_file')
-	job = arg_parse(cmd_args.pop('job'))
-	command = arg_parse(cmd_args.pop('command'))
-	
+	job = arg_parse(cmd_args.pop('job'),dash)
+	command = arg_parse(cmd_args.pop('command'),dash)
 	
 	
 	# Read Script args from File
@@ -149,32 +144,38 @@ def cmd_run(cmd_args):
 
 	# Job Output Header
 	job_header = lambda s: 'Job %s: \n%s \n%s'%(tuple(str_check(i) for i in s))
-	
-		
+
 	# Loop over Model Args
-	script_key = script_args.keys()	
+	script_key = script_args.keys()
 	for i,arg in enumerate(itertools.product(*list(script_args.values()))):
-		
+
 		c_args = cmd_args.copy()
 		
 		# Update Args
 		script_arg = dict(zip(script_key,arg))
+		script_arg.update({'-job_id':i})
 		for f in script_args_func:
 			for k,v in f.items():
+				if k.endswith('_'):
+					k = '-'+k[:-1]
 				if k not in c_args:
 					c_args.update({k: v(**script_arg)})
 		
-		
 		# Keep valid args
 		for k in c_args.copy():
-			if c_args.get(k) in ['',None,[]]:
+			if c_args.get(k) in ['',None]:
 					c_args.pop(k);
 		
-		
+
 		# Bash Command
-		cmd_bash = ' '.join([command,arg_parse(c_args),
-							 job, arg_parse(script_arg),
-							 '--job %d'%i]).replace('\n','') 
+		if job not in ['',None]:
+			cmd_bash = ' '.join([command,arg_parse(c_args,dash),
+							 job, arg_parse(script_arg,dash)]).replace('\n','') 
+		else:
+			c_args.update(script_arg)
+			cmd_bash = ' '.join([command,
+								arg_parse(c_args,dash)]).replace('\n','') 
+			
 		
 				
 		# Do Process, with Pause to not overload system

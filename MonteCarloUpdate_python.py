@@ -117,7 +117,7 @@ class MonteCarloUpdate(object):
 		if self.model_props.get('data_save',True):
 			for var_type in self.model_props['data_types']:
 				if 'model_props' in var_type: break
-			for f in ['txt',self.model_props.get('data_format','npy')]:
+			for f in ['txt',self.model_props.get('props_format','npy')]:
 				Data_Proc().exporter({var_type:self.model_props},
 							            self.model_props,format=f)
 
@@ -179,7 +179,9 @@ class MonteCarloUpdate(object):
 										fig_keys='configurations')
 				Data_Proc().exporter(
 							  {var_type:np.asarray(data_sites[i_iter])},
-							   self.model_props,read_write='a')  
+							   self.model_props,
+							   format=self.model_props['data_format'],
+							   read_write='a')   
 		
 			display(print_it=disp_updates,
 					m='Runtime: ',t0=-(i_t+2),line_break=1)

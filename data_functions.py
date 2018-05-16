@@ -12,17 +12,19 @@ import os,glob,copy
 from misc_functions import flatten,dict_check, one_hot,caps,list_sort,str_check
 import plot_functions
 
-NP_FILE = 'npy'
+NP_FILE = 'npz'
 IMG_FILE = 'pdf'
+DIRECTORY = 'dataset/'
 
 class Data_Process(object):
     
     # Create figure and axes dictionaries for dataset keys
-	def __init__(self,keys=[None],plot=[False],np_file = None,img_file=None):
+	def __init__(self,keys=[None],plot=[False],
+				 np_file = None,img_file=None,directory=None):
 		 
 		# Standardized numpy file format
-		for f in ['np_file','img_file']:
-			F = locals().get(f)
+		for f,F in [(v,V) for v,V in locals().items() 
+					if v not in ['keys','plot']]:
 			F = globals().get(f.upper()) if  F is None else F
 			setattr(self,f.upper(),F)
 			
@@ -143,16 +145,18 @@ class Data_Process(object):
 	# Save all current figures
 	def plot_save(self,data_params={'data_dir':'dataset/',
 									'figure_format':None},
-					   fig_keys = None, label = '',read_write='w'):
+					   fig_keys = None,directory=None,
+					   label = '',read_write='w'):
         
         # Save Figures for current Data_Process Instance
 		
-		format = data_params.get('figure_format',IMG_FILE)
+		format = data_params.get('figure_format',self.IMG_FILE)
 		# Data Directory
-		if not data_params.get('data_dir'):
-			data_params['data_dir'] = 'dataset/'
-		if not os.path.isdir(data_params['data_dir']):
-			os.mkdir(data_params['data_dir'])
+		if directory is None:
+			directory = data_params.get('data_dir','dataset/')
+
+		if not os.path.isdir(directory):
+			os.mkdir(directory)
 		
 		
 		# Check for specific fig_keys to save
@@ -172,7 +176,7 @@ class Data_Process(object):
 				fig.set_size_inches((8.5, 11))
 
 				# Set File Name and ensure no Overwriting
-				file = ''.join([data_params.get('data_dir','dataset/'),
+				file = ''.join([directory,
 								data_params.get('data_file',''),
 								label,'_',fig_k])
 								# ,'_',
@@ -246,49 +250,67 @@ class Data_Process(object):
 					 'data_dir': 'dataset/',
 					 'data_lists': False,
 					 'one_hot': False
-					}):
+					},directory=None,format=None):
 
 		# Data Files Dictionary
-		
-		if not data_params.get('data_format'):
-			data_params['data_format'] = self.NP_FILE
-		
 		# Check of importing batch of files
 		data_params = dict_check(data_params,'data_files')            
 
-		if isinstance(data_params['data_files'],str) and (
-		   '*' in data_params['data_files']) :
-			data_params['data_files'] = [os.path.basename(x) 
-									for x in glob.glob(data_params['data_dir']+(
-									    			data_params['data_files']))]
-		elif isinstance(data_params['data_files'],str):
-			data_params['data_files'] = [f for f in os.listdir(
-									     data_params['data_dir']) 
+		if directory is None:
+			directory = data_params.get('data_dir',self.DIRECTORY)
+		
+		if isinstance(data_params['data_files'],tuple):
+			files = []
+			format_files = {}
+			for f in data_params['data_files']:
+				if '*' in f:
+					ftemp = [os.path.basename(x) 
+								for x in glob.glob(directory+f)]
+				else:
+					ftemp = [x for x in os.listdir(
+									     directory) 
 										 if os.isfile(os.join(
-													data_params['data_dir'], f)) 
+													directory, x)) 
 										 and data_params['data_files'] in d ]
+				
+				files.extend(ftemp)
+				
+				for fi in ftemp:
+					format_files[fi] = fi.split('.')[-1].replace('*','')
+			
+			data_params['data_files'] = files
+		else:
+			format_files = None
+						
+				
 		if not data_params.get('data_sets'):
 			data_params['data_sets'] = data_params['data_files']
 		
+			
 		data_params['data_files'] = dict_check(
 					data_params['data_files'],data_params['data_sets'])
 		
+		if format is None:
+			format = {k: format_files[f]
+								for k,f in data_params['data_files'].items()}
+		else:
+			format = {k:format for k in data_params['data_files'].keys()}
 		
-		# Import Data
+		# Import Data				
 		import_func = {}
-		
 		import_func['values'] = lambda v:v
+		import_func['npy'] = lambda v: np.load(directory+ v )
+		import_func['npz'] = lambda v: np.load(
+										  directory + v )['arr_0']
+		import_func['txt'] = lambda v: np.loadtxt(directory+
+									  v.split('.txt')[0] + '.' + 'txt') 
 		
-		import_func[self.NP_FILE] = lambda v: np.load(data_params['data_dir']+
-								 v )
+		#print(data_params['data_files'])
 		
-		import_func['txt'] = lambda v: np.loadtxt(data_params['data_dir']+
-									  v + '.' + data_params['data_format']) 
-		
-		data = {k: import_func[data_params.get('data_format','values')](v)
+		data = {k: import_func[format[k]](v)
 					for k,v in data_params['data_files'].items() 
 					if v is not None}
-		
+							
 		# Convert Labels to one-hot Labels
 		if data_params.get('one_hot'):
 			for k in data.keys(): 
@@ -321,7 +343,7 @@ class Data_Process(object):
 		elif data_params.get('data_typed','dict_split') == 'dict_split':
 			def process(key,data,dtype):
 				if data_params.get('data_formats',{}).get(dtype) is dict and (
-					data_params.get('data_format') == self.NP_FILE):
+					'np' in format[key]):
 					return key.split(dtype)[0],data[0][0]
 				else:
 					return key.split(dtype)[0],data
@@ -344,10 +366,10 @@ class Data_Process(object):
 					  for t in data_params['data_types']}
 		
 		
-		# If not NP_FILE format, Export as NP_FILE for easier subsequent importing
-		if data_params['data_format'] != self.NP_FILE:
-			data_params['data_format'] = self.NP_FILE
-			self.exporter(data,data_params)
+		# If not NP_FILE format, Export as NP_FILE for easier importing
+		for k,f in format.items():
+			if f == 'txt':
+				self.exporter({k:data[k]},data_params,format=self.NP_FILE)
 				
 		return data, data_sizes, data_typed, data_keys
 
@@ -357,13 +379,18 @@ class Data_Process(object):
 	# Export Data
 	def exporter(self,data,
 				 data_params={'data_dir':'dataset/','data_file':None},
-				 label = '', format = None,read_write='w'):
+				 label = '', directory=None,format = None,read_write='w'):
+	   
+	   # Check if Data is dict type
+		data = dict_check(data,'') 
 	   
 		# Data Directory
-		if not data_params.get('data_dir'):
-			data_params['data_dir'] = 'dataset/'
-		elif not os.path.isdir(data_params['data_dir']):
-			os.mkdir(data_params['data_dir'])
+		if directory is None:
+			directory = data_params.get('data_dir',self.DIRECTORY)
+		
+		if not os.path.isdir(directory):
+			print('Create Dir')
+			os.mkdir(directory)
 			
 		# Data Names
 		if not data_params.get('data_file'):
@@ -374,39 +401,53 @@ class Data_Process(object):
 			file  = lambda k: g + k
 		
 		# Data Format
-		if format is None:
-			format = data_params.get('data_format',self.NP_FILE)
 		
-		data_params['data_format'] = format
+		if not isinstance(format,dict):
+			format_files = {}
+			for k in data.keys():
+				if format is None:
+					format_files[k] = data_params.get('data_format',
+																   self.NP_FILE)
+				else:
+					format_files[k] = format
+			format = format_files
+			
 		
-		# Check if Data is dict type
-		data = dict_check(data,'')    
+		   
 
 		# Write Data to File, Ensure no Overwriting
 		for k,v in data.items():
 			
 			i = 0
 			file_end = ''
-			while os.path.isfile(data_params['data_dir']+file(k)+label+
-								 file_end+ '.' +format):
+			while os.path.isfile(directory+file(k)+label+
+								 file_end+ '.' +format[k]):
 				file_end = '_%d'%i
 				i+=1
 			
-			file_path = data_params['data_dir'] + label + file(k) 
+			file_path = directory + label + file(k) 
 			
-			if format == self.NP_FILE:
+			if format[k] == 'npy':
 				if read_write == 'a' and i>0:
-					v0 = np.load(file_path+ '.' + format)
+					v0 = np.load(file_path+ '.' + 'npy')
 					file_end = ''
-					np.save(file_path+file_end+'.'+format,np.array([v0,v]))
+					np.save(file_path+file_end+'.'+'npy',np.array([v0,v]))
 				else: 
-					np.save(file_path+file_end+'.'+format,v)
-				
-			elif format == 'txt':
+					np.save(file_path+file_end+'.'+'npy',v)
+			
+			elif format[k] == 'npz':
+				if read_write == 'a' and i>0:
+					v0 = np.load(file_path+ '.' + 'npz')
+					file_end = ''
+					np.savez_compressed(file_path+file_end+'.'+'npz',
+										np.array([v0,v]))
+				else: 
+					np.savez_compressed(file_path+file_end+'.'+'npz',v)
+			
+			elif format[k] == 'txt':
 				if read_write == 'a':
 					file_end = ''
-				with open(data_params['data_dir'] + file(k) +
-						 label + file_end+ '.' +format, read_write) as file_txt:
+				with open(file_path+file_end+'.'+'txt',read_write) as file_txt:
 					if isinstance(v,dict):
 						for key in sorted(
 							list(v.keys()),
@@ -420,10 +461,13 @@ class Data_Process(object):
 			
 		return
 	
-	def format(self,data_params,new_dir=False):
+	def format(self,data_params,directory=None):
 				
 		
 		# Data File Format
+		if not data_params.get('data_file_format'):
+			data_params['data_file_format'] = []
+		
 		file_format = np.atleast_1d(data_params['data_file_format'])
 			
 		file_header = caps(str_check(data_params.get(file_format[0],
@@ -433,22 +477,22 @@ class Data_Process(object):
 													 file_format[-1])))
 		
 		# Format Data Directory
-		if new_dir:
-			data_params['data_dir'] = '%s_Data/'%(file_header)
-		elif not data_params.get('data_dir'):
-			data_params['data_dir'] = 'dataset/'
+		if directory is None:
+			directory = data_params.get('data_dir',self.DIRECTORY)
 		
 		# Format Data File
-		data_params['data_file'] = file_header
-		
-		for w in data_params['data_file_format'][1:-1]:
-			data_params['data_file'] += '_' + str_check(w)[0] + (
-									str_check(data_params.get(w,w)))
-		
-		data_params['data_file'] += '_'+file_footer 
-		
-		for c,d in [('.','f'),(', ',''),('f ','f0')]:
-			data_params['data_file'] = data_params['data_file'].replace(c,d)
+		if not data_params.get('data_file'):
+			data_params['data_file'] = file_header
+			
+			for w in data_params['data_file_format'][1:-1]:
+				data_params['data_file'] += '_' + str_check(w)[0] + (
+										str_check(data_params.get(w,w)))
+			
+			if file_footer not in ['',None]:
+				data_params['data_file'] += '_'+file_footer 
+			
+			for c,d in [('.','f'),(', ',''),('f ','f0')]:
+				data_params['data_file'] = data_params['data_file'].replace(c,d)
 		
 		
 		return

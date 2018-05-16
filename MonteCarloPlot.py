@@ -320,6 +320,10 @@ class MonteCarloPlot(object):
 								
 					  'other': {'label': lambda x='':caps(x,every_word=True,
 												   sep_char=' ',split_char='_'),
+								'axis_ticks':{'x':{'lim':1,'ticksmax':1/2,
+														   'ticksmin':1/4},
+											  'y':{'lim':10,'ticksmax':None,
+															 'ticksmin':2}},
 								'pause':0.01,
 								'sup_legend': True,
 								'sup_title': {'t':

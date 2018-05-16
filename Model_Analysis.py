@@ -11,10 +11,10 @@ from misc_functions import display
 
 class Model_Analysis(object):
 	def __init__(self,data_props = 
-					{'data_files': '*.npy',
+					{'data_files': '*.npz',
 					 'data_types': ['sites','observables','model_props'],
 					 'data_typed': 'dict_split',
-					 'data_format': 'npy',
+					 'data_format': 'npz',
 					 'data_dir': 'dataset/',
 					}):
 		
@@ -23,6 +23,7 @@ class Model_Analysis(object):
 		# Import Data
 		_,_,self.data,_ = Data_Process().importer(data_props)
 		self.data_props = data_props
+				
 		return
 				
 	
@@ -36,7 +37,7 @@ class Model_Analysis(object):
 				continue
 
 			model_props = self.data['model_props'][k]
-
+			model_props.update(self.data_props)
 			# Measure Data
 			observables = self.measure(sites, model_props['neighbour_sites'],
 									model_props['T'],model_props['observables'])
@@ -47,7 +48,7 @@ class Model_Analysis(object):
 				Data_Process().exporter({'observables':observables},model_props)
 			
 			# Plot Data
-			self.plot(observables,model_props)		
+			self.plot(observables,model_props,'iter_props','algorithm')
 		
 		display(print_it=True,time_it=False,m='Observables Processed')
 	
@@ -67,14 +68,17 @@ class Model_Analysis(object):
 		return data
 		
 	
-	def plot(self,data,model_props):
+	def plot(self,data,model_props,parameters,parameter=None):
 	
 		# Plot Instance
 		plot_obj = MonteCarloPlot(model_props['observe_props'],
 							      model_props, model_props['T'])
-		plot_args = [model_props['T'],
-					 [p.get('algorithm',model_props['algorithm'])
-						for p in model_props['iter_props']]]
+		plot_args = [model_props['T'],[]]
+		for p in model_props[parameters]:
+			if isinstance(p,dict):
+				plot_args[1].append(p.get(parameter,parameter))
+			else:
+				plot_args[1].append(p)
 	
 		# Plot Data
 		plot_obj.MC_plotter({'observables':      data,
@@ -86,3 +90,23 @@ class Model_Analysis(object):
 			plot_obj.plot_save(model_props,read_write='w')
 			
 		return
+		
+		
+		
+	def sort(self,params):
+	
+		# Sort by params as {param0_i: {param1_j: [param2_k values]}}
+		# i.e) q, L, T
+		
+		self.data['parameters'] = {}
+		
+		for p in params:
+			for file in self.data['model_props']:
+				pass
+		
+		return
+		
+		
+		
+		
+		

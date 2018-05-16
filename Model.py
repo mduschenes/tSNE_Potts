@@ -23,11 +23,14 @@ class Model(object):
         
         # Define spin value model and q (~max spin value) parameters
         # (i.e: Ising(s)-> s, Potts(s) -> exp(i2pi s/q)  )
-		self.model_name = model['model_name'].lower()
-		self.q = model['q']
-		self.d = model['d']
-		self.T = np.atleast_1d(model['T'])
-		self.coupling_param = model['coupling_param']
+		self.model_name = model.get('model_name','potts').lower()
+		self.q = model.get('q',2)
+		self.d = model.get('d',2)
+		
+		t = model.get('T',-1)
+		self.T = self.critical_temperature(t,self.d,self.q,self.model_name)
+
+		self.coupling_param = model.get('coupling_param',[0,1])
 
 
 		self.model_types = ['ising','potts']
@@ -73,10 +76,11 @@ class Model(object):
 
 		# Define Model Value function and Name for given Input
 		self.model_params = self.models_params[self.model_name]
-		self.model = self.model_params['value']
+		self.model_value = self.model_params['value']
 
 		# Define Range of Possible Spin Values and  Energy Function                     
-		self.state_range = self.state_ranges(dtype=model['data_type'])
+		self.state_range = self.state_ranges(dtype=model.get('data_type',
+															  np.int_))
 
 		
 		# Define Observables
@@ -115,7 +119,7 @@ class Model(object):
 		# excluding the possible n0 spin
 		# Model dependent generator of spin values 
 
-		return self.model(np.random.choice(
+		return self.model_value(np.random.choice(
 										  np.setdiff1d(self.state_range,n0),N))
 	
 	
@@ -232,8 +236,16 @@ class Model(object):
 
 
 
-
-
+	# Critical Temperature
+	def critical_temperature(self,T,d,q,model):
+		T = np.atleast_1d(T).astype(float)
+		for i,t in enumerate(T):
+			if t < 0:
+				if d == 2:
+					T[i] =  np.power(np.log(1+np.sqrt(q)),-1)
+					if model == 'ising':
+						T[i] *= 2
+		return T
 
 
 
