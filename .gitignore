@@ -18,6 +18,7 @@ OLD*/
 *.pdf
 *.sh
 *.ipynb
+*.exe*
 
 # Windows image file caches
 Thumbs.db

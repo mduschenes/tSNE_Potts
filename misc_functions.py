@@ -77,6 +77,14 @@ def str_check(v):
 	else: 
 		return v.replace('[','').replace(']','')
 
+def delim_check(d,delim=[' ','.']):
+	if isinstance(d,dict):
+		for k in d.keys():
+			d[(k.replace(delim[0],'').split(delim[1]))[0]] = d.pop(k)
+	else:
+		for i,v in enumerate(d):
+			d[i] = (v.replace(delim[0],'').split(delim[1]))[0]
+		
 def list_sort(a,j):
 	return list(zip(*sorted(list(zip(*a)),key=lambda i:i[j])))
 
@@ -99,6 +107,13 @@ def dict_modify(D,T=None,f=lambda k,v: v,i=[0,None],j=[0,None]):
 	else:
 	   return {k[i[0]:i[1]]: f(v) for k,v in D.items()}
 
+def nested_dict(keys):
+			d = {}
+			if len(keys) > 0:
+				for k in keys[0]:
+					d[k] = nested_dict(keys[1:])
+			return d
+	   
 def array_dict(d):
 	# Convert dictionary of arrays into array of dictionaries
 	if isinstance(d,dict) and d != {}:

@@ -9,18 +9,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os,glob,copy
 
-from misc_functions import flatten,dict_check, one_hot,caps,list_sort,str_check
+from misc_functions import (flatten,dict_check, one_hot,caps,
+							list_sort,str_check,delim_check)
 import plot_functions
 
 NP_FILE = 'npz'
 IMG_FILE = 'pdf'
 DIRECTORY = 'dataset/'
+DELIM = [' ','.']
 
 class Data_Process(object):
     
     # Create figure and axes dictionaries for dataset keys
 	def __init__(self,keys=[None],plot=[False],
-				 np_file = None,img_file=None,directory=None):
+				 np_file = None,img_file=None,directory=None,delim=None):
 		 
 		# Standardized numpy file format
 		for f,F in [(v,V) for v,V in locals().items() 
@@ -156,7 +158,7 @@ class Data_Process(object):
 			directory = data_params.get('data_dir','dataset/')
 
 		if not os.path.isdir(directory):
-			os.mkdir(directory)
+			os.mkdirs(directory)
 		
 		
 		# Check for specific fig_keys to save
@@ -250,8 +252,12 @@ class Data_Process(object):
 					 'data_dir': 'dataset/',
 					 'data_lists': False,
 					 'one_hot': False
-					},directory=None,format=None):
+					},directory=None,format=None,upconvert=False,delim=None):
 
+		# Bad delimeters
+		if delim is None:
+			delim = data_params.get('delim',self.DELIM)
+					
 		# Data Files Dictionary
 		# Check of importing batch of files
 		data_params = dict_check(data_params,'data_files')            
@@ -259,10 +265,10 @@ class Data_Process(object):
 		if directory is None:
 			directory = data_params.get('data_dir',self.DIRECTORY)
 		
-		if isinstance(data_params['data_files'],tuple):
+		if isinstance(data_params['data_files'],(tuple,str)):
 			files = []
 			format_files = {}
-			for f in data_params['data_files']:
+			for f in np.atleast_1d(data_params['data_files']):
 				if '*' in f:
 					ftemp = [os.path.basename(x) 
 								for x in glob.glob(directory+f)]
@@ -279,8 +285,8 @@ class Data_Process(object):
 					format_files[fi] = fi.split('.')[-1].replace('*','')
 			
 			data_params['data_files'] = files
-		else:
-			format_files = None
+		else: 
+			format_files = {}
 						
 				
 		if not data_params.get('data_sets'):
@@ -290,27 +296,36 @@ class Data_Process(object):
 		data_params['data_files'] = dict_check(
 					data_params['data_files'],data_params['data_sets'])
 		
+		
 		if format is None:
-			format = {k: format_files[f]
+			format = {k: format_files.get(f,data_params.get('data_format',
+															self.NP_FILE))
 								for k,f in data_params['data_files'].items()}
 		else:
 			format = {k:format for k in data_params['data_files'].keys()}
 		
 		# Import Data				
 		import_func = {}
+		formatter = lambda s,f: s.split('.')[0] + '.'+f.split('.')[-1]
 		import_func['values'] = lambda v:v
-		import_func['npy'] = lambda v: np.load(directory+ v )
+		import_func['npy'] = lambda v: np.load(directory+ formatter(v,'npy'))
 		import_func['npz'] = lambda v: np.load(
-										  directory + v )['arr_0']
-		import_func['txt'] = lambda v: np.loadtxt(directory+
-									  v.split('.txt')[0] + '.' + 'txt') 
+										  directory+formatter(v,'npz'))['arr_0']
+		import_func['txt'] = lambda v: np.loadtxt(directory+formatter(v,'txt'))
+									  
 		
 		#print(data_params['data_files'])
 		
 		data = {k: import_func[format[k]](v)
 					for k,v in data_params['data_files'].items() 
 					if v is not None}
-							
+						
+		# Ensure Files have no spaces	
+		
+		delim_check(data,delim)
+		delim_check(format,delim)
+		delim_check(data_params['data_sets'],delim)
+		
 		# Convert Labels to one-hot Labels
 		if data_params.get('one_hot'):
 			for k in data.keys(): 
@@ -327,7 +342,7 @@ class Data_Process(object):
 			   v_shape[1:] != 1) and (np.size(v_shape)<=2):
 				data[k] = np.transpose(data[k])
 			data_sizes[k] = np.shape(data[k])
-				
+		delim_check(data_sizes,delim)
 		
 		# Type of Data Sets
 		if not data_params.get('data_types'):
@@ -336,7 +351,7 @@ class Data_Process(object):
 			
 		elif data_params.get('data_typed','dict_split') == 'dict':
 			data_typed = {t: {k: data[k].copy() 
-                          for k in data_params['data_sets'] if t in k}
+                          for k in data.keys() if t in k}
                           for t in data_params['data_types']}
 		
 		
@@ -350,27 +365,32 @@ class Data_Process(object):
 			data_typed = {}
 			for t in data_params['data_types']:
 				data_typed[t] = {}
-				for k in data_params['data_sets']:
+				for k in data.keys():
 					if t in k:
 						k,d = process(k,data[k].copy(),t)
 						data_typed[t][k] = d 
 		
-		
 		else:
 			data_typed = {t: [data[k].copy() 
-                          for k in data_params['data_sets'] if t in k]
+                          for k in data.keys() if t in k]
                           for t in data_params['data_types']}
 						  
 		data_keys =   {t: [k 
-					  for k in data_params['data_sets'] if t in k]
+					  for k in data.keys() if t in k]
 					  for t in data_params['data_types']}
+		
+		for t in data_typed.keys():
+			delim_check(data_typed[t],delim)
+			delim_check(data_keys[t],delim) 
 		
 		
 		# If not NP_FILE format, Export as NP_FILE for easier importing
 		for k,f in format.items():
-			if f == 'txt':
-				self.exporter({k:data[k]},data_params,format=self.NP_FILE)
-				
+			for t,v in data_keys.items():
+				if upconvert and f in ['npy','txt'] and k in v and (
+					   data_params.get('data_formats',{}).get(t) is np.ndarray):
+					self.exporter({k:data[k]},data_params,format=self.NP_FILE)
+		
 		return data, data_sizes, data_typed, data_keys
 
 
@@ -379,18 +399,27 @@ class Data_Process(object):
 	# Export Data
 	def exporter(self,data,
 				 data_params={'data_dir':'dataset/','data_file':None},
-				 label = '', directory=None,format = None,read_write='w'):
+				 export=True, label = '', directory=None,
+				  format = None,read_write='w',delim=None):
+	   
+	   
+		if not export:
+			return	
+	   
+		# Bad delimimeters
+		if delim is None:
+			delim = data_params.get('delim',self.DELIM)
 	   
 	   # Check if Data is dict type
 		data = dict_check(data,'') 
-	   
+		delim_check(data,delim)
+		
 		# Data Directory
 		if directory is None:
 			directory = data_params.get('data_dir',self.DIRECTORY)
 		
 		if not os.path.isdir(directory):
-			print('Create Dir')
-			os.mkdir(directory)
+			os.mkdirs(directory)
 			
 		# Data Names
 		if not data_params.get('data_file'):
@@ -407,12 +436,12 @@ class Data_Process(object):
 			for k in data.keys():
 				if format is None:
 					format_files[k] = data_params.get('data_format',
-																   self.NP_FILE)
+													self.NP_FILE).split('.')[-1]
 				else:
-					format_files[k] = format
+					format_files[k] = format.split('.')[-1]
 			format = format_files
 			
-		
+				
 		   
 
 		# Write Data to File, Ensure no Overwriting
@@ -420,18 +449,23 @@ class Data_Process(object):
 			
 			i = 0
 			file_end = ''
-			while os.path.isfile(directory+file(k)+label+
+			file_k = file(k).split('.')[0].replace(' ','')
+			while os.path.isfile(directory+file_k+label+
 								 file_end+ '.' +format[k]):
 				file_end = '_%d'%i
 				i+=1
 			
-			file_path = directory + label + file(k) 
+			file_path = directory+file_k+label
 			
 			if format[k] == 'npy':
 				if read_write == 'a' and i>0:
 					v0 = np.load(file_path+ '.' + 'npy')
 					file_end = ''
 					np.save(file_path+file_end+'.'+'npy',np.array([v0,v]))
+				elif read_write == 'ow':
+					read_write = 'w'
+					file_end = ''
+					np.save(file_path+file_end+'.'+'npy',v)
 				else: 
 					np.save(file_path+file_end+'.'+'npy',v)
 			
@@ -441,11 +475,18 @@ class Data_Process(object):
 					file_end = ''
 					np.savez_compressed(file_path+file_end+'.'+'npz',
 										np.array([v0,v]))
+				elif read_write == 'ow':
+					read_write = 'w'
+					file_end = ''
+					np.savez_compressed(file_path+file_end+'.'+'npz',v)
 				else: 
 					np.savez_compressed(file_path+file_end+'.'+'npz',v)
 			
 			elif format[k] == 'txt':
 				if read_write == 'a':
+					file_end = ''
+				elif read_write == 'ow':
+					read_write = 'w'
 					file_end = ''
 				with open(file_path+file_end+'.'+'txt',read_write) as file_txt:
 					if isinstance(v,dict):
@@ -494,6 +535,7 @@ class Data_Process(object):
 			for c,d in [('.','f'),(', ',''),('f ','f0')]:
 				data_params['data_file'] = data_params['data_file'].replace(c,d)
 		
+			data_params['data_file'] = data_params['data_file'].replace(' ','')
 		
 		return
 			

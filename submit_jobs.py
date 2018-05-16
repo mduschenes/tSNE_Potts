@@ -171,16 +171,21 @@ def cmd_run(cmd_args):
 		if job not in ['',None]:
 			cmd_bash = ' '.join([command,arg_parse(c_args,dash),
 							 job, arg_parse(script_arg,dash)]).replace('\n','') 
+			
+			# if i == 0 and 'sqsub' in command:
+				# cmd_bash = 'module load python/intel/3.4.2' + '\n'+cmd_bash
+			
 		else:
 			c_args.update(script_arg)
 			cmd_bash = ' '.join([command,
 								arg_parse(c_args,dash)]).replace('\n','') 
+								
 			
 		
 				
 		# Do Process, with Pause to not overload system
 		
-		if wr == 'write':
+		if wr == 'write':		
 			file_write(file_bash,text=cmd_bash+'\nsleep 1s \n', 
 					   read_write='w' if i==0 else 'a')
 			continue

@@ -111,7 +111,7 @@ class system(object):
 # Parser Object
 parser = argparse.ArgumentParser(description = "Parse Arguments")
 
-# Add Args
+# Add Model Args
 parser.add_argument('-L','--L',help = 'System Length Scale',
 					type=int,default=15)# choices=[0,1,2])#action="store_true")
 
@@ -128,7 +128,7 @@ parser.add_argument('-T','--T',help = 'System Temperature',
 					nargs = '+',type=float,default=1.1)
 
 parser.add_argument('-alg','--algorithm',help='Update Algorithm',
-					default='wolff',type=str,
+					default='metropolis_wolff',type=str,
 					choices=['wolff','metropolis','metropolis_wolff'])
 					
 parser.add_argument('-Ne','--Neqb',help = 'Equilibrium Sweeps',
@@ -143,21 +143,30 @@ parser.add_argument('-Nf','--Nmeas_f',help = 'Measurement Sweeps Frequency',
 parser.add_argument('-Nr','--Nratio',help = 'Measurement Sweeps Ratio',
 					type=float,default=1)
 					
-parser.add_argument('-u','--update',help = 'Perform Monte Carlo Updates',
-					action='store_false')
-					
-parser.add_argument('-an','--analysis',help = 'Perform Analysis',
-					action='store_true')
-					
 parser.add_argument('-j','--job_id',help = 'Job Number',
 					type=int,default=0)
+
+parser.add_argument('-v','--version',help = 'Version: Python or Cython',
+					type=str,choices=['py','cy'],default='py')
 					
+parser.add_argument('-upd','--update',help = 'Perform Monte Carlo Updates',
+					action='store_false')
+					
+# Add System Args
+						
 parser.add_argument('--data_dir',help = 'Data Directory',
 					type=str,default='dataset/')
-					
-parser.add_argument('-v','--version',help = 'Version: Python or Cython',
-						type=str,choices=['py','cy'],default='py')
 						
+parser.add_argument('-anl','--analysis',help = 'Perform Analysis',
+					action='store_true')
+					
+parser.add_argument('-plt','--plot',help = 'Perform Plotting',
+					action='store_true')
+					
+parser.add_argument('-srt','--sort',help = 'Plot Analysis',
+					action='store_true')
+					
+					
 _, unparsed = parser.parse_known_args()
 
 # Unknown Arguments
@@ -196,12 +205,13 @@ if __name__ == "__main__":
 	data_props = {'data_types': ['sites','observables','model_props'],
 				  'data_formats': {'sites':np.ndarray,'observables':np.ndarray,
 								  'model_props':dict},
-				  'data_dir':args.data_dir,
+				  'data_file_format':['model_name','L','d','q','T','job_id',
+									  'data_date'],
 				  'data_format': 'npz',
 				  'props_format': 'npy',
 				  'data_typed': 'dict_split',
-				  'data_file_format':['model_name','L','d','q','T','job_id',
-									  'data_date']
+				  'sort_parameters': ['q','L','T'],
+				  
 				 }
 	data_props['data_files'] = ('*.' + data_props['data_format'],
 								'*.' + data_props['props_format']) 
@@ -213,8 +223,10 @@ if __name__ == "__main__":
 			iter_props[k] = np.atleast_1d(getattr(args,k,iter_props[k]))[0]
 
 	# Delete non keyword arg attributes
-	for k in ['version','data_dir','Neqb','Nmeas','Nmeas_f']:
+	for k in ['version','Neqb','Nmeas','Nmeas_f']:
 		delattr(args,k)
+	for k in ['data_dir','analysis','plot','sort']:
+		data_props[k] = getattr(args,k)
 	
 	# Update Model Props
 	model_props.update(vars(args))

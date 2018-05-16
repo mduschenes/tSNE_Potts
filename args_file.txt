@@ -1,14 +1,14 @@
 { 'T': [-1]}#np.linspace(2.5,0.2,10)}
 { 'd': [2]}
 { 'q': [2,3,4,6,10]}
-{ 'L': [5,10,15,20]}
+{ 'L': [30,40]}
 { 'Ne': [int(1e5)]}
 { 'Nm': [int(1e5)]}
 { 'Nf': [int(0.5e1)]}
-{ 'Nr': [0.75]}
+{ 'Nr': [0.6]}
 { '-model_name': ['potts']}
 { 'alg': ['metropolis_wolff']}
-{'-data_dir': ['dataset/test_TqLN10e5/']}
+{'-data_dir': ['dataset/test_Tsweep_qLN10e5/']}
 
 def r(**kwargs):
 	import numpy as np
@@ -38,7 +38,7 @@ def r(**kwargs):
 	elif(kwargs['Nm']>Nm0) and (kwargs['L']>L0) and (kwargs['T']>T0):r='24h'
 	elif(kwargs['Nm']>Nm0) and (kwargs['L']>L0) and (kwargs['T']<T0):r='24h'
 	
-	else: r= '9999h'
+	else: r= ''
 		
 	return r
 
@@ -70,4 +70,4 @@ def o(**kwargs):
 	file = 'output_file'
 	file += props['data_file']+'_'+ str(args.get('-job_id',0))
 	
-	return props['data_dir']+file+'.txt'
+	return (file+'.txt').replace(' ','')

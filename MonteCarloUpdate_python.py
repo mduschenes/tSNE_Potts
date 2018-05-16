@@ -181,7 +181,7 @@ class MonteCarloUpdate(object):
 							  {var_type:np.asarray(data_sites[i_iter])},
 							   self.model_props,
 							   format=self.model_props['data_format'],
-							   read_write='a')   
+							   read_write='a')    
 		
 			display(print_it=disp_updates,
 					m='Runtime: ',t0=-(i_t+2),line_break=1)

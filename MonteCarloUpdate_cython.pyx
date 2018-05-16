@@ -5,6 +5,9 @@ Created on Tue Feb 20 14:18:39 2018
 #!python
 #cython: language_level=3,boundscheck=false,wraparound=false,cdivision=True
 
+## Build Command : python setup.py build_ext --inplace
+
+
 import numpy as np
 
 cimport numpy as cnp
