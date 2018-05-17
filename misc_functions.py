@@ -79,7 +79,7 @@ def str_check(v):
 
 def delim_check(d,delim=[' ','.']):
 	if isinstance(d,dict):
-		for k in d.keys():
+		for k in d.copy().keys():
 			d[(k.replace(delim[0],'').split(delim[1]))[0]] = d.pop(k)
 	else:
 		for i,v in enumerate(d):

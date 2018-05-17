@@ -7,7 +7,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-import os,glob,copy
+import os,glob,copy,pickle
 
 from misc_functions import (flatten,dict_check, one_hot,caps,
 							list_sort,str_check,delim_check)
@@ -280,31 +280,27 @@ class Data_Process(object):
 										 and data_params['data_files'] in d ]
 				
 				files.extend(ftemp)
-				
-				for fi in ftemp:
-					format_files[fi] = fi.split('.')[-1].replace('*','')
 			
-			data_params['data_files'] = files
+			
+			for fi in files:
+				format_files[fi] = fi.split('.')[-1]
+			
 		else: 
+			files = data_params['data_files'].copy()
 			format_files = {}
 						
-				
-		if not data_params.get('data_sets'):
-			data_params['data_sets'] = data_params['data_files']
 		
-			
-		data_params['data_files'] = dict_check(
-					data_params['data_files'],data_params['data_sets'])
+		files = dict_check(files,data_params.get('data_sets',files.copy()))
 		
 		
 		if format is None:
-			format = {k: format_files.get(f,data_params.get('data_format',
-															self.NP_FILE))
-								for k,f in data_params['data_files'].items()}
+			format = {k: format_files.get(f,self.NP_FILE)
+								for k,f in files.items()}
 		else:
-			format = {k:format for k in data_params['data_files'].keys()}
+			format = {k:format for k in files.keys()}
 		
 		# Import Data				
+		
 		import_func = {}
 		formatter = lambda s,f: s.split('.')[0] + '.'+f.split('.')[-1]
 		import_func['values'] = lambda v:v
@@ -312,19 +308,15 @@ class Data_Process(object):
 		import_func['npz'] = lambda v: np.load(
 										  directory+formatter(v,'npz'))['arr_0']
 		import_func['txt'] = lambda v: np.loadtxt(directory+formatter(v,'txt'))
-									  
-		
-		#print(data_params['data_files'])
-		
+
 		data = {k: import_func[format[k]](v)
-					for k,v in data_params['data_files'].items() 
+					for k,v in files.items() 
 					if v is not None}
 						
 		# Ensure Files have no spaces	
 		
 		delim_check(data,delim)
 		delim_check(format,delim)
-		delim_check(data_params['data_sets'],delim)
 		
 		# Convert Labels to one-hot Labels
 		if data_params.get('one_hot'):
@@ -336,17 +328,18 @@ class Data_Process(object):
 		# Size of Data Sets
 		data_sizes = {}
 		for k in data.keys():
-			data[k] = np.atleast_2d(data[k])
 			v_shape = np.shape(data[k])
 			if data_params.get('data_lists') and (v_shape[0] == 1) and (
 			   v_shape[1:] != 1) and (np.size(v_shape)<=2):
+				data[k] = np.atleast_2d(data[k])
 				data[k] = np.transpose(data[k])
 			data_sizes[k] = np.shape(data[k])
 		delim_check(data_sizes,delim)
 		
+		
+		
 		# Type of Data Sets
 		if not data_params.get('data_types'):
-			data_params['data_types'] = list(data.keys())
 			data_typed = data.copy()
 			
 		elif data_params.get('data_typed','dict_split') == 'dict':
@@ -356,13 +349,22 @@ class Data_Process(object):
 		
 		
 		elif data_params.get('data_typed','dict_split') == 'dict_split':
+			
 			def process(key,data,dtype):
-				if data_params.get('data_formats',{}).get(dtype) is dict and (
-					'np' in format[key]):
-					return key.split(dtype)[0],data[0][0]
+			
+				if 'np' in format[key] and data_params.get('data_formats',{}).get(
+							dtype,'array')=='dict':
+					return key.split(dtype)[0],data.item()
+					# elif data_params.get('data_formats',{}).get(
+						# # dtype,'array')=='dict_array':
+						# # return key.split(dtype)[0],data[0]
+					# # else:
+						# return key.split(dtype)[0],data
 				else:
 					return key.split(dtype)[0],data
+			
 			data_typed = {}
+			
 			for t in data_params['data_types']:
 				data_typed[t] = {}
 				for k in data.keys():
@@ -384,11 +386,13 @@ class Data_Process(object):
 			delim_check(data_keys[t],delim) 
 		
 		
+		
+		
 		# If not NP_FILE format, Export as NP_FILE for easier importing
 		for k,f in format.items():
 			for t,v in data_keys.items():
 				if upconvert and f in ['npy','txt'] and k in v and (
-					   data_params.get('data_formats',{}).get(t) is np.ndarray):
+					   data_params.get('data_formats',{}).get(t) == 'array'):
 					self.exporter({k:data[k]},data_params,format=self.NP_FILE)
 		
 		return data, data_sizes, data_typed, data_keys
@@ -411,7 +415,7 @@ class Data_Process(object):
 			delim = data_params.get('delim',self.DELIM)
 	   
 	   # Check if Data is dict type
-		data = dict_check(data,'') 
+		data = dict_check(data.copy(),'') 
 		delim_check(data,delim)
 		
 		# Data Directory
@@ -440,7 +444,6 @@ class Data_Process(object):
 				else:
 					format_files[k] = format.split('.')[-1]
 			format = format_files
-			
 				
 		   
 

@@ -23,6 +23,9 @@ class Model_Analysis(object):
 		# Import Data
 		_,sizes,self.data,_ = Data_Process().importer(data_props,upconvert=False)
 		self.data_props = data_props
+		
+		self.data_props_temp = data_props.copy()
+		
 		return
 				
 	
@@ -55,13 +58,11 @@ class Model_Analysis(object):
 			observables = self.measure(sites, model_props['neighbour_sites'],
 									model_props['T'],model_props['observables'])
 									
-			
-			
 			# Save Data
 			if model_props.get('data_save',True):
 				Data_Process().exporter({'observables':observables},model_props,
 									     format=model_props['data_format'])
-			
+						
 			# Plot Data
 			if self.data_props.get('plot'):
 				self.plot(observables,model_props,'iter_props','algorithm')
@@ -72,11 +73,11 @@ class Model_Analysis(object):
 			self.sort(data,self.data_props['sort_parameters'])
 		
 		display(print_it=True,time_it=False,m='Observables Processed')
+		
 		return
 		
 	def measure(self,sites,neighbours,T,observables):
 	
-		print(np.shape(sites))
 		if sites.ndim < 4:
 			sites = sites[np.newaxis,:]
 
@@ -135,7 +136,7 @@ class Model_Analysis(object):
 		
 		data_sorted['parameters'] = {}
 		for p in parameters:
-			print(data['model_props'])
+			#print(data['model_props'])
 			data['parameters'][p] = np.array(sorted(set(
 						  [m[p] for m in data['model_props'].values()])))
 						  

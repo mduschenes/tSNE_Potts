@@ -203,8 +203,8 @@ if __name__ == "__main__":
                      'observables_mean': [True,'energy','order','specific_heat',
 									                          'susceptibility']}
 	data_props = {'data_types': ['sites','observables','model_props'],
-				  'data_formats': {'sites':np.ndarray,'observables':np.ndarray,
-								  'model_props':dict},
+				  'data_formats': {'sites':'array','observables':'array',
+								  'model_props':'dict'},
 				  'data_file_format':['model_name','L','d','q','T','job_id',
 									  'data_date'],
 				  'data_format': 'npz',
