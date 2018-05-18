@@ -107,12 +107,14 @@ def dict_modify(D,T=None,f=lambda k,v: v,i=[0,None],j=[0,None]):
 	else:
 	   return {k[i[0]:i[1]]: f(v) for k,v in D.items()}
 
-def nested_dict(keys):
-			d = {}
-			if len(keys) > 0:
-				for k in keys[0]:
-					d[k] = nested_dict(keys[1:])
-			return d
+def nested_dict(keys,base_type={}):
+	if len(keys) > 0:
+		d = {}
+		for k in keys[0]:
+			d[k] = nested_dict(keys[1:],base_type)
+	else:
+		d = base_type.copy()
+	return d
 	   
 def array_dict(d):
 	# Convert dictionary of arrays into array of dictionaries

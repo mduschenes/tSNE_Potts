@@ -10,7 +10,7 @@ import argparse
 
 from Lattice import Lattice
 from Model import Model
-from Model_Analysis import Model_Analysis
+from ModelAnalysis import ModelAnalysis
 from data_functions import Data_Process
 from misc_functions import caps,display
 
@@ -198,7 +198,7 @@ if __name__ == "__main__":
 	update_props = {'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 'Nratio': args.Nratio,
 					'Nmeas_f':args.Nmeas_f, 'Ncluster':1}
 	
-	observe_props = {'configurations':   [False,'sites','cluster'],
+	observe_props = {'configurations':   [True,'sites','cluster'],
 			         'observables':      [True,'energy','order'],
                      'observables_mean': [True,'energy','order','specific_heat',
 									                          'susceptibility']}

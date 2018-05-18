@@ -14,8 +14,6 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 #from matplotlib.ticker import MaxNLocator
 matplotlib.rcParams['text.usetex'] = True
 
-
-
 # Define Figure Fonts
 #rcParams['axes.labelsize']  = 11
 #rcParams['figure.figsize']  = fig_size
@@ -77,8 +75,9 @@ def plot_decorator(plot_func):
 			for k,d in data.items():
 				if (d is not None) or (d != []):
 					plot_props.get('plot',{})['label'] = plot_props.get(
-														'other',{}).get(
-														'label',lambda x:x)(k)
+													   'other',{}).get(
+													   'label',
+													   lambda x:str_check(x))(k)
 					d = plot_props.get('data',{}).get(
 									   'data_process',lambda x:x)(d)
 					

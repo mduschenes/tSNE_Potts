@@ -158,7 +158,7 @@ class Data_Process(object):
 			directory = data_params.get('data_dir','dataset/')
 
 		if not os.path.isdir(directory):
-			os.mkdirs(directory)
+			os.makedirs(directory)
 		
 		
 		# Check for specific fig_keys to save
@@ -423,7 +423,7 @@ class Data_Process(object):
 			directory = data_params.get('data_dir',self.DIRECTORY)
 		
 		if not os.path.isdir(directory):
-			os.mkdirs(directory)
+			os.makedirs(directory)
 			
 		# Data Names
 		if not data_params.get('data_file'):
@@ -505,15 +505,16 @@ class Data_Process(object):
 			
 		return
 	
-	def format(self,data_params,directory=None):
+	def format(self,data_params,file_format=None,directory=None,file_update=False):
 				
 		
 		# Data File Format
-		if not data_params.get('data_file_format'):
-			data_params['data_file_format'] = []
+		if file_format is None:
+			file_format = data_params.get('data_file_format',[])
+		else:
+			file_update = True
+		file_format = np.atleast_1d(file_format)
 		
-		file_format = np.atleast_1d(data_params['data_file_format'])
-			
 		file_header = caps(str_check(data_params.get(file_format[0],
 													 file_format[0])))
 		
@@ -525,11 +526,13 @@ class Data_Process(object):
 			directory = data_params.get('data_dir',self.DIRECTORY)
 		
 		# Format Data File
-		if not data_params.get('data_file'):
+		if not data_params.get('data_file') or file_update:
 			data_params['data_file'] = file_header
 			
-			for w in data_params['data_file_format'][1:-1]:
-				data_params['data_file'] += '_' + str_check(w)[0] + (
+			for i,w in enumerate(file_format[1:-1]):
+				if not(i==0 and file_header == ''):
+					data_params['data_file'] += '_'
+				data_params['data_file'] += str_check(w)[0] + (
 										str_check(data_params.get(w,w)))
 			
 			if file_footer not in ['',None]:

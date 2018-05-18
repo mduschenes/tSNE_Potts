@@ -101,10 +101,9 @@ class MonteCarloUpdate(object):
 		n_meas = Nmeas//Nmeas_f
 		data_sites = np.empty((n_iter,n_T,n_meas,N_sites), 
 								dtype=self.model_props['data_type'])
-									  
 		plot_obj = MonteCarloPlot({'configurations':
 						   self.model_props['observe_props']['configurations']},
-						   self.model_props, self.model_props['T'])
+						   self.model_props,**{'arr_0': self.model_props['T']})
 
 
 		display(disp_updates,False,
@@ -166,7 +165,7 @@ class MonteCarloUpdate(object):
 						plot_obj.MC_plotter(
 						  {'configurations': {'sites': np.asarray(sites),
 											  'cluster':np.asarray(cluster)}},
-						*[[t],[],i_mc])                
+												**{'arr_0': [t],'i_mc':i_mc})                
 			  
 				display(print_it=disp_updates,m='Updates: T = %0.2f'%t)
 				

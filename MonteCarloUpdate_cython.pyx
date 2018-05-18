@@ -154,7 +154,7 @@ cdef class MonteCarloUpdate(object):
 									  
 		cdef object plot_obj = MonteCarloPlot({'configurations':
 						   self.model_props['observe_props']['configurations']},
-						   self.model_props, self.model_props['T'])
+						   self.model_props,{'arr_0':self.model_props['T']})
 
 		# Save Model_Props
 		if self.model_props.get('data_save',True):
@@ -220,7 +220,7 @@ cdef class MonteCarloUpdate(object):
 						plot_obj.MC_plotter( 
 						  {'configurations': {'sites': np.asarray(sites),
 											  'cluster':np.asarray(cluster)}},
-						*[[t],[],i_mc])                
+												**{'arr_0': [t],'i_mc':i_mc})                
 			  
 				display(print_it=disp_updates, m='Updates: T = %0.2f'%t)
 				
