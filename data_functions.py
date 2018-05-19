@@ -17,19 +17,25 @@ NP_FILE = 'npz'
 IMG_FILE = 'pdf'
 DIRECTORY = 'dataset/'
 DELIM = [' ','.']
+BACKEND = 'Qt4Agg'
 
 class Data_Process(object):
     
     # Create figure and axes dictionaries for dataset keys
 	def __init__(self,keys=[None],plot=[False],
-				 np_file = None,img_file=None,directory=None,delim=None):
+				 np_file = None,img_file=None,backend=None,
+				 directory=None,delim=None):
 		 
 		# Standardized numpy file format
 		for f,F in [(v,V) for v,V in locals().items() 
 					if v not in ['keys','plot']]:
 			F = globals().get(f.upper()) if  F is None else F
 			setattr(self,f.upper(),F)
-			
+		
+		# Set plotting backend
+		#matplotlib.use(self.BACKEND)
+
+		
 		# Initialize figures and axes dictionaries
 		if not None in keys:
 			self.figs = {}
@@ -94,11 +100,11 @@ class Data_Process(object):
 		# Create Figures and Axes
 		self.figures_axes({data_key:keys})            
 
-		#            display(m='Figures Created')
+		
 		# Plot for each data key
 		for key in keys:
 			props = plot_props.get(key,plot_props)
-
+			# props['other']['backend'] = self.BACKEND
 			try:
 				ax = self.axes[data_key][key]
 				fig = self.figs[data_key][key]
@@ -126,9 +132,8 @@ class Data_Process(object):
 
 										
 										
-			plt.suptitle(**plot_props[key].get(
-										'other',{}).get('sup_title',{}))
-			if plot_props[key].get('other',{}).get('sup_legend'):
+			plt.suptitle(**props.get('other',{}).get('sup_title',{}))
+			if props.get('other',{}).get('sup_legend'):
 				fig.legend(*(list_sort(ax.get_legend_handles_labels(),1)))
 
 		return
@@ -148,7 +153,7 @@ class Data_Process(object):
 	def plot_save(self,data_params={'data_dir':'dataset/',
 									'figure_format':None},
 					   fig_keys = None,directory=None,
-					   label = '',read_write='w'):
+					   label = '',read_write='w',fig_size=(8.5,11)):
         
         # Save Figures for current Data_Process Instance
 		
@@ -175,7 +180,8 @@ class Data_Process(object):
 				
 				# Change Plot Size for Saving                
 				plot_size = fig.get_size_inches()
-				fig.set_size_inches((8.5, 11))
+				if fig_size is not None:
+					fig.set_size_inches(fig_size)
 
 				# Set File Name and ensure no Overwriting
 				file = ''.join([directory,
@@ -230,7 +236,7 @@ class Data_Process(object):
 				
 				fig.canvas.set_window_title('Figure: %d  %s Datasets'%(
 												  fig.number,caps(keys_label)))
-				for k,a in zip(keys_new,flatten(np.atleast_1d(ax).tolist())):
+				for k,a in zip(keys_new,flatten(np.atleast_1d(ax).tolist(),False)):
 					if k is not None:
 						a.axis('off')
 						self.axes[keys_label][k] = a
@@ -251,8 +257,9 @@ class Data_Process(object):
 					 'data_format': None,
 					 'data_dir': 'dataset/',
 					 'data_lists': False,
-					 'one_hot': False
-					},directory=None,format=None,upconvert=False,delim=None):
+					 'one_hot': [False,'y_'],
+					},directory=None,format=None,data_typing=None,
+					upconvert=False,delim=None,data_lists=False):
 
 		# Bad delimeters
 		if delim is None:
@@ -264,7 +271,6 @@ class Data_Process(object):
 
 		if directory is None:
 			directory = data_params.get('data_dir',self.DIRECTORY)
-		
 		if isinstance(data_params['data_files'],(tuple,str)):
 			files = []
 			format_files = {}
@@ -284,13 +290,14 @@ class Data_Process(object):
 			
 			for fi in files:
 				format_files[fi] = fi.split('.')[-1]
-			
+			files = dict_check(files,data_params.get('data_sets',files.copy()))
 		else: 
 			files = data_params['data_files'].copy()
-			format_files = {}
+			files = dict_check(files,data_params.get('data_sets',files.copy()))
+			format_files = {k: data_params.get('data_format',self.NP_FILE)
+							for k in files.keys()}
 						
 		
-		files = dict_check(files,data_params.get('data_sets',files.copy()))
 		
 		
 		if format is None:
@@ -298,7 +305,7 @@ class Data_Process(object):
 								for k,f in files.items()}
 		else:
 			format = {k:format for k in files.keys()}
-		
+
 		# Import Data				
 		
 		import_func = {}
@@ -319,9 +326,9 @@ class Data_Process(object):
 		delim_check(format,delim)
 		
 		# Convert Labels to one-hot Labels
-		if data_params.get('one_hot'):
+		if data_params.get('one_hot',[None])[0]:
 			for k in data.keys(): 
-				if 'y_' in k:
+				if data_params.get('one_hot',[None])[1] in k:
 					data[k] = one_hot(data[k])
 		
 		
@@ -329,37 +336,34 @@ class Data_Process(object):
 		data_sizes = {}
 		for k in data.keys():
 			v_shape = np.shape(data[k])
-			if data_params.get('data_lists') and (v_shape[0] == 1) and (
-			   v_shape[1:] != 1) and (np.size(v_shape)<=2):
-				data[k] = np.atleast_2d(data[k])
-				data[k] = np.transpose(data[k])
+			if data_lists and (np.size(v_shape)==1):
+				print(k,'reshape')
+				data[k] = np.reshape(data[k],(v_shape[0],1))
 			data_sizes[k] = np.shape(data[k])
 		delim_check(data_sizes,delim)
 		
 		
 		
 		# Type of Data Sets
+		
+		if data_typing is None:
+			data_typing = data_params.get('data_typing','dict')
+		
 		if not data_params.get('data_types'):
 			data_typed = data.copy()
 			
-		elif data_params.get('data_typed','dict_split') == 'dict':
+		elif data_typing == 'dict':
 			data_typed = {t: {k: data[k].copy() 
                           for k in data.keys() if t in k}
                           for t in data_params['data_types']}
 		
 		
-		elif data_params.get('data_typed','dict_split') == 'dict_split':
+		elif data_typing == 'dict_split':
 			
 			def process(key,data,dtype):
-			
-				if 'np' in format[key] and data_params.get('data_formats',{}).get(
-							dtype,'array')=='dict':
+				if 'np' in format[key] and data_params.get(
+							'data_obj_format',{}).get(dtype,'array')=='dict':
 					return key.split(dtype)[0],data.item()
-					# elif data_params.get('data_formats',{}).get(
-						# # dtype,'array')=='dict_array':
-						# # return key.split(dtype)[0],data[0]
-					# # else:
-						# return key.split(dtype)[0],data
 				else:
 					return key.split(dtype)[0],data
 			
@@ -381,6 +385,8 @@ class Data_Process(object):
 					  for k in data.keys() if t in k]
 					  for t in data_params['data_types']}
 		
+		
+		# Check Delimeters
 		for t in data_typed.keys():
 			delim_check(data_typed[t],delim)
 			delim_check(data_keys[t],delim) 
@@ -392,7 +398,7 @@ class Data_Process(object):
 		for k,f in format.items():
 			for t,v in data_keys.items():
 				if upconvert and f in ['npy','txt'] and k in v and (
-					   data_params.get('data_formats',{}).get(t) == 'array'):
+					   data_params.get('data_obj_format',{}).get(t) == 'array'):
 					self.exporter({k:data[k]},data_params,format=self.NP_FILE)
 		
 		return data, data_sizes, data_typed, data_keys
@@ -510,7 +516,7 @@ class Data_Process(object):
 		
 		# Data File Format
 		if file_format is None:
-			file_format = data_params.get('data_file_format',[])
+			file_format = data_params.get('data_name_format',[None])
 		else:
 			file_update = True
 		file_format = np.atleast_1d(file_format)

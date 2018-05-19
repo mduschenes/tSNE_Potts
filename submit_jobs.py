@@ -141,7 +141,7 @@ def cmd_run(cmd_args):
 	
 	# Read Script args from File
 	script_args,script_args_func,_ = file_read(cmd_args.pop('script_args'))
-
+	print(script_args_func)
 	# Job Output Header
 	job_header = lambda s: 'Job %s: \n%s \n%s'%(tuple(str_check(i) for i in s))
 

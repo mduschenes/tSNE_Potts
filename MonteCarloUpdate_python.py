@@ -89,8 +89,8 @@ class MonteCarloUpdate(object):
 		# Declare Model Variable Types
 		N_sites = self.model_props['N_sites']
 		N_neighbours = len(self.model_props['neighbour_sites'][0,0,:])
-		sites = np.zeros(N_sites,dtype=self.model_props['data_type'])
-		cluster = np.zeros(N_sites, dtype=self.model_props['data_type'])
+		sites = np.zeros(N_sites,dtype=self.model_props['data_value_type'])
+		cluster = np.zeros(N_sites, dtype=self.model_props['data_value_type'])
 		cluster_bool = np.zeros(N_sites,dtype=bool)
 		neighbours = self.model_props['neighbour_sites'][0]
 
@@ -100,10 +100,11 @@ class MonteCarloUpdate(object):
 		n_T = len(self.model_props['T'])
 		n_meas = Nmeas//Nmeas_f
 		data_sites = np.empty((n_iter,n_T,n_meas,N_sites), 
-								dtype=self.model_props['data_type'])
+								dtype=self.model_props['data_value_type'])
 		plot_obj = MonteCarloPlot({'configurations':
 						   self.model_props['observe_props']['configurations']},
-						   self.model_props,**{'arr_0': self.model_props['T']})
+						   self.model_props,
+						   **{'arr_0': ['T',self.model_props['T']]})
 
 
 		display(disp_updates,False,
@@ -143,7 +144,7 @@ class MonteCarloUpdate(object):
 				# Perform Equilibration Monte Carlo steps initially
 				for i_mc in range(Neqb):
 					for i_sweep in range(N_sites):
-						MC_alg(sites, cluster.copy(), cluster_bool.copy(),
+						MC_alg(sites, cluster, cluster_bool.copy(),
 							   neighbours, N_sites, N_neighbours,
 							   t, (i_sweep/N_sites)/Nratio, 
 						       state_update, state_gen, state_int)
@@ -151,11 +152,12 @@ class MonteCarloUpdate(object):
 				# Perform Measurement Monte Carlo Steps
 				for i_mc in range(Nmeas):
 					for i_sweep in range(N_sites):
-						MC_alg(sites, cluster.copy(), cluster_bool.copy(),
+						MC_alg(sites, cluster, cluster_bool.copy(),
 							   neighbours, N_sites, N_neighbours,
 							   t, (i_sweep/N_sites)/Nratio,
 						       state_update, state_gen, state_int)
-
+					
+					# Update Configurations
 					if i_mc % Nmeas_f == 0:
 						i_mc_meas = i_mc//Nmeas_f
 						data_sites[i_iter,i_t,i_mc_meas,:] = sites
@@ -165,7 +167,8 @@ class MonteCarloUpdate(object):
 						plot_obj.MC_plotter(
 						  {'configurations': {'sites': np.asarray(sites),
 											  'cluster':np.asarray(cluster)}},
-												**{'arr_0': [t],'i_mc':i_mc})                
+												**{'arr_0': ['T',[t]],
+												  'i_mc':['t_{MC}',i_mc]})                
 			  
 				display(print_it=disp_updates,m='Updates: T = %0.2f'%t)
 				
@@ -179,11 +182,11 @@ class MonteCarloUpdate(object):
 				Data_Proc().exporter(
 							  {var_type:np.asarray(data_sites[i_iter])},
 							   self.model_props,
-							   format=self.model_props['data_format'],
+							   format=self.model_props['data_format']['sites'],
 							   read_write='a')    
 		
 			display(print_it=disp_updates,
-					m='Runtime: ',t0=-(i_t+2),line_break=1)
+					m='Runtime: ',t0=-(i_t+3),line_break=1)
 				                                                  
 		display(print_it=disp_updates,time_it=False,
 				m='Monte Carlo Simulation Complete...',line_break=1)
@@ -204,9 +207,12 @@ class MonteCarloUpdate(object):
 		isite = np.random.randint(N_sites)
 		sites0 = sites[isite]
 
+		cluster[:] = 0 #np.zeros(N_sites)
+		
 		# Update Spin Value
 		sites[isite] = state_gen(1,sites0)
 		cluster[isite] = sites0
+
 		# Calculate Change in Energy and decide to Accept/Reject Spin Flip
 		nn = sites[neighbours[0]]
 		dE = -np.sum(state_int(sites[isite],nn)) + (
@@ -244,6 +250,7 @@ class MonteCarloUpdate(object):
 		cluster_value0 = sites[isite]
 
 		# Perform cluster algorithm to find indices in cluster
+		cluster[:] = 0 #np.zeros(N_sites)
 		cluster_update(isite)
 
 		# Flip spins in cluster to new value

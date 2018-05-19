@@ -25,18 +25,18 @@ class MonteCarloPlot(object):
 		plot_bool = {}
 		for K,V in model_keys.items():
 			if K == 'configurations':
-				plot_keys[K] = [[(k,t) for t in kwargs['arr_0']] for k in V[1:]]
+				plot_keys[K] =[[(k,t) for t in kwargs['arr_0'][1]] 
+								for k in V[1:]]
 			else:
 				plot_keys[K] = [[k for k in V[1:]]]
 			plot_bool[K] = V[0]
 		
 		# Define Plotting Instance
 		Data_Process().plot_close()
-		self.plot_obj = Data_Process(plot_keys,plot_bool)
+		self.plot_obj = Data_Process(plot_keys,plot_bool,backend = 'Agg')
 		self.plot_save = self.plot_obj.plot_save
 		self.plot_keys = plot_keys
-	
-			
+		
 		return
 
 
@@ -51,15 +51,18 @@ class MonteCarloPlot(object):
 				self.plot_obj.plotter(
 							data = {kt: data[K][kt[0]] 
 								 for kt in flatten(self.plot_keys[K]) 
-								 if kt[1] in kwargs['arr_0']},
+								 if kt[1] in kwargs['arr_0'][1]},
 							plot_props = self.MC_plot_props(K,self.plot_keys[K],
 														**kwargs),
 							 data_key = K)
 			elif K == 'observables':
 				self.plot_obj.plotter(
 							data = {k: {(a,t): data[K][ia][k][it] 
-								for it,t in enumerate(kwargs['arr_0'])
-								for ia,a in enumerate(kwargs['arr_1'])}
+								for it,t in enumerate(
+											  np.atleast_1d(kwargs['arr_0'][1]))
+								for ia,a in enumerate(
+											  np.atleast_1d(kwargs['arr_0'][1]))
+									   }
 								for k in flatten(self.plot_keys[K])},       
 							plot_props = self.MC_plot_props(K,self.plot_keys[K],
 														**kwargs),
@@ -68,10 +71,10 @@ class MonteCarloPlot(object):
 			elif K == 'observables_mean': 
 				self.plot_obj.plotter(
 					data = {k: {a: data['observables'][ia][k] 
-							for ia,a in enumerate(kwargs['arr_1'])}
+							for ia,a in enumerate(kwargs['arr_1'][1])}
 							for k in flatten(self.plot_keys[K])},
 					domain = {k: {a: kwargs['arr_0']
-							for ia,a in enumerate(kwargs['arr_1'])}
+							for ia,a in enumerate(kwargs['arr_1'][1])}
 							for k in flatten(self.plot_keys[K])},
 					plot_props = self.MC_plot_props(K,self.plot_keys[K],
 														**kwargs),
@@ -93,11 +96,10 @@ class MonteCarloPlot(object):
 
 	# Data type dependent plot properties keys
 	def MC_plot_props(self,plot_type,plot_keys,**kwargs):
-
 		# Function plot sites or clusters of sites
 		def sites_region(sites):
 			sites0 = np.asarray(sites,dtype=float)
-			sites0[np.isin(sites,self.model_props['state_range'],
+			sites0[np.in1d(sites,self.model_props['state_range'],
 				   invert=True)]=np.nan
 			return sites0
 			# if  np.array_equiv(sites,sites0):
@@ -107,8 +109,8 @@ class MonteCarloPlot(object):
 				# region[sites] = np.copy(sites0[sites])
 				# return region
 
-		def sup_title(label):
-			return ''
+		def sup_title(label,**kwargs):
+			return kwargs.get('sup_title','')
 			# caps(label,every_word=True,sep_char=' ',split_char='_') + (
 				# ' - %s - $q = %s$ \n $T =  %s$ '%(
 				# caps(self.model_props['model_name']),
@@ -154,7 +156,8 @@ class MonteCarloPlot(object):
 								'sup_legend': False,
 								'sup_title': {'t':
 											sup_title('Monte Carlo %s Updates'%(
-												self.model_props['algorithm']))}
+												self.model_props['algorithm']),
+												**kwargs)}
 								}
 					 }
 					for k in keys}
@@ -188,7 +191,7 @@ class MonteCarloPlot(object):
 				if k[0] != plot_keys[-1][-1][0]:
 					return plot_props_sites['xlabel']
 				else:
-					return r'$t_{MC}$: %d'%kwargs['i_mc']
+					return r'$%s$: %d'%(kwargs['i_mc'][0],kwargs['i_mc'][1])
 				
 			
 			def cbar_plot(k,**kwargs):
@@ -282,10 +285,13 @@ class MonteCarloPlot(object):
 							sep_char=' ',split_char='_')
 			
 			def plot_label(k,**kwargs):
-				return lambda k: 'T = %0.2f   %s'%(k[1],caps(str_check(k[0]),
-																every_word=True,
-																sep_char=' ',
-																split_char='_'))
+				return lambda k: '%s = %0.2f,  %s = %s'%(kwargs['arr_0'][0],
+														kwargs['arr_1'][0],
+														k[1],
+														caps(str_check(k[0]),
+															every_word=True,
+															sep_char=' ',
+															split_char='_'))
 
 			
 			
@@ -361,8 +367,9 @@ class MonteCarloPlot(object):
 				return 'Temperature'
 			
 			def plot_label(k,**kwargs):
-				return lambda k: caps(str_check(k),every_word=True,
-												   sep_char=' ',split_char='_')
+				return lambda k: '%s = %s'%(kwargs['arr_1'][0],
+										    caps(str_check(k),every_word=True,
+												sep_char=' ',split_char='_'))
 
 			
 			def data_process(k,**kwargs):

@@ -105,7 +105,7 @@ def dict_modify(D,T=None,f=lambda k,v: v,i=[0,None],j=[0,None]):
 	   return  {t[j[0]:j[1]]: {k[i[0]:i[1]]: f(k,v) for k,v in D.items() 
 				if t in k} for t in T}
 	else:
-	   return {k[i[0]:i[1]]: f(v) for k,v in D.items()}
+	   return {k[i[0]:i[1]]: f(k,v) for k,v in D.items()}
 
 def nested_dict(keys,base_type={}):
 	if len(keys) > 0:

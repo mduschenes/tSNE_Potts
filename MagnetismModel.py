@@ -46,7 +46,7 @@ class system(object):
 		return
 
 	def process(self,data_props):
-		self.process = Model_Analysis(data_props)		
+		self.process = ModelAnalysis(data_props)		
 		return
 		
 	def update(self,
@@ -157,6 +157,9 @@ parser.add_argument('-upd','--update',help = 'Perform Monte Carlo Updates',
 parser.add_argument('--data_dir',help = 'Data Directory',
 					type=str,default='dataset/')
 						
+parser.add_argument('--sort_parameters',help = 'Sort Parameters',
+					nargs = '+',type=str,default=['q','L','T'])
+						
 parser.add_argument('-anl','--analysis',help = 'Perform Analysis',
 					action='store_true')
 					
@@ -188,7 +191,7 @@ if __name__ == "__main__":
 		from MonteCarloUpdate_cython import MonteCarloUpdate
 
 	# Update, Observe, Process, Simulate Parameters
-	model_props = {'coupling_param':[0,1],'data_type':np.int_,
+	model_props = {'coupling_param':[0,1],'data_value_type':np.int_,
 				   'algorithm':'wolff',
 				   'algorithms':['wolff','metropolis','metropolis_wolff'],
 				   'disp_updates':True, 'data_save':True, 'return_data':False,
@@ -198,23 +201,23 @@ if __name__ == "__main__":
 	update_props = {'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 'Nratio': args.Nratio,
 					'Nmeas_f':args.Nmeas_f, 'Ncluster':1}
 	
-	observe_props = {'configurations':   [True,'sites','cluster'],
+	observe_props = {'configurations':   [False,'sites','cluster'],
 			         'observables':      [True,'energy','order'],
                      'observables_mean': [True,'energy','order','specific_heat',
 									                          'susceptibility']}
-	data_props = {'data_types': ['sites','observables','model_props'],
-				  'data_formats': {'sites':'array','observables':'array',
-								  'model_props':'dict'},
-				  'data_file_format':['model_name','L','d','q','T','job_id',
-									  'data_date'],
-				  'data_format': 'npz',
-				  'props_format': 'npy',
-				  'data_typed': 'dict_split',
-				  'sort_parameters': ['q','L','T'],
-				  
+	data_props = {
+		'data_properties':['model_name','d','algorithm','observe_props',
+								   'data_files','data_types','data_format',
+								   'data_obj_format','data_name_format'],
+		'data_name_format':['model_name','L','d','q','T','job_id','data_date'],
+		'data_types': ['sites','observables','model_props'],
+		'data_obj_format': {'sites':'array','observables':'array',
+							'model_props':'dict'},
+		'data_format':{'sites':'npz','observables': 'npz','model_props':'npy'},
+		'observe_props': observe_props, 'data_typing': 'dict_split'				  
 				 }
-	data_props['data_files'] = ('*.' + data_props['data_format'],
-								'*.' + data_props['props_format']) 
+	data_props['data_files'] = tuple('*.'+ f 
+									for f in data_props['data_format'].values())
 		
 	iter_props = {'algorithm':['wolff','metropolis']}
 	
@@ -225,7 +228,7 @@ if __name__ == "__main__":
 	# Delete non keyword arg attributes
 	for k in ['version','Neqb','Nmeas','Nmeas_f']:
 		delattr(args,k)
-	for k in ['data_dir','analysis','plot','sort']:
+	for k in ['data_dir','analysis','plot','sort','sort_parameters']:
 		data_props[k] = getattr(args,k)
 	
 	# Update Model Props

@@ -109,9 +109,6 @@ cdef class MonteCarloUpdate(object):
 	@cython.cdivision(True)
 	def MC_update(self,iter_props={'algorithm':'wolff'}):
 
-		if not self.model_props.get('output'):
-			return
-		
 		# Monte Carlo Update Function
 		cdef object MC_alg 
 
@@ -134,10 +131,10 @@ cdef class MonteCarloUpdate(object):
 		# Declare Model Variable Types
 		cdef int N_sites = self.model_props['N_sites']
 		cdef int N_neighbours = len(self.model_props['neighbour_sites'][0,0,:])
-		cdef SITE_TYPE[::1] sites = np.zeros(self.N_sites,
-									        dtype=self.model_props['data_type'])
-		cdef SITE_TYPE[::1] cluster = np.zeros(self.N_sites,
-									        dtype=self.model_props['data_type'])
+		cdef SITE_TYPE[::1] sites = np.zeros(N_sites,
+									  dtype=self.model_props['data_value_type'])
+		cdef SITE_TYPE[::1] cluster = np.zeros(N_sites,
+									  dtype=self.model_props['data_value_type'])
 		cdef int[::1] cluster_bool = np.zeros(N_sites,dtype=np.intc)
 		cdef int[:,::1] neighbours = self.model_props['neighbour_sites'][0]
 
@@ -150,11 +147,12 @@ cdef class MonteCarloUpdate(object):
 		cdef int n_meas = Nmeas//Nmeas_f
 		cdef SITE_TYPE[:,:,:,::1] data_sites = np.empty((n_iter,n_T,
 														 n_meas,N_sites), 
-									  dtype=self.model_props['data_type'])
+									  dtype=self.model_props['data_value_type'])
 									  
 		cdef object plot_obj = MonteCarloPlot({'configurations':
 						   self.model_props['observe_props']['configurations']},
-						   self.model_props,{'arr_0':self.model_props['T']})
+						   self.model_props,
+						   **{'arr_0':['T',self.model_props['T']]})
 
 		# Save Model_Props
 		if self.model_props.get('data_save',True):
@@ -182,7 +180,7 @@ cdef class MonteCarloUpdate(object):
 
 			
 			# Initialize sites with random spin at each site for each Iteration
-			sites = state_gen(self.N_sites)
+			sites = state_gen(N_sites)
 			state_update = self.model_props['state_update'][
 									   self.model_props['algorithm']]
 
@@ -197,20 +195,20 @@ cdef class MonteCarloUpdate(object):
 				# Perform Equilibration Monte Carlo steps initially
 				for i_mc in range(Neqb):
 					for i_sweep in range(N_sites):
-						MC_alg(sites, cluster.copy(), cluster_bool.copy(),
+						MC_alg(sites, cluster, cluster_bool.copy(),
 							   neighbours, N_sites, N_neighbours,
-							   t, (i_sweep/N_sites)/Nratio, 
+							   t, (float(i_sweep)/N_sites)/Nratio, 
 						       state_update, state_gen, state_int)					
 					
 				# Perform Measurement Monte Carlo Steps
 				for i_mc in range(Nmeas):
 					for i_sweep in range(N_sites):
-						MC_alg(sites, cluster.copy(), cluster_bool.copy(),
+						MC_alg(sites, cluster, cluster_bool.copy(),
 							   neighbours, N_sites, N_neighbours,
-							   t, (i_sweep/N_sites)/Nratio, 
+							   t, (float(i_sweep)/N_sites)/Nratio, 
 						       state_update, state_gen, state_int)
 
-					# Update Configurations and Observables
+				   # Update Configurations
 					if i_mc % Nmeas_f == 0:
 						i_mc_meas = i_mc//Nmeas_f
 						data_sites[i_iter,i_t,i_mc_meas,:] = sites
@@ -220,7 +218,8 @@ cdef class MonteCarloUpdate(object):
 						plot_obj.MC_plotter( 
 						  {'configurations': {'sites': np.asarray(sites),
 											  'cluster':np.asarray(cluster)}},
-												**{'arr_0': [t],'i_mc':i_mc})                
+												**{'arr_0': ['T',[t]],
+												  'i_mc':['t_{MC}',i_mc]})                 
 			  
 				display(print_it=disp_updates, m='Updates: T = %0.2f'%t)
 				
@@ -235,11 +234,11 @@ cdef class MonteCarloUpdate(object):
 				Data_Proc().exporter(
 							  {var_type:np.asarray(data_sites[i_iter])},
 							   self.model_props,
-							   format=self.model_props['data_format'],
+							   format=self.model_props['data_format']['sites'],
 							   read_write='a')  
 		
 			display(print_it=disp_updates,
-					m='Runtime: ',t0=-(i_t+2),line_break=1)
+					m='Runtime: ',t0=-(i_t+3),line_break=1)
 				
 			
 		display(print_it=disp_updates,time_it=False,
@@ -271,6 +270,10 @@ cdef class MonteCarloUpdate(object):
 
 		cdef SITE_TYPE sites0 = sites[isite]
 
+		#cdef SITE_TYPE[::1] cluster_new = np.zeros(N_sites,
+		#											dtype=type(cluster[0]))
+		cluster[:] = 0 # cluster_new
+		
 		# Update Spin Value
 		sites[isite] = state_gen(1,sites0)
 		cluster[isite] = sites0
@@ -291,7 +294,7 @@ cdef class MonteCarloUpdate(object):
 	@cython.wraparound(False)
 	@cython.cdivision(True)
 	def wolff(self,SITE_TYPE[::1] sites,
-							  SITE_TYPE[::1]  cluster,
+							  SITE_TYPE[::1] cluster,
 							  int [::1] cluster_bool,
 							  int[:,::1] neighbours,
 							  int N_sites,int N_neighbours,
@@ -323,6 +326,10 @@ cdef class MonteCarloUpdate(object):
 		cdef SITE_TYPE cluster_value0 = sites[isite]
 
 		# Perform cluster algorithm to find indices in cluster
+		# cdef SITE_TYPE[::1] cluster_new = np.zeros(N_sites,
+		# 											dtype=type(cluster[0]))
+		cluster[:] = 0 #cluster_new
+		
 		cluster_update(isite)
 
 		# Flip spins in cluster to new value
@@ -340,7 +347,7 @@ cdef class MonteCarloUpdate(object):
 	@cython.boundscheck(False)
 	@cython.wraparound(False)
 	@cython.cdivision(True)
-	cdef metropolis_wolff(self,SITE_TYPE[::1] sites,
+	cpdef void metropolis_wolff(self,SITE_TYPE[::1] sites,
 							  SITE_TYPE[::1]  cluster,
 							  int [::1] cluster_bool,
 							  int[:,::1] neighbours,

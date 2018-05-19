@@ -7,7 +7,6 @@ Created on Mon Apr 23 02:43:27 2018
 import numpy as np
 import copy
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -44,6 +43,8 @@ def plot_decorator(plot_func):
 		ax.axis('on')     
 			
 		plot_props0 = copy.deepcopy(plot_props)
+		
+		# Set plotting backend
 			
 		# Setup Image Colourbar
 		if plot_props.get('other',{}).get('cbar_plot')is not None or (
@@ -161,8 +162,9 @@ def plot_decorator(plot_func):
 					else:
 						plt.setp(getattr(obj,k),**p);
 			else:
-				obj = locals()[prop]
-				plt.setp(obj,**plot_props[prop]);
+				obj = locals().get(prop,None)
+				if obj:
+					plt.setp(obj,**plot_props.get(prop,{}));
 
 
 

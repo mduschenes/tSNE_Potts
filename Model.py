@@ -15,7 +15,7 @@ class Model(object):
     # Lattice Model Type: Model Name and Max Spin Value q
     
 	def __init__(self,model={'model_name':'potts', 'q':3, 'd':2, 'T': 2.2269,
-							 'coupling_param':[0,1], 'data_type':np.int_},
+							 'coupling_param':[0,1], 'data_value_type':np.int_},
                  observe=['temperature','energy','order']):
         # Define Models dictionary for various spin models, with
         # [ Individual spin calculation function, 
@@ -79,7 +79,7 @@ class Model(object):
 		self.model_value = self.model_params['value']
 
 		# Define Range of Possible Spin Values and  Energy Function                     
-		self.state_range = self.state_ranges(dtype=model.get('data_type',
+		self.state_range = self.state_ranges(dtype=model.get('data_value_type',
 															  np.int_))
 
 		
