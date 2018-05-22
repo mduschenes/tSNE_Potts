@@ -143,6 +143,9 @@ parser.add_argument('-Nf','--Nmeas_f',help = 'Measurement Sweeps Frequency',
 parser.add_argument('-Nr','--Nratio',help = 'Measurement Sweeps Ratio',
 					type=float,default=1)
 					
+parser.add_argument('--sites_plot',help = 'Plot Updated Sites',
+					action='store_true')
+					
 parser.add_argument('-j','--job_id',help = 'Job Number',
 					type=int,default=0)
 
@@ -201,14 +204,15 @@ if __name__ == "__main__":
 	update_props = {'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 'Nratio': args.Nratio,
 					'Nmeas_f':args.Nmeas_f, 'Ncluster':1}
 	
-	observe_props = {'configurations':   [False,'sites','cluster'],
+	observe_props = {'configurations':   [args.sites_plot,'sites','cluster'],
 			         'observables':      [True,'energy','order'],
                      'observables_mean': [True,'energy','order','specific_heat',
 									                          'susceptibility']}
 	data_props = {
-		'data_properties':['model_name','d','algorithm','observe_props',
-								   'data_files','data_types','data_format',
-								   'data_obj_format','data_name_format'],
+		'data_properties':['model_name','d',
+						   'algorithm','observe_props','plot','sort',
+						   'sort_parameters','data_files','data_types',
+						   'data_format','data_obj_format','data_name_format'],
 		'data_name_format':['model_name','L','d','q','T','job_id','data_date'],
 		'data_types': ['sites','observables','model_props'],
 		'data_obj_format': {'sites':'array','observables':'array',
@@ -226,7 +230,7 @@ if __name__ == "__main__":
 			iter_props[k] = np.atleast_1d(getattr(args,k,iter_props[k]))[0]
 
 	# Delete non keyword arg attributes
-	for k in ['version','Neqb','Nmeas','Nmeas_f']:
+	for k in ['version','sites_plot','Neqb','Nmeas','Nmeas_f']:
 		delattr(args,k)
 	for k in ['data_dir','analysis','plot','sort','sort_parameters']:
 		data_props[k] = getattr(args,k)

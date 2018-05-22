@@ -195,7 +195,207 @@ def one_hot(X,n=None):
 
 
 
+def sort(data,parameters,parameters0=lambda x: {},coupled=False):
+	
+		# # Sort by params as {param0_i: {param1_j: [param2_k values]}}
+		# # i.e) q, L, T
+		
+		def dim_reduce(arr,axis=0):
+			try:
+				return np.squeeze(arr,axis)
+			except:
+				return arr
+		
+		def return_item(d,item=0,index=0):
+			return list(d.items())[index][item]
+		
+		def nested_dict(keys,base_type={}):
+			if len(keys) > 0:
+				d = {}
+				for k in keys[0]:
+					d[k] = nested_dict(keys[1:],base_type)
+			else:
+				d = np.copy(base_type)
+			return d
+			
+		def build_dict(data,container,parameters,model,bar=False):
+			# if bar: 
+				# for p in parameters[0].values():
+					# print(container[p][0][list(parameters[1].keys())[0]])
+			if isinstance(container,dict) and len(parameters)>1:
+				for ic,cparam in enumerate(container.keys()):
+					for k in data.keys():
+						if model[k][return_item(parameters[0],0)] == cparam:
+							build_dict({k:data[k]},container[cparam],
+							            parameters[1:],model)
+							continue
+			elif isinstance(container,np.ndarray):
+				k,v =  return_item(data,slice(0,2))
+				if isinstance(container[0],object) and len(parameters) == 1:
+					#container = dim_reduce(container,0)
+					container[int(np.where(return_item(parameters[0],1)== 
+								model[k][return_item(parameters[0],0)])[0])] = (
+																dim_reduce(v,0))
+					if not None in container:
+						try:
+							container = np.concatenate(tuple(container))
+						except:
+							pass
+				elif isinstance(container[0],dict):
+						i = np.array(return_item(parameters[0],1)) == (
+									    model[k][return_item(parameters[0],0)])
+						c = container[i].item()
+						for kc in c.keys():
+							c[kc][return_item(parameters[1],1) == (
+									model[k][return_item(parameters[1],0)]
+									)] = dim_reduce(v[0][kc],0)
+				elif isinstance(container[0],np.ndarray):
+					for p in parameters:
+						print(k,p)
+						container[0] = data[k].copy()
+						for kp,vp in p.items():
+							temp = container[0][0][kp]
+							if isinstance(vp,str):
+								container[0][0][kp] = vp
+							else:
+								container[0][0][kp] = np.array(vp,
+															  dtype=type(vp[0]))
+							print(kp,temp,container[0][0][kp])
+					container = dim_reduce(container)
+			
+			# Process Container
+			# if bar: 
+				# print(parameters)
+				# for i in [1,2]:
+					# for p in list(parameters[0].values())[0]:
+						# print(list(parameters[i].keys())[0])
+						# print([m[list(parameters[i].keys())[0]]
+								# for m in model_props])
+						# print(container[p][0][0][list(parameters[i].keys())[0]])
+				# exit()
+			try:
+				if isinstance(return_item(container,1)[0][0],dict):
+					for k in container.keys():
+						container[k] = container[k][0][0]
+			except:
+				pass
+		
+		# # Data Characteristics
+		data = data.copy()
+		key0 = return_item(data['sites'])
+		
+		
+		# # Find parameter Coordinates for each dataset
+		model_props = data['model_props']
+		
+		# parameter_sets = {}
+		# for k,m in data['model_props'].items():
+			# parameter_sets[k] = [m[p] for p in parameters]
+		
+		# # Find Unique Parameter Coordinates
+		# paramets_unique = sorted(map(list,set(map(tuple,d))),
+				# key=lambda x: tuple([x[i] for i in range(len(x))]))
+		
+		
+		
+		
+		
+		
+		
+		sites_size = list(set([np.shape(dim_reduce(v,0)) 
+								for v in data['sites'].values()]))
+		obs_size = {k: np.shape(dim_reduce(v))for k,v 
+						in data['observables'][key0][0].items()}
+		
+		
+		# Order of N Parameters given indicates how data will be sorted
+		# Let the last sorting be by the last parameter pN
+		pN = parameters[-1]
+		pN1 = parameters[-2]
+		
+		
+		
+		# Create new Parameters type in Data, with properties values, types etc.
+		data['parameters'] = {}
+		data['parameters']['values'] = [None for p in parameters]
+		data['parameters']['types'] = {}
+		data['parameters']['sizes'] = {}
 
+		for i,p in enumerate(parameters):
+			types = type(model_props[key0][p])
+			vals = sorted(set(np.append([],[m[p]for m in model_props.values()]
+															   ).astype(types)))
+			data['parameters']['values'][i] = vals
+			data['parameters']['types'][p] = types
+			data['parameters']['sizes'][p] = np.size(vals)
+		
+		
+		
+		
+		# Create nested dictionary to sort data by parameters p1...pN-1
+		if len(sites_size)>1:
+			data['sites_sorted']=nested_dict(data['parameters']['values'][:-1],
+					   np.array([None for _ in 
+								range(data['parameters']['sizes'][pN])],
+								dtype=object))
+		else:
+			data['sites_sorted']=nested_dict(data['parameters']['values'][:-1],
+									np.zeros((data['parameters']['sizes'][pN],)+
+														tuple(sites_size[0])))
+		
+		data['obs_sorted'] = nested_dict(data['parameters']['values'][:-2],
+							np.array([
+							{k: np.zeros((data['parameters']['sizes'][pN],)+
+								tuple(s)) for k,s in obs_size.items()}.copy() 
+						   for _ in range(data['parameters']['sizes'][pN1])]))
+		data['model_sorted'] = nested_dict(data['parameters']['values'][:-2],
+																		 [[{}]])
+						 
+						 
+						 
+						 
+		# Sort Data into nested dictionary structure
+		# Change data structyre of parameter values for easier sorting
+		# Depending on whether the last two parameters are coupled,
+		# build dictionaries differently.
+		# param_vals = data['parameters']['values'].copy()
+		# data['parameters']['values'] = []
+		# for i,p,d in enumerate(zip(parameters,param_vals)):
+			# if i < len(paramval)-1:
+				# data['parameters']['values'].append({p:d}) 
+			# else:
+				# data['parameters']['values'].append(
+								# {(pN1,PN): [param_vals[-2], param_vals[-1]})
+								
+								
+								
+								
+		# Potentially Add other Parameters to Final Sorting Dictionary
+		
+		data['parameters']['values'] = [{parameters[i]: p} 
+							for i,p in enumerate(data['parameters']['values'])]
+		
+		build_dict(data['sites'],data['sites_sorted'],
+				   data['parameters']['values'],data['model_props'])
+
+		display(time_it=False,m='Sites Sorted')
+		build_dict(data['observables'],data['obs_sorted'],
+				   data['parameters']['values'],data['model_props'])
+		
+		display(time_it=False,m='Observables Sorted')
+		#print(data['model_sorted'])
+		#data['parameters']['values'][-1].update(parameters0)
+		build_dict(data['model_props'],data['model_sorted'],
+				   data['parameters']['values'],data['model_props'],True)
+		
+		
+		# Change back data structure of parameter values
+		data['parameters']['values'] = {p: 
+										data['parameters']['values'][i].values()
+										for i,p in enumerate(parameters)}
+		# print(data['model_sorted'])
+		
+		return data
 
 
 

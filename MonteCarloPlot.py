@@ -57,11 +57,11 @@ class MonteCarloPlot(object):
 							 data_key = K)
 			elif K == 'observables':
 				self.plot_obj.plotter(
-							data = {k: {(a,t): data[K][ia][k][it] 
-								for it,t in enumerate(
+							data = {k: {(a1,a0): data[K][ia1][k][ia0] 
+								for ia0,a0 in enumerate(
 											  np.atleast_1d(kwargs['arr_0'][1]))
-								for ia,a in enumerate(
-											  np.atleast_1d(kwargs['arr_0'][1]))
+								for ia1,a1 in enumerate(
+											  np.atleast_1d(kwargs['arr_1'][1]))
 									   }
 								for k in flatten(self.plot_keys[K])},       
 							plot_props = self.MC_plot_props(K,self.plot_keys[K],
@@ -73,12 +73,46 @@ class MonteCarloPlot(object):
 					data = {k: {a: data['observables'][ia][k] 
 							for ia,a in enumerate(kwargs['arr_1'][1])}
 							for k in flatten(self.plot_keys[K])},
-					domain = {k: {a: kwargs['arr_0']
-							for ia,a in enumerate(kwargs['arr_1'][1])}
+					domain = {k: {a1: np.atleast_1d(kwargs['arr_0'][1])
+							for ia1,a1 in enumerate(kwargs['arr_1'][1])}
 							for k in flatten(self.plot_keys[K])},
 					plot_props = self.MC_plot_props(K,self.plot_keys[K],
 														**kwargs),
 							data_key = K)
+			
+			elif K == 'observables_sorted':
+				self.plot_obj.plotter(
+							data = {k: {(a1,a0): data[K][a1][a0][k] 
+								for ia0,a0 in enumerate(
+										 np.atleast_1d(kwargs['arr_0'][1][a1]))
+								for ia1,a1 in enumerate(
+										np.atleast_1d(kwargs['arr_1'][1]))
+									   }
+								for k in flatten(self.plot_keys['observables'])},       
+							plot_props = self.MC_plot_props(
+												  'observables',
+												  self.plot_keys['observables'],
+												  **kwargs),
+							data_key = K)
+			
+			elif K == 'observables_mean_sorted': 
+				self.plot_obj.plotter(
+					data = {k: {a: [data['observables_sorted'][a1][a0][k] 
+							for a0 in  sorted(np.atleast_1d(
+													kwargs['arr_0'][1][a1]))]
+							for ia1,a1 in enumerate(kwargs['arr_1'][1])}
+							for k in flatten(
+									self.plot_keys['observables_mean'])},
+					domain = {k: {a1: sorted(np.atleast_1d(
+													kwargs['arr_0'][1][a1]))
+							for ia1,a1 in enumerate(kwargs['arr_1'][1])}
+							for k in flatten(
+										self.plot_keys['observables_mean'])},
+					plot_props = self.MC_plot_props('observables_mean',
+									 self.plot_keys['observables_mean'],
+									 **kwargs),
+							data_key = K)
+			
 
 		return
 
@@ -96,6 +130,7 @@ class MonteCarloPlot(object):
 
 	# Data type dependent plot properties keys
 	def MC_plot_props(self,plot_type,plot_keys,**kwargs):
+				
 		# Function plot sites or clusters of sites
 		def sites_region(sites):
 			sites0 = np.asarray(sites,dtype=float)
@@ -217,12 +252,12 @@ class MonteCarloPlot(object):
 
 			plot_props = Plot_Props(flatten(plot_keys))
 			
-			set_prop(plot_props,['ax','title'],plot_title)
+			set_prop(plot_props,['ax','title'],plot_title,**kwargs)
 			set_prop(plot_props,['ax','xlabel'],plot_xlabel,**kwargs)
-			set_prop(plot_props,['ax','ylabel'],plot_ylabel)
-			set_prop(plot_props,['data','data_process'],data_process)
-			set_prop(plot_props,['data','plot_range'],plot_range)
-			set_prop(plot_props,['other','cbar_plot'],cbar_plot)
+			set_prop(plot_props,['ax','ylabel'],plot_ylabel,**kwargs)
+			set_prop(plot_props,['data','data_process'],data_process,**kwargs)
+			set_prop(plot_props,['data','plot_range'],plot_range,**kwargs)
+			set_prop(plot_props,['other','cbar_plot'],cbar_plot,**kwargs)
 				
 			return plot_props
 
@@ -286,8 +321,8 @@ class MonteCarloPlot(object):
 			
 			def plot_label(k,**kwargs):
 				return lambda k: '%s = %0.2f,  %s = %s'%(kwargs['arr_0'][0],
-														kwargs['arr_1'][0],
 														k[1],
+														kwargs['arr_1'][0],
 														caps(str_check(k[0]),
 															every_word=True,
 															sep_char=' ',
@@ -298,10 +333,10 @@ class MonteCarloPlot(object):
 			
 			plot_props = Plot_Props(flatten(plot_keys))
 			
-			set_prop(plot_props,['ax','title'],plot_title)
+			set_prop(plot_props,['ax','title'],plot_title,**kwargs)
 			set_prop(plot_props,['ax','xlabel'],plot_xlabel,**kwargs)
-			set_prop(plot_props,['ax','ylabel'],plot_ylabel)
-			set_prop(plot_props,['other','label'],plot_label)
+			set_prop(plot_props,['ax','ylabel'],plot_ylabel,**kwargs)
+			set_prop(plot_props,['other','label'],plot_label,**kwargs)
 			
 
 			return plot_props
@@ -382,11 +417,11 @@ class MonteCarloPlot(object):
 			
 			plot_props = Plot_Props(flatten(plot_keys))
 			
-			set_prop(plot_props,['ax','title'],plot_title)
+			set_prop(plot_props,['ax','title'],plot_title,**kwargs)
 			set_prop(plot_props,['ax','xlabel'],plot_xlabel,**kwargs)
-			set_prop(plot_props,['ax','ylabel'],plot_ylabel)
-			set_prop(plot_props,['other','label'],plot_label)
-			set_prop(plot_props,['data','data_process'],data_process)
+			set_prop(plot_props,['ax','ylabel'],plot_ylabel,**kwargs)
+			set_prop(plot_props,['other','label'],plot_label,**kwargs)
+			set_prop(plot_props,['data','data_process'],data_process,**kwargs)
 			
 
 			return plot_props
