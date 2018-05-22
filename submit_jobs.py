@@ -5,6 +5,9 @@ Created on Sun May 13 10:48:34 2018
 import numpy as np
 import subprocess,argparse,datetime,time,itertools,os
 
+VERBOCITY_TRUE = '"VERBOCITY_TRUE"'
+VERBOCITY_FALSE = '"VERBOCITY_FALSE"'
+
 date_ = lambda: datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
 
 # Parser Object
@@ -31,6 +34,9 @@ parser.add_argument('-wr_f','--wr_file',help = 'Bash Script File',
 parser.add_argument('--double_dash',help = 'Double Dash parsing',
 					action='store_true')
 					
+parser.add_argument('--verbocity_type',help='Verbocity Type for Parsing',
+					type=str,nargs='+',default=[VERBOCITY_TRUE,VERBOCITY_FALSE])
+					
 _, unparsed = parser.parse_known_args()
 
 # Unknown Arguments
@@ -41,7 +47,7 @@ for arg in unparsed:
 args = parser.parse_args()
 
 
-def arg_parse(kwargs,dash='-'):
+def arg_parse(kwargs,dash='-',verbocity_type=[VERBOCITY_TRUE,VERBOCITY_FALSE]):
 	if isinstance(kwargs,dict):
 		args = []
 		for k,v in sorted([(k,v) for k,v in kwargs.items() 
@@ -55,7 +61,13 @@ def arg_parse(kwargs,dash='-'):
 			else:
 				t = str_check(v)
 			
-			args.append(dash+str_check(k)+' '+t)
+			if t == verbocity_type[0]:
+				args.append(dash+str_check(k)+' '+t)
+			elif t == verbocity_type[1]:
+				args.append(dash+str_check(k))
+			else:
+				args.append(dash+str_check(k)+' '+t)
+				
 		return ' '.join(args)
 		
 	elif isinstance(kwargs,(list,np.ndarray,tuple,set)):
@@ -133,15 +145,16 @@ def cmd_run(cmd_args):
 	
 	# System Args
 	dash = '--' if cmd_args['double_dash'] else '-';cmd_args.pop('double_dash');
+	verbocity = cmd_args.pop('verbocity_type')
 	wr = cmd_args.pop('wr')
 	file_bash = cmd_args.pop('wr_file')
-	job = arg_parse(cmd_args.pop('job'),dash)
-	command = arg_parse(cmd_args.pop('command'),dash)
+	job = arg_parse(cmd_args.pop('job'),dash,verbocity)
+	command = arg_parse(cmd_args.pop('command'),dash,verbocity)
 	
 	
 	# Read Script args from File
 	script_args,script_args_func,_ = file_read(cmd_args.pop('script_args'))
-	print(script_args_func)
+
 	# Job Output Header
 	job_header = lambda s: 'Job %s: \n%s \n%s'%(tuple(str_check(i) for i in s))
 
@@ -153,7 +166,7 @@ def cmd_run(cmd_args):
 		
 		# Update Args
 		script_arg = dict(zip(script_key,arg))
-		script_arg.update({'-job_id':i})
+		script_arg['-job_id'] = i
 		for f in script_args_func:
 			for k,v in f.items():
 				if k.endswith('_'):
@@ -169,8 +182,9 @@ def cmd_run(cmd_args):
 
 		# Bash Command
 		if job not in ['',None]:
-			cmd_bash = ' '.join([command,arg_parse(c_args,dash),
-							 job, arg_parse(script_arg,dash)]).replace('\n','') 
+			cmd_bash = ' '.join([command,arg_parse(c_args,dash,verbocity),
+							 job, arg_parse(script_arg,dash,verbocity)
+							 ]).replace('\n','') 
 			
 			# if i == 0 and 'sqsub' in command:
 				# cmd_bash = 'module load python/intel/3.4.2' + '\n'+cmd_bash
@@ -178,7 +192,7 @@ def cmd_run(cmd_args):
 		else:
 			c_args.update(script_arg)
 			cmd_bash = ' '.join([command,
-								arg_parse(c_args,dash)]).replace('\n','') 
+							arg_parse(c_args,dash,verbocity)]).replace('\n','') 
 								
 			
 		

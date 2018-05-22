@@ -90,7 +90,6 @@ class system(object):
 							'observe_props': observe_props,
 							'observables': m.observables_functions,
 						   })
-		
 		# Perform Monte Carlo Updates for various Temperatures
 		Data_Process().format(model_props)
 		

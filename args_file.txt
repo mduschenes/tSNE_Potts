@@ -1,14 +1,14 @@
-{ 'T': np.linspace(0.65,0.78,100)}
+{ 'T': np.linspace(0.69,0.72,10)}
 { 'd': [2]}
 { 'q': [10]}
 { 'L': [60]}
 { 'Ne': [int(1e3)]}
-{ 'Nm': [int(1e3)]}
+{ 'Nm': [int(5e3)]*10}
 { 'Nf': [int(0.5e1)]}
 { 'Nr': [0.95]}
 { '-model_name': ['potts']}
 { 'alg': ['metropolis_wolff']}
-{'-data_dir': ['dataset/test_T_fine_sweep_qLN10e5/']}
+{'-data_dir': ['dataset/']}
 
 def r(**kwargs):
 	return '24h'
@@ -44,7 +44,7 @@ def r(**kwargs):
 	# return
 
 def memperproc_(**kwargs):
-	return '1.5G'
+	return '4G'
 
 def q(**kwargs):
 	return 'serial'

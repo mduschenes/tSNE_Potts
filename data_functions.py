@@ -43,10 +43,11 @@ class Data_Process(object):
 			
 			self.keys = keys
 			
-			if np.size(plot) == 1:
+			if np.size(plot) == 1 and not isinstance(plot,dict):
 				self.plot = {k: np.atleast_1d(plot)[0] for k in keys}
 			else:
 				self.plot = plot
+			
 			
 			self.data_key = 'data_key'
 			
@@ -59,6 +60,7 @@ class Data_Process(object):
 
      # Plot Data by keyword
 	def plotter(self,data,domain=None,plot_props={},data_key=None,keys=None):
+		
 		if not self.plot.get(data_key,True):
 			return
 
@@ -90,13 +92,14 @@ class Data_Process(object):
 			if x is not None and np.size(x) == np.size(y):
 				return np.reshape(x,np.shape(y))
 			else:
-				return np.zeros(x,np.shape(y))
+				return np.zeros(np.shape(y))
 		
 		for k in keys:    
 			if not isinstance(domain,dict) and isinstance(data[k],dict):
-				dom[k]={ki: shape_data(x,data[k][ki]) for ki in data[k].keys()}
+				dom[k]={ki: shape_data(domain,data[k][ki]) 
+							for ki in data[k].keys()}
 			elif not isinstance(domain,dict):
-				dom[k] = shape_data(x,data[k])
+				dom[k] = shape_data(domain,data[k])
 			elif isinstance(data[k],dict):
 				if isinstance(domain[k],dict):
 					dom[k] = {ki: shape_data(domain[k][ki],data[k][ki])
@@ -198,7 +201,7 @@ class Data_Process(object):
 
 				# Set File Name and ensure no Overwriting
 				
-				if not label is [None,'']:
+				if not label in [None,'']:
 					label = '_' + label
 				else:
 					label = ''
@@ -252,7 +255,8 @@ class Data_Process(object):
 				
 				fig.canvas.set_window_title('Figure: %d  %s Datasets'%(
 												  fig.number,caps(keys_label)))
-				for k,a in zip(keys_new,flatten(np.atleast_1d(ax).tolist(),False)):
+				for k,a in zip(keys_new,flatten(np.atleast_1d(ax).tolist(),
+																		False)):
 					if k is not None:
 						a.axis('off')
 						self.axes[keys_label][k] = a
@@ -578,7 +582,6 @@ class Data_Process(object):
 			
 		return
 	
-
 	def format(self,data_params,file_format=None,directory=None,
 					file_update=False,initials=True):
 				
@@ -626,6 +629,14 @@ class Data_Process(object):
 		return
 			
 			
+			
+		
+        
+        
+                
+        
+        
+
 			
 		
         

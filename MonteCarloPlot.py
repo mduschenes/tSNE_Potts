@@ -31,6 +31,7 @@ class MonteCarloPlot(object):
 				plot_keys[K] = [[k for k in V[1:]]]
 			plot_bool[K] = V[0]
 		
+		
 		# Define Plotting Instance
 		Data_Process().plot_close()
 		self.plot_obj = Data_Process(plot_keys,plot_bool,backend = 'Agg')
