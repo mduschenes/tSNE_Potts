@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 #from matplotlib.ticker import MaxNLocator
-matplotlib.rcParams['text.usetex'] = True
+#matplotlib.rcParams['text.usetex'] = True
 
 # Define Figure Fonts
 #rcParams['axes.labelsize']  = 11
@@ -201,15 +201,11 @@ def get_props(data,domain,key,plot_props):
 													 lambda x:str_check(x))(key)
 
 	# Setup Plot Data
-	y = plot_props.get('data',{}).get('data_process',
-								lambda x:np.real(x))(data)
+	y = np.squeeze(plot_props.get('data',{}).get('data_process',
+								lambda x:np.real(x))(data))
 	
-	if np.size(domain) == np.size(np.array(y)):
-		x = plot_props.get('data',{}).get('domain_process',
-								lambda x:np.real(x))(domain)
-	else:
-		x = None
-		
+	x = np.squeeze(plot_props.get('data',{}).get('domain_process',
+								lambda x:np.real(x))(domain))
 	return y,x, plot_props.get('plot',{})
 	
 #def cursor_annotate(plot,leg,fig,ax):

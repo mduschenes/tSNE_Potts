@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os,glob,copy
 
-from misc_functions import (flatten,dict_check, one_hot,caps,
+from misc_functions import (flatten,dict_check, one_hot,caps,display,
 							list_sort,str_check,delim_check)
 import plot_functions
 
@@ -18,13 +18,14 @@ IMG_FILE = 'pdf'
 DIRECTORY = 'dataset/'
 DELIM = [' ','.']
 BACKEND = 'Qt4Agg'
+DISPLAY_IMPORT = False
 
 class Data_Process(object):
     
     # Create figure and axes dictionaries for dataset keys
 	def __init__(self,keys=[None],plot=[False],
 				 np_file = None,img_file=None,backend=None,
-				 directory=None,delim=None):
+				 directory=None,delim=None,display_import=False):
 		 
 		# Standardized attributes
 		for f,F in [(v,V) for v,V in locals().items() 
@@ -92,8 +93,12 @@ class Data_Process(object):
 			if x is not None and np.size(x) == np.size(y):
 				return np.reshape(x,np.shape(y))
 			else:
-				return np.zeros(np.shape(y))
+				return x
 		
+		# print('data',data)
+		# print('\n')
+		# print('domain',domain)
+		# print('\n')
 		for k in keys:    
 			if not isinstance(domain,dict) and isinstance(data[k],dict):
 				dom[k]={ki: shape_data(domain,data[k][ki]) 
@@ -112,7 +117,9 @@ class Data_Process(object):
 
 		domain = dom
 			
-		
+		# print('data',data)
+		# print('\n')
+		# print('domain',domain)
 
 		# Create Figures and Axes
 		self.figures_axes({data_key:keys})            
@@ -330,12 +337,15 @@ class Data_Process(object):
 													).get(dtype,'array')
 			else:
 				data_obj = data_obj_format
-				
+			
 			if data is None:
 				return data
 			
 			elif 'np' in format.get(key,[]) and data_obj == 'dict':
-				return data.item().copy()
+				try:
+					return data.item().copy()
+				except AttributeError:
+					return data.copy()
 			elif not isinstance(data,str):
 				return data.copy()		
 			else:
@@ -386,10 +396,12 @@ class Data_Process(object):
 						for t in data_params['data_types']
 						for k in files.keys()}
 						
-		for k,v in files.items():
-			if v is not None:
-				data[k] = import_func(v,directory,format[k],data_types[k])
-		
+		for i,k in enumerate(files.items()):
+			if k[1] is not None:
+				display(print_it=self.DISPLAY_IMPORT,time_it=False,
+					m = 'Importing %d/%d %s'%(i+1,len(files),k[0]))
+				data[k[0]] = import_func(k[1],directory,format[k[0]],k[0],
+											data_types[k[0]])
 		if data == {}:
 			return None
 		
@@ -430,31 +442,34 @@ class Data_Process(object):
 			data_typed = data.copy()
 			
 		else:
-			def data_typer(data,dtype):
+			def data_typer(data,dtype,data_typed):				
+				k_list = [k for k in data.keys() if (dtype in k) and (
+							 k not in dt.keys() for dt in data_typed.values())]
 				if data_typing == 'dict':
-					return {k: process(k,data[k],dtype) 
-							for k in data.keys() if dtype in k}
+					return {k: process(k,data[k],dtype) for k in k_list}
 			
 				elif data_typing == 'dict_split':
 					return {k.split(dtype)[0]: process(k,data[k],dtype) 
-							for k in data.keys() if dtype in k}
+							for k in k_list}
 				
 				else:
-					return [process(k,data[k],dtype) 
-                          for k in data.keys() if dtype in k]
+					return [process(k,data[k],dtype) for k in k_list]
 		
 			data_typed = {}
 			data_keys = {}
 			for t in data_params['data_types']:
 				
 				# Define Sets
-				data_typed[t] = data_typer(data,t)
+				data_typed[t] = data_typer(data,t,data_typed)
+				if data_typed[t] == {}: 
+					data_typed.pop(t);
+					continue
+				
 				data_keys[t] = list(data_typed[t].keys())
 				
 				# Check Delimeters
 				delim_check(data_typed[t],delim)
 				delim_check(data_keys[t],delim) 
-		
 		
 		
 		# If not NP_FILE format, Export as NP_FILE for easier importing
@@ -508,8 +523,15 @@ class Data_Process(object):
 			format_files = {}
 			for k in data.keys():
 				if format is None:
-					format_files[k] = data_params.get('data_format',
-													self.NP_FILE).split('.')[-1]
+					if isinstance(data_params.get('data_format',None),dict):
+						
+						dtype = [t for t in data_params['data_format'].keys() 
+									if k in t or t in k][0]
+						format_files[k] = data_params['data_format'].get(
+											 dtype,self.NP_FILE).split('.')[-1]
+					else:
+						format_files[k] = data_params.get('data_format',
+												  self.NP_FILE).split('.')[-1]
 				else:
 					format_files[k] = format.split('.')[-1]
 			format = format_files
@@ -534,51 +556,60 @@ class Data_Process(object):
 					return
 				else:
 					v = np.asarray(v)
-			
-			
-			
+						
 			if format[k] == 'npy':
-				if read_write == 'a' and i>0:
-					v0 = np.load(file_path+ '.' + 'npy')
-					file_end = ''
-					np.save(file_path+file_end+'.'+'npy',np.array([v0,v]))
-				elif read_write == 'ow':
-					read_write = 'w'
-					file_end = ''
-					np.save(file_path+file_end+'.'+'npy',v)
-				else: 
-					np.save(file_path+file_end+'.'+'npy',v)
-		
-			elif format[k] == 'npz':
-				if read_write == 'a' and i>0:
-					v0 = np.load(file_path+ '.' + 'npz')
-					file_end = ''
-					np.savez_compressed(file_path+file_end+'.'+'npz',
-										np.array([v0,v]))
-				elif read_write == 'ow':
-					read_write = 'w'
-					file_end = ''
-					np.savez_compressed(file_path+file_end+'.'+'npz',v)
-				else: 
-					np.savez_compressed(file_path+file_end+'.'+'npz',v)
-			
-			elif format[k] == 'txt':
-				if read_write == 'a':
-					file_end = ''
-				elif read_write == 'ow':
-					read_write = 'w'
-					file_end = ''
-				with open(file_path+file_end+'.'+'txt',read_write) as file_txt:
-					if isinstance(v,dict):
-						for key in sorted(
-							list(v.keys()),
-							key=lambda x: (len(x),len(str(v[x])),str.lower(x))):
-							
-							file_txt.write('%s:  %s \n \n \n'%(str(key),
-															   str(v[key])))
-					else:
-						file_txt.write(str(v))
-			
+				try:
+					if read_write == 'a' and i>0:
+						v0 = np.load(file_path+ '.' + 'npy')
+						file_end = ''
+						np.save(file_path+file_end+'.'+'npy',np.array([v0,v]))
+					elif read_write == 'ow':
+						read_write = 'w'
+						file_end = ''
+						np.save(file_path+file_end+'.'+'npy',v)
+					else: 
+						np.save(file_path+file_end+'.'+'npy',v)
+				except MemoryError:
+					v = np.array(v)
+					format[k] = 'npz'
+					
+			if format[k] == 'npz':
+				try:
+					if read_write == 'a' and i>0:
+						v0 = np.load(file_path+ '.' + 'npz')['arr_0']
+						file_end = ''
+						np.savez_compressed(file_path+file_end+'.'+'npz',
+											np.array([v0,v]))
+					elif read_write == 'ow':
+						read_write = 'w'
+						file_end = ''
+						np.savez_compressed(file_path+file_end+'.'+'npz',v)
+					else: 
+						np.savez_compressed(file_path+file_end+'.'+'npz',v)
+				except MemoryError:
+					print('Memory Error - File %s Not Saved'%file_path)
+					return
+			if format[k] == 'txt':
+				try:
+					if read_write == 'a':
+						file_end = ''
+					elif read_write == 'ow':
+						read_write = 'w'
+						file_end = ''
+					with open(file_path+file_end+'.'+'txt',read_write) as f:
+						if isinstance(v,dict):
+							for key in sorted(
+								list(v.keys()),
+								key=lambda x: (len(x),len(str(v[x])),
+																str.lower(x))):
+								
+								f.write('%s:  %s \n \n \n'%(str(key),
+																   str(v[key])))
+						else:
+							f.write(str(v))
+				except MemoryError:
+					print('Memory Error - File %s Not Saved'%file_path)	
+					return
 			
 		return
 	

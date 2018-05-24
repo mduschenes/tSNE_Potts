@@ -11,7 +11,8 @@ warnings.filterwarnings("ignore")
 from MonteCarloPlot import MonteCarloPlot
 
 from data_functions import Data_Process as Data_Proc
-from misc_functions import flatten,array_dict, caps, display
+from misc_functions import (flatten,array_dict, caps, display,
+							recurse,tail_recursive)
 
 
 
@@ -257,7 +258,42 @@ class MonteCarloUpdate(object):
 		sites[cluster_bool] = state_gen(1,cluster_value0)
 		return
 
-			   
+	def wolff_rec(self,sites, cluster, cluster_bool, neighbours,
+						N_sites,N_neighbours, T, update_status,
+						state_update, state_gen, state_int):      
+	
+
+		@tail_recursive
+		def cluster_update(i):
+			cluster_bool[i] = True
+			cluster[i] = cluster_value0
+			for j in (j for j in neighbours[i] if (not cluster_bool[j]) and 
+											(sites[j] == cluster_value0)):
+				if state_update[T] > np.random.random():
+					recurse(j)
+			return
+		
+
+		def node_gen(i):
+			return (j for j in neighbours[i] if (not cluster_bool[j]) and 
+											(sites[j] == cluster_value0))
+		def cluster_add(i):
+			cluster_bool[i] = True
+			cluster[i] = cluster_value0
+			return
+		
+		
+		
+		# Create Cluster Array and Choose Random Site
+		isite = np.random.randint(N_sites)
+		cluster_value0 = sites[isite]
+		cluster[:] = 0 #np.zeros(N_sites)
+		# Perform cluster algorithm to find indices in cluster
+		cluster_update(isite)
+
+		# Update spins in cluster to new value
+		sites[cluster_bool] = state_gen(1,cluster_value0)
+		return		   
 
 	def metropolis_wolff(self,sites, cluster, cluster_bool, neighbours,
 						N_sites,N_neighbours, T, update_status,
@@ -272,6 +308,3 @@ class MonteCarloUpdate(object):
 					   neighbours, N_sites, N_neighbours,T, update_status, 
 					   state_update['wolff'], state_gen, state_int)
 		return
-
-
-	
