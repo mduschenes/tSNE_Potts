@@ -14,7 +14,7 @@ cimport numpy as cnp
 from numpy cimport ndarray
 cimport cython
 
-import warnings,copy
+import warnings,copy,sys
 warnings.filterwarnings("ignore")
 
 from MonteCarloPlot import MonteCarloPlot
@@ -128,6 +128,7 @@ cdef class MonteCarloUpdate(object):
 		cdef object state_int = self.model_props['state_int']
 		cdef object state_gen = self.model_props['state_gen']
 
+		
 		# Declare Model Variable Types
 		cdef int N_sites = self.model_props['N_sites']
 		cdef int N_neighbours = len(self.model_props['neighbour_sites'][0,0,:])
@@ -138,6 +139,8 @@ cdef class MonteCarloUpdate(object):
 		cdef int[::1] cluster_bool = np.zeros(N_sites,dtype=np.intc)
 		cdef int[:,::1] neighbours = self.model_props['neighbour_sites'][0]
 
+		# Ensure Recursion Depth Limit is Adequate
+		sys.setrecursionlimit(N_sites)
 
 		# Initialize Plotting and Data Types
 		cdef dict data = {}

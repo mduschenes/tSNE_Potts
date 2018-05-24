@@ -5,7 +5,7 @@ Created on Tue Feb 20 14:18:39 2018
 
 import numpy as np
 
-import warnings,copy
+import warnings,copy,sys
 warnings.filterwarnings("ignore")
 
 from MonteCarloPlot import MonteCarloPlot
@@ -95,6 +95,8 @@ class MonteCarloUpdate(object):
 		cluster_bool = np.zeros(N_sites,dtype=bool)
 		neighbours = self.model_props['neighbour_sites'][0]
 
+		# Ensure Recursion Depth Limit is Adequate
+		sys.setrecursionlimit(N_sites)
 
 		# Initialize Plotting and Data Types
 		data = {}
