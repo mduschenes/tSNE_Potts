@@ -12,7 +12,7 @@ from Lattice import Lattice
 from Model import Model
 from ModelAnalysis import ModelAnalysis
 from data_functions import Data_Process
-from misc_functions import caps,display
+from misc_functions import caps,display, type_arg,dict_arg
 
 
 
@@ -111,6 +111,7 @@ class system(object):
 parser = argparse.ArgumentParser(description = "Parse Arguments")
 
 # Add Model Args
+
 parser.add_argument('-L','--L',help = 'System Length Scale',
 					type=int,default=15)# choices=[0,1,2])#action="store_true")
 
@@ -140,10 +141,7 @@ parser.add_argument('-Nf','--Nmeas_f',help = 'Measurement Sweeps Frequency',
 					type=int,default=1)
 					
 parser.add_argument('-Nr','--Nratio',help = 'Measurement Sweeps Ratio',
-					type=float,default=1)
-
-parser.add_argument('-upd','--update',help = 'Perform Monte Carlo Updates',
-					action='store_false')					
+					type=float,default=1)					
 
 parser.add_argument('--iter',help = 'Perform Iterations of Monte Carlo Updates',
 					action='store_true')
@@ -161,18 +159,32 @@ parser.add_argument('-v','--version',help = 'Version: Python or Cython',
 						
 parser.add_argument('--data_dir',help = 'Data Directory',
 					type=str,default='dataset/')
-						
-parser.add_argument('--sort_parameters',help = 'Sort Parameters',
-					nargs = '+',type=str,default=['q','L','T'])
-						
+
+parser.add_argument('-upd','--update',help = 'Perform Monte Carlo Updates',
+					action='store_false')
+					
 parser.add_argument('-anl','--analysis',help = 'Perform Analysis',
 					action='store_true')
 					
 parser.add_argument('-plt','--plot',help = 'Perform Plotting',
 					action='store_true')
 					
-parser.add_argument('-srt','--sort',help = 'Plot Analysis',
+parser.add_argument('-srt','--sort',help = 'Sort Data',
 					action='store_true')
+
+parser.add_argument('-dim_reduc','--dim_reduc',help = 'Reduce Dimensions Data',
+					action='store_true')
+
+parser.add_argument('--sort_params',help = 'Sort Parameters',
+					nargs = '+',type=str,default=['q','L','T'])	
+					
+parser.add_argument('--dim_reduc_params',help = 'Dimensional Reduce Parameters',
+					nargs = '+',
+					action= type_arg(dict_arg,key_type=str,
+									     val_type=[int,int,float,bool]),
+					default={'N': 2, 'N0': 50,'perp':30.0,'pca': True})
+						
+
 					
 					
 _, unparsed = parser.parse_known_args()
@@ -184,6 +196,7 @@ for arg in unparsed:
 						
 # Parse Args Command
 args = parser.parse_args()
+
 
 if __name__ == "__main__":
     
@@ -212,18 +225,21 @@ if __name__ == "__main__":
 									                          'susceptibility']}
 	data_props = {
 		'data_properties':['model_name','d', 'data_dir', # algorithm
-						   'observe_props','plot','sort',
-						   'sort_parameters','data_files','data_types',
+						   'plot','sort','dim_reduc','analysis','observe_props',
+						   'analysis_params','data_files','data_types',
 						   'data_format','data_obj_format','data_name_format'],
 		'data_name_format':['model_name','L','d','q','T','job_id','data_date'],
-		'data_types': ['sorted','tsne','pca',
-					   'sites','observables','model_props'],
+		'data_types': ['sorted','sites','observables','model_props',
+					   'tsne','pca'],
 		'data_obj_format': {'sites':'array','observables':'array',
 							'model_props':'dict','sorted':'dict',
 							'tsne':'dict','pca':'dict'},
 		'data_format':{'sites':'npz','observables': 'npz','model_props':'npy',
 						'sorted':'npy','tsne':'npz','pca':'npz'},
-		'observe_props': observe_props, 'data_typing': 'dict_split'				  
+		'analysis_params': {'sort_params': args.sort_params,
+							'dim_reduc_params': args.dim_reduc_params},
+		'observe_props': observe_props,
+		'data_typing': 'dict_split'				  
 				 }
 	data_props['data_files'] = tuple(set('*.'+ f 
 								   for f in data_props['data_format'].values()))
@@ -236,13 +252,13 @@ if __name__ == "__main__":
 				iter_props[k] = np.atleast_1d(getattr(args,k,iter_props[k]))[0]
 
 	# Delete non keyword arg attributes
-	for k in ['version','iter','sites_plot','Neqb','Nmeas','Nmeas_f']:
+	for k in ['version','iter','sites_plot','sort_params','dim_reduc_params',
+			  'Neqb','Nmeas','Nmeas_f']:
 		delattr(args,k)
 		
 	# Update Properties
 	for k in [k for k in data_props['data_properties'] if (
-					k not in args.sort_parameters and (
-					k not in data_props.keys()))]:
+					k not in data_props.keys())]:
 		data_props[k] = getattr(args,k)
 	
 	

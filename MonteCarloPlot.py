@@ -24,11 +24,16 @@ class MonteCarloPlot(object):
 		plot_keys = {}
 		plot_bool = {}
 		for K,V in model_keys.items():
-			if K == 'configurations':
+			if K in ['configurations']:
 				plot_keys[K] =[[(k,t) for t in kwargs['arr_0'][1]] 
 								for k in V[1:]]
+			elif K in ['tsne','pca']:
+				plot_keys[K] =[[(k,t) for t in kwargs['arr_1'][1]] 
+								for k in V[1:]]
+			
 			else:
 				plot_keys[K] = [[k for k in V[1:]]]
+				
 			plot_bool[K] = V[0]
 		
 		
@@ -89,7 +94,7 @@ class MonteCarloPlot(object):
 						for ia0,a0 in enumerate(
 										 np.atleast_1d(kwargs['arr_0'][1][a1])):
 							data_plot[k].update({(a1,a0): data[K][a1][a0][k] })
-			
+				
 				self.plot_obj.plotter(data_plot,      
 									  plot_props = self.MC_plot_props(
 												  'observables',
@@ -114,17 +119,16 @@ class MonteCarloPlot(object):
 							data_key = K)
 			
 			elif K == 'tsne' or K == 'pca':
-			
+
+				kwargs['reduc_param'] = {a1: data[K][a1][0]
+										 for a1 in kwargs['arr_1'][1]}
 				self.plot_obj.plotter(
-					data = {k: [data[K][k][a0][1] 
-							for a0 in  np.atleast_1d(kwargs['arr_0'][1][k])]
-							for k in flatten(
-									self.plot_keys[K])},
-					domain = {k: {a1: [data[K][a1][a0][0] 
-							for a0 in  np.atleast_1d(kwargs['arr_0'][1][a1])]
-							for ia1,a1 in enumerate(kwargs['arr_1'][1])}
-							for k in flatten(
-									self.plot_keys[K])},
+					data = {kt: data[K][kt[1]][1][:,1] 
+								for kt in flatten(self.plot_keys[K])
+								if kt[1] in kwargs['arr_1'][1]},
+					domain = {kt: data[K][kt[1]][1][:,0] 
+								for kt in flatten(self.plot_keys[K])
+								if kt[1] in kwargs['arr_1'][1]},
 					plot_props = self.MC_plot_props(K,self.plot_keys[K],
 													**kwargs),data_key = K)
 
@@ -158,8 +162,9 @@ class MonteCarloPlot(object):
 				# region[sites] = np.copy(sites0[sites])
 				# return region
 
-		def sup_title(label,**kwargs):
-			return str_check(kwargs.get('sup_title',''))
+		def sup_title(label,every_word=True,**kwargs):
+			return caps(label+str_check(kwargs.get('sup_title','')),
+						every_word=every_word,sep_char=' ',split_char='_')
 			# caps(label,every_word=True,sep_char=' ',split_char='_') + (
 				# ' - %s - $q = %s$ \n $T =  %s$ '%(
 				# caps(self.model_props['model_name']),
@@ -191,7 +196,6 @@ class MonteCarloPlot(object):
 					  'plot':  {'interpolation':'nearest'},
 					  
 					  'data':  {'plot_type':'image',
-								'plot_range': '',
 								'data_process':lambda data: np.real(data)},
 								
 					  'other': {'label': lambda x='':caps(str_check(x),
@@ -276,11 +280,11 @@ class MonteCarloPlot(object):
 			return plot_props
 
 
+			
+		# Observables
 		elif plot_type == 'observables':
 
 
-			
-			
 			def Plot_Props(keys):
 				return {
 					 k: {
@@ -293,7 +297,6 @@ class MonteCarloPlot(object):
 								'histtype':'bar'},
 					  
 					  'data':  {'plot_type':'histogram',
-								'plot_range': '',
 								'data_process':lambda data: np.real(data)},
 								
 					  'other': {'label': lambda x='':caps(str_check(x),
@@ -301,7 +304,7 @@ class MonteCarloPlot(object):
 												   sep_char=' ',split_char='_'),
 								'sup_legend': True,
 								'sup_title': {'t':
-											sup_title('Observables Histogram',
+											sup_title('Observables Histogram \n',
 														**kwargs)},
 								'pause':0.01}
 					 }
@@ -334,8 +337,8 @@ class MonteCarloPlot(object):
 							sep_char=' ',split_char='_')
 			
 			def plot_label(k,**kwargs):
-				return lambda k: '%s = %0.2f,  %s = %s'%(kwargs['arr_0'][0],
-														k[1],
+				return lambda k: '%s = %s,  %s = %s'%(kwargs['arr_0'][0],
+														str_check(k[1],2),
 														kwargs['arr_1'][0],
 														caps(str_check(k[0]),
 															every_word=True,
@@ -356,6 +359,7 @@ class MonteCarloPlot(object):
 			return plot_props
 
 
+		# Observables_mean
 		elif plot_type == 'observables_mean':
 
 
@@ -373,8 +377,6 @@ class MonteCarloPlot(object):
 					  'plot':  {'marker':'*'},
 					  
 					  'data':  {'plot_type':'plot',
-								'plot_range': '',
-								'data_process':''
 							   },
 								
 					  'other': {'label': lambda x='':caps(str_check(x),
@@ -387,7 +389,8 @@ class MonteCarloPlot(object):
 								'pause':0.01,
 								'sup_legend': True,
 								'sup_title': {'t':
-											sup_title('Observables',**kwargs)}
+											sup_title('Observables / Site \n ',
+														**kwargs)}
 								}
 					 }
 					for k in keys}
@@ -406,14 +409,18 @@ class MonteCarloPlot(object):
 			
 			
 			def plot_title(k,**kwargs):
+				if k == 'susceptibility':
+					units = ' [$\mathrm{J}^{-1}$]'
+				else:
+					units = ''
 				return caps(str_check(k),every_word=True,
-							sep_char=' ',split_char='_')
+							sep_char=' ',split_char='_')+units
 				
 			def plot_ylabel(k,**kwargs):
 				return ''
 				
 			def plot_xlabel(k,**kwargs):
-				return 'Temperature'
+				return 'Temperature [J]'
 			
 			def plot_label(k,**kwargs):
 				return lambda k: '%s = %s'%(kwargs['arr_1'][0],
@@ -442,9 +449,16 @@ class MonteCarloPlot(object):
 
 			
 			
-			
-		elif plot_type == 'tsne' or plot_type == 'pca':
 		
+		
+		# tSNE and PCA
+		elif plot_type == 'tsne' or plot_type == 'pca':
+			
+			if plot_type == 'tsne':
+				plot_type = plot_type[0].lower() + plot_type[1:].upper()
+			elif plot_type == 'pca':
+				plot_type = plot_type.upper()
+			
 			def Plot_Props(keys):
 				return {
 						k: {
@@ -456,7 +470,6 @@ class MonteCarloPlot(object):
 				  'plot':  {},
 				  
 				  'data':  {'plot_type':'scatter',
-							'plot_range': '',
 							'data_process':lambda data: np.real(data),
 							'domain_process':lambda domain: np.real(domain)},
 							
@@ -464,9 +477,10 @@ class MonteCarloPlot(object):
 						   'cbar_color':'jet','cbar_color_bad':'magenta',
 							'label': lambda x='':x,'pause':0.01,
 							'sup_legend': False,
-							'sup_title': {'t': self.model_props['model_name'] +(
-												' Representation - ' )+(
-											   plot_type)}
+							'sup_title': {'t': sup_title(str_check(plot_type)+(
+												' Representation \n ' ),
+												every_word=None,
+												**kwargs)}
 							}
 				 }
 				for k in keys}
@@ -488,23 +502,35 @@ class MonteCarloPlot(object):
 				return ''
 				
 			def plot_ylabel(k,**kwargs):
-				return 'x2'
+				if k[1] != plot_keys[0][0][1]:
+					return ''
+				else:
+					return 'x2'
+						   
 				
 			def plot_xlabel(k,**kwargs):
-				return 'x1'
+				if k[0] != plot_keys[-1][-1][0]:
+					return ''
+				else:
+					return 'x1'
+				
+			
+			def cbar_plot(k,**kwargs):
+				if k[1] == plot_keys[0][-1][1]:
+					return True
+				else:
+					return False 
 			
 			def plot_label(k,**kwargs):
-				return lambda k: '%s = %0.2f,  %s = %s'%(kwargs['arr_0'][0],
-														k[1],
-														kwargs['arr_1'][0],
-														caps(str_check(k[0]),
+				return lambda k: '%s = %s'%(kwargs['arr_1'][0],
+														caps(str_check(k[1]),
 															every_word=True,
 															sep_char=' ',
 															split_char='_'))
 
 			
 			def plot_c(k,**kwargs):
-				return np.reshape(kwargs['arr_0'][1],(-1,))
+				return kwargs['reduc_param'][k[1]]
 			
 			
 			
@@ -515,7 +541,8 @@ class MonteCarloPlot(object):
 			set_prop(plot_props,['ax','ylabel'],plot_ylabel,**kwargs)
 			set_prop(plot_props,['other','label'],plot_label,**kwargs)
 			set_prop(plot_props,['plot','c'],plot_c,**kwargs)
-			set_prop(plot_props,['data','plot_range'],plot_c,**kwargs)
+			set_prop(plot_props,['other','cbar_plot'],cbar_plot,**kwargs)
+			#set_prop(plot_props,['data','plot_range'],plot_c,**kwargs)
 			
 			return plot_props
 		

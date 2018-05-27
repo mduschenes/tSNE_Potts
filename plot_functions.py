@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 #from matplotlib.ticker import MaxNLocator
-#matplotlib.rcParams['text.usetex'] = True
+matplotlib.rcParams['text.usetex'] = True
 
 # Define Figure Fonts
 #rcParams['axes.labelsize']  = 11
@@ -106,29 +106,33 @@ def set_props(plot,fig,ax,plot_props):
 
 	# Plot Colourbar
 	if plot_props.get('data',{}).get('plot_type','plot') in plot_image_types:
-		cax = make_axes_locatable(ax).append_axes('right',
-												  size='5%',pad=0.05)
-		plt.cla()
-		fig.sca(cax)
 		
-		if plot_props.get('other',{}).get('cbar_plot'):
-			cbar = plt.colorbar(plot,cax= cax,
+		
+		if plot_props.get('other',{}).get('cbar_plot') is not False:
+			cax = make_axes_locatable(ax).append_axes('right',
+												  size='5%',pad=0.05)
+			plt.cla()
+			fig.sca(cax)
+			
+			if plot_props.get('other',{}).get('cbar_plot') is True:
+				cbar = plt.colorbar(plot,cax= cax,
 						 label=plot_props.get('other',{}).get(
 											  'cbar_title',''))
-		else:
-			cbar = plt.colorbar(plot,cax=cax)
-				
-		try:
-			cbar_vals=np.array(list(set(
-									 plot_props['data']['plot_range'])))
-			cbar.set_ticks(cbar_vals+0.5)
-			cbar.set_ticklabels(cbar_vals)
-		except RuntimeError:
-			cbar_vals = np.linspace(
-								min(plot_props['data']['plot_range']),
-								max(plot_props['data']['plot_range']),5)
-			cbar.set_ticks(cbar_vals)
-			cbar.set_ticklabels(cbar_vals)
+			else:
+				cbar = plt.colorbar(plot,cax=cax)
+		
+		if plot_props.get('data',{}).get('plot_range'):
+			try:
+				cbar_vals=np.array(list(set(
+										 plot_props['data']['plot_range'])))
+				cbar.set_ticks(cbar_vals+0.5)
+				cbar.set_ticklabels(cbar_vals)
+			except RuntimeError:
+				cbar_vals = np.linspace(
+									min(plot_props['data']['plot_range']),
+									max(plot_props['data']['plot_range']),5)
+				cbar.set_ticks(cbar_vals)
+				cbar.set_ticklabels(cbar_vals)
 
 	# Plot Ticks
 	for w,wlim in plot_props.get('other',{}).get('axis_ticks',{}).items():
@@ -172,20 +176,21 @@ def get_props(data,domain,key,plot_props):
 		if plot_props.get('data',{}).get('plot_range') is None:
 			vmin = np.min(data[~np.isnan(data)])
 			vmax = np.max(data[~np.isnan(data)])
-			plot_props['data']['plot_range'] = np.linspace(vmax,vmin,100)
+			plot_range = np.linspace(vmax,vmin,10)
 		else:
 			vmin = min(plot_props['data']['plot_range'])
 			vmax = max(plot_props['data']['plot_range'])
-		
-		n_plot_range = len(plot_props['data']['plot_range'])
+			plot_range = plot_props['data']['plot_range']
+		n_plot_range = len(plot_range)
 		
 		# Colorbar Normalization
-		if data.dtype == np.integer:
+		if data.dtype == np.integer and (
+						plot_props.get('data',{}).get('plot_range')):
 			norm = colors.BoundaryNorm(plot_props['data']['plot_range'],
-								ncolors=n_plot_range)
+									   ncolors=n_plot_range)
 		else:
 			norm = None
-		
+
 		cmap=plt.cm.get_cmap(plot_props.get(
 						'other',{}).get('cbar_color','bone'),n_plot_range)
 		cmap.set_bad(
@@ -194,8 +199,7 @@ def get_props(data,domain,key,plot_props):
 		# Update plot_props
 		plot_props.get('plot',{})['cmap'] = cmap
 		plot_props.get('plot',{})['norm'] = norm
-	
-	
+		#plot_props.get('data',{})['plot_range'] = plot_range
 	# Setup Labels
 	plot_props.get('plot',{})['label'] = plot_props.get('other',{}).get('label',
 													 lambda x:str_check(x))(key)
@@ -206,6 +210,7 @@ def get_props(data,domain,key,plot_props):
 	
 	x = np.squeeze(plot_props.get('data',{}).get('domain_process',
 								lambda x:np.real(x))(domain))
+
 	return y,x, plot_props.get('plot',{})
 	
 #def cursor_annotate(plot,leg,fig,ax):

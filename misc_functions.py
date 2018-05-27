@@ -8,7 +8,7 @@ Created on Sat Mar 24 15:54:40 2018
 
 
 import numpy as np
-import time
+import time,argparse,re
 
 
 ##### Model Functions ########
@@ -50,12 +50,19 @@ def flatten(x,flattenint=True):
 	return xlist
 
 def caps(word,every_word=False,sep_char=' ',split_char=' '):
+	def capitalize(s):
+		return s[0].upper()+s[1:].lower() 
+
 	try:
-		if not every_word:
-			return word[0].upper()+word[1:].lower()
-		else:
-			return sep_char.join([w[0].upper()+w[1:].lower() 
+		if every_word is False:
+			return capitalize(word) 
+		elif every_word is True:
+			word_sep = sep_char.join([capitalize(w)
 								 for w in word.split(split_char)])
+			return sep_char.join([capitalize(w)
+								 for w in word_sep.split(sep_char)])
+		else:
+			return sep_char.join([w for w in word.split(sep_char)])
 	except IndexError:
 		return word
 
@@ -79,8 +86,55 @@ def tail_recursive(func):
 				kwargs = r.kwargs
 				continue
 	return recursive_decorator
-		
-		
+
+	
+def None_check(type_func):
+	def type_wrapper(**kwargs):
+		if kwargs['obj'] in ['None','']:
+			return None
+		elif kwargs['obj'] in ['False','0']:
+			return False
+		else:
+			return type_func(**kwargs)
+	return type_wrapper
+	
+@None_check
+def typer(obj,ind,item,types):
+	return types[item][ind](obj)
+
+def type_arg(func,**kwargs): 
+
+	class TYPE_ARG(argparse.Action):
+		def __call__(self, parser, args, values, 
+					 option_string=None):
+			setattr(args,self.dest,func(values,**kwargs))
+	return TYPE_ARG
+	
+def dict_arg(args,key_type=str,val_type=float):
+	if args == [] or len(args) % 2 != 0:
+		raise argparse.ArgumentTypeError('Not key-value pairs args')
+		return {}
+
+	types = {'key':[],'vals':[]}
+	for k,t in zip(['keys','vals'],[key_type,val_type]):
+		if isinstance(t,type): 
+			types[k] = [t for _ in range(len(args))]
+		else:
+			types[k] = t
+	
+	
+
+	dict_arg = {}
+	for i,(k,v) in enumerate(zip(args[0::2], args[1::2])):
+		try:
+			dict_arg[typer(obj=k,ind=i,item='keys',types=types)] = typer(
+										obj=v,ind=i,item='vals',types=types)
+		except TypeError as e:
+			dict_arg[k] = v
+	return dict_arg	
+	
+
+	
 def attr_wrapper(attribute={}):
 	def attr_decorator(func):
 		def  attr_func(*args,**kwargs):
@@ -101,9 +155,13 @@ def hashable(a):
 			a = tuple(a) if len(a) > 1 else a[0]
 	return a
 	
-def str_check(v):
+def str_check(v,float_lim=None):
 	if not isinstance(v,str): 
-		return str(v).replace('[','').replace(']','')
+		if isinstance(v,float) and float_lim is not None: 
+			v = str(v)[:float_lim+2]
+		else:
+			v = str(v) 
+		return v.replace('[','').replace(']','')
 	else: 
 		return v.replace('[','').replace(']','')
 
@@ -116,7 +174,9 @@ def delim_check(d,delim=[' ','.']):
 			d[i] = (v.replace(delim[0],'').split(delim[1]))[0]
 		
 def list_sort(a,j):
-	return list(zip(*sorted(list(zip(*a)),key=lambda i:i[j])))
+	natural_sort = 	lambda s: [int(t) if t.isdigit() else t.lower() 
+										for t in re.split('(\d+)', s)]
+	return list(zip(*sorted(list(zip(*a)),key=lambda i: natural_sort(i[j]))))
 
 
 def get_attr(f,attr=None,f0=None,*args):
@@ -225,7 +285,7 @@ def one_hot(X,n=None):
 	return np.reshape(y,(-1,n))
 
 
-def dim_reduce(arr,axis=0):
+def dim_reduct(arr,axis=0):
 	try:
 		return np.squeeze(arr,axis)
 	except:

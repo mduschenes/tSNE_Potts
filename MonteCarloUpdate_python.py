@@ -111,8 +111,9 @@ class MonteCarloUpdate(object):
 
 
 		display(disp_updates,False,
-				'Monte Carlo Simulation... \n%s: q = %d \nT = %s'%(
+				'Monte Carlo Simulation... \n%s: q = %d \n L = %s\nT = %s'%(
 					  (self.model_props['model_name'],self.model_props['q'],
+					  str(self.model_props['L']),
 					   str(self.model_props['T'])))+'\nNeqb = %d, Nmeas = %d'%(
 						Neqb,Nmeas),line_break=1)
 					  

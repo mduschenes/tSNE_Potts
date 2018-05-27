@@ -10,34 +10,6 @@ from misc_functions import dict_modify,display
 
 TOL_MIN = 1e-14
 
-
-parser = argparse.ArgumentParser(description = "Parse Arguments")
-
-# Add Model Args
-parser.add_argument('-N0','--N0',help = 'Number of Initial Dimensions',
-					type=int,default=None)
-
-parser.add_argument('-N','--N',help = 'Number of Final Dimensions',
-					type=int,default=2)#
-					
-parser.add_argument('-P','--perp',help = 'Perplexity',
-					type=float,default=30.0)#
-					
-parser.add_argument('-pca','--pca',help = 'Initially Perform PCA',
-					action='store_true')
-
-parser.add_argument('-repeat','--repeat',help = 'Repeat tSNE',
-					action='store_true')
-					
-parser.add_argument('--data_dir',help = 'Data Directory',
-					type=str,default='dataset/tsne/')
-					
-parser.add_argument('--file_dir',help = 'File Output Data Directory',
-					type=str,default='dataset/tsne/')
-					
-# Parse Args Command
-args = parser.parse_args()
-
 # Compute Squared Pairwise distance between all elements in x
 def pairwise_distance(x):
 	x2 =  np.dot(x,x.T) 
@@ -121,7 +93,7 @@ def binary_search(x,a,f,f0,tol,n_iter):
 
 
 
-def tsne(X,data_params,data_rep,data_type,
+def process(X,data_params,data_rep,data_type,
 			alg_params = {  'N0': None, 'N': 2,'perp': 30.0, 'pca': True,
 							'data_dir': 'dataset/tsne/',
 							'data_reps':['tsne','pca'],
@@ -181,8 +153,17 @@ def tsne(X,data_params,data_rep,data_type,
 	Data_Proc = Data_Process(plot_keys,plot_bool)
 	
 	comp = lambda x,i: {k:v[:,i] for k,v in x.items() if np.any(v)}
+	
+	# tSNE and PCA Analysis
 
-	# Check if Data Exists
+	for t in sorted(data_types_config):
+		
+		for r in data_reps:
+			
+			if r == 'pca':
+				continue
+			
+			# Check if Data Exists
 			params = data_params.copy()
 			file_header = r+'_'+t
 			file_name = file_header + data_params['data_file']
@@ -201,7 +182,7 @@ def tsne(X,data_params,data_rep,data_type,
 				print('New Data for',file_name)
 				for k in data_keys[t]:   
 					print(r,t,k)
-					Y[r][t][k] = run_rep(data = data_typed[t][k],
+					Y[r][t][k] = dim_reduce(data = data_typed[t][k],
 										 N = data_params['N'],
 										 N0 = data_params['N0'], 
 										 perp = data_params['perp'], 
@@ -239,8 +220,8 @@ def x2p0(X=np.array([]), tol=1e-5, perplexity=30.0):
 	"""
 
 	# Initialize some variables
-	#print("Computing pairwise distances...")
 	(n, d) = X.shape
+	
 	sum_X = np.sum(np.square(X), 1)
 	D = np.abs(np.add(np.add(-2 * np.dot(X, X.T), sum_X).T, sum_X))
 	P = np.zeros((n, n))
@@ -248,10 +229,11 @@ def x2p0(X=np.array([]), tol=1e-5, perplexity=30.0):
 	logU = np.log(perplexity)
 
 	# Loop over all datapoints
+	print("Computing pairwise distances...",(n,d))
 	for i in range(n):
 
 		# Print progress
-		if i % 500 == 0:
+		if i % 1000 == 0:
 			print("Computing P-values for point %d of %d..." % (i, n))
 
 		# Compute the Gaussian kernel and entropy for the current precision
@@ -292,14 +274,15 @@ def x2p0(X=np.array([]), tol=1e-5, perplexity=30.0):
 	return P
 
 
-def pca0(X=np.array([]), N0=50):
+def pca0(X=np.array([]), N0=None):
 	"""
 		Runs PCA on the NxD array X in order to reduce its dimensionality to
 		N dimensions.
 	"""
 
-	#print("Preprocessing the data using PCA...")
+	
 	(n, d) = X.shape
+	print("Preprocessing the data using PCA...",(n, d))
 	#(l, M) = np.linalg.eig(np.dot(X.T, X))
 	return np.dot(X - np.tile(np.mean(X, 0), (n, 1)),
 				np.linalg.eig(np.dot(X.T, X))[1][:, 0:N0])
@@ -335,10 +318,11 @@ def tsne0(X=np.array([]), N=2, N0=50, perplexity=30.0, pca=True):
 	gains = np.ones((n, N))
 
 	# Compute P-values
+	print('Performing Initial Perplexity Search for ',X.shape)
 	if pca:
-		P = x2p0(pca0(X, N0).real, tol, perplexity)
+		P = x2p0(pca0(X.astype(np.float), N0).real, tol, perplexity)
 	else:
-		P = x2p0(X,tol,perplexity)
+		P = x2p0(X.astype(np.float),tol,perplexity)
 	P += np.transpose(P)
 	
 	P /= np.maximum(np.sum(P),TOL_MIN)
@@ -387,19 +371,19 @@ def tsne0(X=np.array([]), N=2, N0=50, perplexity=30.0, pca=True):
 	# Return solution
 	return Y
 
-def run_rep(data,N=2,N0=None,perp=30.0,rep='tsne',pca=True):
+def dim_reduce(data,N=2,N0=None,perp=30.0,rep='tsne',pca=True):
 	#d = pairwise_distance(data_typed[t][k])
 	#x2p0(d,entropy_gaussian,tol,perp,n_iter)
 	#binary_search(d,np.ones(n),entropy_gaussian,perp*np.ones(n),tol,n_iter)
 
 	# Run Representation
 	if rep == 'pca':
-		return pca0(data)
+		return pca0(data,None)
 	elif rep == 'tsne':
 		return tsne0(data,N,N0,perp,pca)
 
 		
-def plot_props(keys,data_rep,data_type):
+def plot_props(keys,data_typed,data_rep,data_type):
 	return {
 		 k: {
 		
@@ -437,6 +421,35 @@ if __name__ == "__main__":
 #    
 #    
 #    
+	# Parse Input Arguments
+	parser = argparse.ArgumentParser(description = "Parse Arguments")
+
+	# Add Model Args
+	parser.add_argument('-N0','--N0',help = 'Number of Initial Dimensions',
+						type=int,default=None)
+
+	parser.add_argument('-N','--N',help = 'Number of Final Dimensions',
+						type=int,default=2)#
+						
+	parser.add_argument('-P','--perp',help = 'Perplexity',
+						type=float,default=30.0)#
+						
+	parser.add_argument('-pca','--pca',help = 'Initially Perform PCA',
+						action='store_true')
+
+	parser.add_argument('-repeat','--repeat',help = 'Repeat tSNE',
+						action='store_true')
+						
+	parser.add_argument('--data_dir',help = 'Data Directory',
+						type=str,default='dataset/tsne/')
+						
+	parser.add_argument('--file_dir',help = 'File Output Data Directory',
+						type=str,default='dataset/tsne/')
+						
+	# Parse Args Command
+	args = parser.parse_args()
+
+
 	# Import Data
 	temperatures_Ising = ['temperatures_Ising_L20', 'temperatures_Ising_L40',
 						  'temperatures_Ising_L80']
@@ -509,7 +522,7 @@ if __name__ == "__main__":
 	plot_keys = {}
 	plot_bool = {}
 	for r in data_reps:
-		for t in .keys():
+		for t in data_typed.keys():
 			plot_keys[r+'_'+t] = data_keys[t]
 			plot_bool[r+'_'+t]= True
 	
@@ -540,14 +553,14 @@ if __name__ == "__main__":
 				Y[r][t] = data[0][file_name].item()
 				
 				Data_Proc.plotter(comp(Y[r][t],1),comp(Y[r][t],0),
-					 plot_props(Y[r][t].keys(),r,t[-5:]),
+					 plot_props(Y[r][t].keys(),data_typed,r,t[-5:]),
 					 data_key=r+'_'+t)
 				
 			else:
 				print('New Data for',file_name)
 				for k in data_keys[t]:   
 					print(r,t,k)
-					Y[r][t][k] = run_rep(data = data_typed[t][k],
+					Y[r][t][k] = dim_reduce(data = data_typed[t][k],
 										 N = data_params['N'],
 										 N0 = data_params['N0'], 
 										 perp = data_params['perp'], 
@@ -558,6 +571,6 @@ if __name__ == "__main__":
 				
 			
 			Data_Proc.plotter(comp(Y[r][t],1),comp(Y[r][t],0),
-					 plot_props(Y[r][t].keys(),r,t[-5:]),
+					 plot_props(Y[r][t].keys(),data_typed,r,t[-5:]),
 					 data_key=r+'_'+t)
 	Data_Proc.plot_save(data_params,read_write='a')   

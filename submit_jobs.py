@@ -62,9 +62,9 @@ def arg_parse(kwargs,dash='-',verbocity_type=[VERBOCITY_TRUE,VERBOCITY_FALSE]):
 				t = str_check(v)
 			
 			if t == verbocity_type[0]:
-				args.append(dash+str_check(k)+' '+t)
+				args.append(dash+str_check(k)+' ')
 			elif t == verbocity_type[1]:
-				args.append(dash+str_check(k))
+				pass #args.append(dash+str_check(k))
 			else:
 				args.append(dash+str_check(k)+' '+t)
 				

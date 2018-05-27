@@ -17,15 +17,15 @@ NP_FILE = 'npz'
 IMG_FILE = 'pdf'
 DIRECTORY = 'dataset/'
 DELIM = [' ','.']
-BACKEND = 'Qt4Agg'
-DISPLAY_IMPORT = False
+BACKEND = 'Agg'
+DISP = False
 
 class Data_Process(object):
     
     # Create figure and axes dictionaries for dataset keys
 	def __init__(self,keys=[None],plot=[False],
 				 np_file = None,img_file=None,backend=None,
-				 directory=None,delim=None,display_import=False):
+				 directory=None,delim=None,disp=False):
 		 
 		# Standardized attributes
 		for f,F in [(v,V) for v,V in locals().items() 
@@ -60,11 +60,16 @@ class Data_Process(object):
 
 
      # Plot Data by keyword
-	def plotter(self,data,domain=None,plot_props={},data_key=None,keys=None):
+	def plotter(self,data,domain=None,plot_props={},data_key=None,keys=None,
+				disp=None):
 		
 		if not self.plot.get(data_key,True):
 			return
 
+		# Display
+		if disp is None:
+			disp = self.DISP
+			
 		# Ensure Data, Domain and Keys are Dictionaries
 
 		self.plot[data_key] = True
@@ -127,6 +132,9 @@ class Data_Process(object):
 		
 		# Plot for each data key
 		for key in keys:
+		
+			display(print_it=disp,time_it=False,
+						m = 'Plotting %s'%(str_check(key)))
 			props = plot_props.get(key,plot_props)
 			# props['other']['backend'] = self.BACKEND
 			props['other']['plot_key'] = key
@@ -207,7 +215,6 @@ class Data_Process(object):
 					fig.set_size_inches(fig_size)
 
 				# Set File Name and ensure no Overwriting
-				
 				if not label in [None,'']:
 					label = '_' + label
 				else:
@@ -219,7 +226,7 @@ class Data_Process(object):
 				else:
 					file = directory + fig_k + label
 			
-		
+			
 				i = 0
 				file_end = ''
 				while os.path.isfile(file + file_end + '.'+format):
@@ -230,6 +237,8 @@ class Data_Process(object):
 				if read_write == 'w': 
 					if i > 0: return 
 					else: file_end = ''
+				elif read_write == 'ow':
+					file_end = ''
 				plt.savefig(file + file_end+'.'+format,
 							bbox_inches='tight',dpi=500)
 				fig.set_size_inches(plot_size) 
@@ -285,10 +294,15 @@ class Data_Process(object):
 					 'data_dir': 'dataset/',
 					 'data_lists': False,
 					 'one_hot': [False,'y_'],
-					},directory=None,format=None,data_typing=None,
-					data_obj_format=None,
+					},directory=None,data_files = None,
+					format=None,data_typing=None,
+					data_obj_format=None,disp=None,
 					upconvert=False,delim=None,data_lists=False):
 
+		# Display
+		if disp is None:
+			disp = self.DISP
+			
 		# Bad delimeters
 		if delim is None:
 			delim = data_params.get('delim',self.DELIM)
@@ -297,6 +311,9 @@ class Data_Process(object):
 		# Check of importing batch of files
 		data_params = dict_check(data_params,'data_files')            
 
+		if data_files is None:
+			data_files = data_params.get('data_files','*.'+self.NP_FILE)
+		
 		if directory is None:
 			directory = data_params.get('data_dir',self.DIRECTORY)
 
@@ -352,10 +369,10 @@ class Data_Process(object):
 				return data		
 		
 		# Import Data				
-		if isinstance(data_params['data_files'],(tuple,str)):
+		if isinstance(data_files,(tuple,str)):
 			files = []
 			format_files = {}
-			for f in np.atleast_1d(data_params['data_files']):
+			for f in np.atleast_1d(data_files):
 				if format is not None:
 					f = f.split('.')[0] + '.' + format.split('.')[-1]
 				if '*' in f:
@@ -379,7 +396,7 @@ class Data_Process(object):
 				
 			files = dict_check(files,data_params.get('data_sets',files.copy()))
 		else: 
-			files = data_params['data_files'].copy()
+			files = data_files.copy()
 			files = dict_check(files,data_params.get('data_sets',files.copy()))
 			format_files = {k: data_params.get('data_format',self.NP_FILE)
 							for k in files.keys()}
@@ -398,7 +415,7 @@ class Data_Process(object):
 						
 		for i,k in enumerate(files.items()):
 			if k[1] is not None:
-				display(print_it=self.DISPLAY_IMPORT,time_it=False,
+				display(print_it=disp,time_it=False,
 					m = 'Importing %d/%d %s'%(i+1,len(files),k[0]))
 				data[k[0]] = import_func(k[1],directory,format[k[0]],k[0],
 											data_types[k[0]])
@@ -487,12 +504,16 @@ class Data_Process(object):
 	# Export Data
 	def exporter(self,data,
 				 data_params={'data_dir':'dataset/','data_file':None},
-				 export=True, label = '', directory=None,
+				 export=True, label = '', directory=None, disp=None,
 				  format = None,read_write='w',delim=None):
 	   
 	   
 		if not export:
 			return	
+	   
+	   # Display
+		if disp is None:
+			disp = self.DISP
 	   
 		# Bad delimimeters
 		if delim is None:
@@ -526,7 +547,8 @@ class Data_Process(object):
 					if isinstance(data_params.get('data_format',None),dict):
 						
 						dtype = [t for t in data_params['data_format'].keys() 
-									if k in t or t in k][0]
+									if k in t or t in k]
+						dtype = dtype[0] if dtype != [] else None
 						format_files[k] = data_params['data_format'].get(
 											 dtype,self.NP_FILE).split('.')[-1]
 					else:
@@ -550,6 +572,9 @@ class Data_Process(object):
 				i+=1
 			
 			file_path = directory+file_k+label
+			
+			display(print_it=disp,time_it=False,
+					m = 'Exporting %s'%(k))
 			
 			if not isinstance(v,np.ndarray):
 				if v == {} or v == []:
