@@ -1,82 +1,93 @@
-{ 'upd': [ '"VERBOCITY_TRUE"']}
-{ 'plt': [ '"VERBOCITY_FALSE"']}
-{ 'anl': [ '"VERBOCITY_TRUE"']}
-{ 'srt': [ '"VERBOCITY_TRUE"']}
-{ 'dim_reduc': [ '"VERBOCITY_TRUE"']}
-{ '-sort_params': [['L', 'q','T']]}
-{ '-data_dir': ['dataset/dataset_May26_3pm/']}
-{ '-dim_reduc_params': [['N',2,'N0',50,'perp',30.0,'pca',True]]}
 
-# { 'T':np.array(list(np.linspace(2.25,0.92,16))+list(np.linspace(0.9,0.51,18))+list(np.linspace(0.5,0.25,16))) }
+# { '-dim_reduc_params': [['N',2,'N0',50,'Ns':10,'perp',30.0,'pca',True]]}
+# { 'upd': [ '"VERBOCITY_TRUE"']}
+# { 'plt': [ '"VERBOCITY_FALSE"']}
+# { 'anl': [ '"VERBOCITY_TRUE"']}
+# { 'srt': [ '"VERBOCITY_TRUE"']}
+# { 'dim_reduc': [ '"VERBOCITY_False"']}
+# { '-sort_params': [['L', 'q','T']]}
+
+{ 'T': [0.45555556,0.2]}
+{ 'd': [2]}
+{ 'q': [6,10]}
+{ 'L': [10]}
+{ 'Ne': [int(1e5)]}
+{ 'Nm': [int(1e5)]}
+{ 'Nf': [int(0.5e1)]}
+{ 'Nr': [0.8]}
+{ 'alg': ['metropolis_wolff']}
+{ '-data_dir': ['dataset/dataset_May28_7pm/']}
+
+# { 'T':np.array(list(np.linspace(2.25,0.92,12))+list(np.linspace(0.9,0.51,18))+list(np.linspace(0.5,0.25,20))) }
 # { 'd': [2]}
 # { 'q': [4,6,10]}
-# { 'L': [40]}
-# { 'Ne': [int(5e4)]}
-# { 'Nm': [int(1e4)]}
-# { 'Nf': [int(2e1)]}
+# { 'L': [60]}
+# { 'Ne': [int(1e5)]}
+# { 'Nm': [int(1e3)]}
+# { 'Nf': [int(0.4e1)]}
 # { 'Nr': [0.88]}
 # { '-model_name': ['potts']}
 # { 'alg': ['metropolis_wolff']}
 
-def r(**kwargs):
-	return '24h'
+# def r(**kwargs):
+	# return '24h'
+	# # import numpy as np
+	# # from Model import Model
+	
+	# # kwargs = kwargs.copy()
+	
+	# # if kwargs.get('T'):
+		# # kwargs['T'] = Model(kwargs).T
+	
+	# # # Ensure items are 1d
+	# # for k,v in kwargs.items():
+		# # if not isinstance(v,(str,dict,set,int,float)):
+			# # kwargs[k] = np.max(v)
+		
+	# # Nm0 = 1e3
+	# # L0 = 8
+	# # T0 = 0/np.log(1.0+np.sqrt(kwargs['q']))
+	# # return '24h'
+	# # if  (kwargs['Nm']<Nm0) and (kwargs['L']<L0) and (kwargs['T']>T0):r= '24h'
+	# # elif(kwargs['Nm']<Nm0) and (kwargs['L']<L0) and (kwargs['T']<T0):r='24h'
+	# # elif(kwargs['Nm']<Nm0) and (kwargs['L']>L0) and (kwargs['T']>T0):r='24h'
+	# # elif(kwargs['Nm']<Nm0) and (kwargs['L']>L0) and (kwargs['T']<T0):r='24h'
+	
+	# # elif(kwargs['Nm']>Nm0) and (kwargs['L']<L0) and (kwargs['T']>T0):r='20h'
+	# # elif(kwargs['Nm']>Nm0) and (kwargs['L']<L0) and (kwargs['T']<T0):r='20h'
+	# # elif(kwargs['Nm']>Nm0) and (kwargs['L']>L0) and (kwargs['T']>T0):r='24h'
+	# # elif(kwargs['Nm']>Nm0) and (kwargs['L']>L0) and (kwargs['T']<T0):r='24h'
+	
+	# # else: r= ''
+		
+	# # return
+
+# def memperproc_(**kwargs):
+	# return '15G'
+
+# def q(**kwargs):
+	# return 'serial'
+
+# def o(**kwargs):
+	
 	# import numpy as np
+	
+	# args = kwargs.copy()
+	
+	# from data_functions import Data_Process
 	# from Model import Model
 	
-	# kwargs = kwargs.copy()
+	# props = {'data_name_format': ['-model_name','L','d','q','T','']}
 	
-	# if kwargs.get('T'):
-		# kwargs['T'] = Model(kwargs).T
+	# if args.get('-data_dir'):
+		# args['data_dir'] = args.pop('-data_dir')
 	
-	# # Ensure items are 1d
-	# for k,v in kwargs.items():
-		# if not isinstance(v,(str,dict,set,int,float)):
-			# kwargs[k] = np.max(v)
+	# if args.get('T'):
+		# args['T'] = Model(args).T
 		
-	# Nm0 = 1e3
-	# L0 = 8
-	# T0 = 0/np.log(1.0+np.sqrt(kwargs['q']))
-	# return '24h'
-	# if  (kwargs['Nm']<Nm0) and (kwargs['L']<L0) and (kwargs['T']>T0):r= '24h'
-	# elif(kwargs['Nm']<Nm0) and (kwargs['L']<L0) and (kwargs['T']<T0):r='24h'
-	# elif(kwargs['Nm']<Nm0) and (kwargs['L']>L0) and (kwargs['T']>T0):r='24h'
-	# elif(kwargs['Nm']<Nm0) and (kwargs['L']>L0) and (kwargs['T']<T0):r='24h'
+	# props.update(args)
+	# Data_Process().format(props)
+	# file = 'output_file'
+	# file += props['data_file']+'_'+ str(args.get('-job_id',0))
 	
-	# elif(kwargs['Nm']>Nm0) and (kwargs['L']<L0) and (kwargs['T']>T0):r='20h'
-	# elif(kwargs['Nm']>Nm0) and (kwargs['L']<L0) and (kwargs['T']<T0):r='20h'
-	# elif(kwargs['Nm']>Nm0) and (kwargs['L']>L0) and (kwargs['T']>T0):r='24h'
-	# elif(kwargs['Nm']>Nm0) and (kwargs['L']>L0) and (kwargs['T']<T0):r='24h'
-	
-	# else: r= ''
-		
-	# return
-
-def memperproc_(**kwargs):
-	return '5G'
-
-def q(**kwargs):
-	return 'serial'
-
-def o(**kwargs):
-	
-	import numpy as np
-	
-	args = kwargs.copy()
-	
-	from data_functions import Data_Process
-	from Model import Model
-	
-	props = {'data_name_format': ['-model_name','L','d','q','T','']}
-	
-	if args.get('-data_dir'):
-		args['data_dir'] = args.pop('-data_dir')
-	
-	if args.get('T'):
-		args['T'] = Model(args).T
-		
-	props.update(args)
-	Data_Process().format(props)
-	file = 'output_file'
-	file += props['data_file']+'_'+ str(args.get('-job_id',0))
-	
-	return (file+'.txt').replace(' ','')
+	# return (file+'.txt').replace(' ','')

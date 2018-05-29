@@ -3,7 +3,7 @@ Created on Sun May 13 6:55:25 2018
 @author: Matt
 """
 import numpy as np
-import copy,os
+import copy,os,random
 
 from MonteCarloPlot import MonteCarloPlot
 from data_functions import Data_Process
@@ -111,7 +111,7 @@ class ModelAnalysis(object):
 			data['observables'] = {}
 		
 		for k,sites in data['sites'].items():
-			
+		
 			# Update data properties
 			data['model_props'][k].update(data_props)
 						
@@ -284,35 +284,61 @@ class ModelAnalysis(object):
 			return props
 			
 		def reduce_sorted(tree,branch,data,root,model_props,rep):
+			
+			keys_func = lambda k,d: np.repeat(k,np.shape(d)[0]//len(k))
+			
 			for b in branch:
 				data = data[b]
-				model_props = model_props.get(b,model_props)
+				model_props = model_props.get(b,model_props)					
 			
-			# Check if Data Exists
-			temp_name = 'temp_data_'+rep[0]
-			data_temp = Data_Process().importer(model_props,
-												data_files = model_props[
-														'data_file']+temp_name)
 			keys = sorted(data.keys())
 			data = [data[k] for k in keys]
-							
+			
+			# Check if Data Exists
+			if tree[b] != root:
+				return tree[b]
+			
+			dim_reduc_params = data_props['analysis_params'][
+										  'dim_reduc_params'].copy()
+			temp_name = '_'.join(['rep',rep[0],
+							'_'.join(p for p in parameters[1:len(branch)]) + (
+							'_'.join(str(b) for b in branch[1:]))])
+			data_temp = Data_Process().importer(model_props,
+												data_files = model_props[
+													'data_file']+temp_name,
+												disp=True)
+			input('Prepare for data concatenation')
 			if data_temp is None:
-				print('New %s Data at'%rep,branch)
-				data = np.concatenate(tuple([dim_reduct(d) 
+				print('New %s Data at '%rep,parameters[:len(branch)],
+					branch)
+				Ns = int(np.shape(data)[1]*dim_reduc_params.pop('Ns'))
+				#i = int(random.random()*np.shape(data)[1]*(1-Ns))
+				i = 0
+				# Ns = np.array(random.sample(,
+										# int(np.shape(data)[1]*Ns)))
+										
+				input('Prepare for data concatenation after random choice')
+				data = np.concatenate(tuple([d[i:i+Ns]
 											 for d in data]),axis=0)
-				
 				if True:
-					data =  dim_reduce(data,rep=rep,
-						  **data_props['analysis_params']['dim_reduc_params'])
+					data =  dim_reduce(data,rep=rep, **dim_reduc_params)
+				
 				Data_Process().exporter({temp_name:data},model_props,
 										 read_write = 'a')
+				
+				
 			else:
+				print('Previous %s Data at '%rep,parameters[:len(branch)],
+					branch,
+					np.shape(data_temp[0][model_props['data_file']+temp_name]))
+				
 				data = data_temp[0][model_props['data_file']+temp_name]
-			keys = np.tile(keys,np.shape(data)[0]//len(keys))
 			
-			#return (keys,data)
-			
+			keys = keys_func(keys,data)
+				
 			return (keys,data)
+			
+			
 		
 		
 		# Sort by params as {param0_i: {param1_j: [param2_k values]}}
@@ -372,7 +398,6 @@ class ModelAnalysis(object):
 				s_key = s
 				s_data =  data['sites_sorted']
 				branch_func[s] = locals().get('reduce_sorted')
-				export = True
 			else:
 				root[s] = []	
 				depth[s] = None

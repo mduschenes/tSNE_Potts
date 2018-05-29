@@ -121,7 +121,7 @@ def set_props(plot,fig,ax,plot_props):
 			else:
 				cbar = plt.colorbar(plot,cax=cax)
 		
-		if plot_props.get('data',{}).get('plot_range'):
+		if plot_props.get('data',{}).get('plot_range') is not None:
 			try:
 				cbar_vals=np.array(list(set(
 										 plot_props['data']['plot_range'])))
@@ -185,20 +185,33 @@ def get_props(data,domain,key,plot_props):
 		
 		# Colorbar Normalization
 		if data.dtype == np.integer and (
-						plot_props.get('data',{}).get('plot_range')):
-			norm = colors.BoundaryNorm(plot_props['data']['plot_range'],
-									   ncolors=n_plot_range)
-		else:
-			norm = None
-
-		cmap=plt.cm.get_cmap(plot_props.get(
-						'other',{}).get('cbar_color','bone'),n_plot_range)
-		cmap.set_bad(
+					plot_props.get('data',{}).get('plot_range') is not None):
+			
+			cmap=plt.cm.get_cmap(plot_props.get(
+						'other',{}).get('cbar_color','jet'),n_plot_range)
+			cmap.set_bad(
 				color = plot_props.get('other',{}).get('cbar_color_bad',
 													   'magenta'))
-		# Update plot_props
-		plot_props.get('plot',{})['cmap'] = cmap
-		plot_props.get('plot',{})['norm'] = norm
+			
+			norm = colors.BoundaryNorm(plot_props['data']['plot_range'],
+									   ncolors=n_plot_range)
+			
+			# Update plot_props
+			plot_props.get('plot',{})['cmap'] = cmap
+			plot_props.get('plot',{})['norm'] = norm
+			
+		
+		else:
+			cmap=plt.cm.get_cmap(plot_props.get(
+						'other',{}).get('cbar_color','jet'))
+			cmap.set_bad(
+				color = plot_props.get('other',{}).get('cbar_color_bad',
+													   'magenta'))
+			plot_props.get('plot',{})['cmap'] = cmap
+			
+
+		
+		
 		#plot_props.get('data',{})['plot_range'] = plot_range
 	# Setup Labels
 	plot_props.get('plot',{})['label'] = plot_props.get('other',{}).get('label',

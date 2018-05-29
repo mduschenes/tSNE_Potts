@@ -320,8 +320,7 @@ class Data_Process(object):
 		# Import Data				
 		
 		def import_func(file,directory,format,key,type=None,**kwargs):		
-			formatter = lambda s,f: s.split('.')[0] + '.'+f.split('.')[-1]
-			
+			formatter = lambda s,f: s.split('.')[0] + '.'+f.split('.')[-1]			
 			if not os.path.getsize(directory + formatter(file,format)) > 0:
 				return None			
 			
@@ -360,11 +359,11 @@ class Data_Process(object):
 			
 			elif 'np' in format.get(key,[]) and data_obj == 'dict':
 				try:
-					return data.item().copy()
+					return data.item()
 				except AttributeError:
-					return data.copy()
+					return data
 			elif not isinstance(data,str):
-				return data.copy()		
+				return data		
 			else:
 				return data		
 		
@@ -384,7 +383,6 @@ class Data_Process(object):
 										 if os.path.isfile(os.path.join(
 													directory, x)) 
 										 and f in x ]
-				
 				files.extend(ftemp)
 			
 			
@@ -413,12 +411,12 @@ class Data_Process(object):
 						for t in data_params['data_types']
 						for k in files.keys()}
 						
-		for i,k in enumerate(files.items()):
-			if k[1] is not None:
+		for i,(k,v) in enumerate(files.items()):
+			if v is not None:
 				display(print_it=disp,time_it=False,
-					m = 'Importing %d/%d %s'%(i+1,len(files),k[0]))
-				data[k[0]] = import_func(k[1],directory,format[k[0]],k[0],
-											data_types[k[0]])
+					m = 'Importing %d/%d %s'%(i+1,len(files),k))
+				data[k] = import_func(v,directory,format[k],k,
+											data_types[k])
 		if data == {}:
 			return None
 		
@@ -451,7 +449,7 @@ class Data_Process(object):
 		
 		
 		# Type of Data Sets and Data Set Keys
-		
+		print('Data Typing')
 		if data_typing is None:
 			data_typing = data_params.get('data_typing','dict')
 		
@@ -475,7 +473,7 @@ class Data_Process(object):
 			data_typed = {}
 			data_keys = {}
 			for t in data_params['data_types']:
-				
+				print('Data Type ',t)
 				# Define Sets
 				data_typed[t] = data_typer(data,t,data_typed)
 				if data_typed[t] == {}: 

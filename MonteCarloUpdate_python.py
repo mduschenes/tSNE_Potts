@@ -111,7 +111,7 @@ class MonteCarloUpdate(object):
 
 
 		display(disp_updates,False,
-				'Monte Carlo Simulation... \n%s: q = %d \n L = %s\nT = %s'%(
+				'Monte Carlo Simulation... \n%s: q = %d \nL = %s\nT = %s'%(
 					  (self.model_props['model_name'],self.model_props['q'],
 					  str(self.model_props['L']),
 					   str(self.model_props['T'])))+'\nNeqb = %d, Nmeas = %d'%(
@@ -148,7 +148,7 @@ class MonteCarloUpdate(object):
 				# Perform Equilibration Monte Carlo steps initially
 				for i_mc in range(Neqb):
 					for i_sweep in range(N_sites):
-						MC_alg(sites, cluster, cluster_bool.copy(),
+						MC_alg(sites, cluster, cluster_bool,
 							   neighbours, N_sites, N_neighbours,
 							   t, (i_sweep/N_sites)/Nratio, 
 						       state_update, state_gen, state_int)
@@ -156,7 +156,7 @@ class MonteCarloUpdate(object):
 				# Perform Measurement Monte Carlo Steps
 				for i_mc in range(Nmeas):
 					for i_sweep in range(N_sites):
-						MC_alg(sites, cluster, cluster_bool.copy(),
+						MC_alg(sites, cluster, cluster_bool,
 							   neighbours, N_sites, N_neighbours,
 							   t, (i_sweep/N_sites)/Nratio,
 						       state_update, state_gen, state_int)
@@ -168,11 +168,11 @@ class MonteCarloUpdate(object):
 						# display(print_it=disp_updates,
 								# m='Monte Carlo Step: %d'%(i_mc))
 						
-						plot_obj.MC_plotter(
+				plot_obj.MC_plotter(
 						  {'configurations': {'sites': np.asarray(sites),
 											  'cluster':np.asarray(cluster)}},
 												**{'arr_0': ['T',[t]],
-												  'i_mc':['t_{MC}',i_mc]})                
+												  'i_mc':['t_{MC}',i_mc+1]})                
 			  
 				display(print_it=disp_updates,m='Updates: T = %0.2f'%t)
 				
@@ -231,30 +231,29 @@ class MonteCarloUpdate(object):
 	def wolff(self,sites, cluster, cluster_bool, neighbours,
 						N_sites,N_neighbours, T, update_status,
 						state_update, state_gen, state_int):      
-		
+
 		# Cluster Function
 		def cluster_update(i):
-
 			# Add indices to cluster
 			cluster_bool[i] = True
 			cluster[i] = cluster_value0
-			J = (j for j in neighbours[i] if (not cluster_bool[j]) and 
-											(sites[j] == cluster_value0)) 
 
-			for j in J:
-				if state_update[T] > np.random.random():
+			for j in neighbours[i]:
+				if sites[j] == cluster_value0 and not cluster_bool[j] and (
+						state_update[T] > np.random.random()):
 					cluster_update(j)
 
 			return
 		
 		# Create Cluster Array and Choose Random Site
-
+		
 		isite = np.random.randint(N_sites)
 
 		cluster_value0 = sites[isite]
 
 		# Perform cluster algorithm to find indices in cluster
 		cluster[:] = 0 #np.zeros(N_sites)
+		cluster_bool[:] = 0
 		cluster_update(isite)
 
 		# Flip spins in cluster to new value

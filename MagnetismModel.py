@@ -181,8 +181,8 @@ parser.add_argument('--sort_params',help = 'Sort Parameters',
 parser.add_argument('--dim_reduc_params',help = 'Dimensional Reduce Parameters',
 					nargs = '+',
 					action= type_arg(dict_arg,key_type=str,
-									     val_type=[int,int,float,bool]),
-					default={'N': 2, 'N0': 50,'perp':30.0,'pca': True})
+									     val_type=[int,int,float,float,bool]),
+					default={'N': 2, 'N0': 50,'Ns':0.1,'perp':30.0,'pca': True})
 						
 
 					

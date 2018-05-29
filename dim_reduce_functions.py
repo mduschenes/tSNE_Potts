@@ -229,12 +229,12 @@ def x2p0(X=np.array([]), tol=1e-5, perplexity=30.0):
 	logU = np.log(perplexity)
 
 	# Loop over all datapoints
-	print("Computing pairwise distances...",(n,d))
+	print("Computing pairwise distances...",n,'points')
 	for i in range(n):
 
 		# Print progress
-		if i % 1000 == 0:
-			print("Computing P-values for point %d of %d..." % (i, n))
+		if i+1 % 500 == 0:
+			print("Computing P-values for point %d of %d..." % (i+1, n))
 
 		# Compute the Gaussian kernel and entropy for the current precision
 		betamin = -np.inf
@@ -282,7 +282,7 @@ def pca0(X=np.array([]), N0=None):
 
 	
 	(n, d) = X.shape
-	print("Preprocessing the data using PCA...",(n, d))
+	print("Processing the data using PCA...",(n, N0 if N0 is not None else d))
 	#(l, M) = np.linalg.eig(np.dot(X.T, X))
 	return np.dot(X - np.tile(np.mean(X, 0), (n, 1)),
 				np.linalg.eig(np.dot(X.T, X))[1][:, 0:N0])
@@ -316,26 +316,30 @@ def tsne0(X=np.array([]), N=2, N0=50, perplexity=30.0, pca=True):
 	dY = np.zeros((n, N))
 	iY = np.zeros((n, N))
 	gains = np.ones((n, N))
-
+	
+	
 	# Compute P-values
 	print('Performing Initial Perplexity Search for ',X.shape)
+	
 	if pca:
 		P = x2p0(pca0(X.astype(np.float), N0).real, tol, perplexity)
 	else:
-		P = x2p0(X.astype(np.float),tol,perplexity)
+		P = x2p0(X[:,:N0].astype(np.float),tol,perplexity)
 	P += np.transpose(P)
 	
 	P /= np.maximum(np.sum(P),TOL_MIN)
 	P *= 4.									# early exaggeration
 	P = np.maximum(P, TOL_MIN)
+	Q = np.empty(np.shape(P))
+	C = 0.
 	# Run iterations
+	print("Processing the data using tSNE...",(n, N0 if N0 is not None else d))
 	for iter in range(max_iter):
 
 		# Compute pairwise affinities
 		sum_Y = np.sum(np.square(Y), 1)
-		num = -2. * np.dot(Y, Y.T)
-		num = 1. / (1. + np.add(np.add(num, sum_Y).T, sum_Y))
-		num[range(n), range(n)] = 0.
+		num = 1. / (1. + np.add(np.add(-2. * np.dot(Y, Y.T), sum_Y).T, sum_Y))
+		np.fill_diagonal(num,0) #num[range(n), range(n)] = 0.
 		Q = num / np.maximum(np.sum(num),TOL_MIN) # maximum
 		# Q = np.maximum(Q,TOL_MIN)
 		# print('P',P)
@@ -360,18 +364,18 @@ def tsne0(X=np.array([]), N=2, N0=50, perplexity=30.0, pca=True):
 		Y -= np.tile(np.mean(Y, 0), (n, 1))
 
 		# Compute current value of cost function
-		if (iter + 1) % 100 == 0:
+		if (iter)+1 % 100 == 0:
 			C = np.sum(P * np.log((P+eps) / (Q+eps)))
 			print("Iteration %d: error is %f" % (iter + 1, C))
 
 		# Stop lying about P-values
 		if iter == 100:
-			P = P / 4.
+			P /= 4.
 
 	# Return solution
 	return Y
 
-def dim_reduce(data,N=2,N0=None,perp=30.0,rep='tsne',pca=True):
+def dim_reduce(data,N=2,N0=None,perp=30.0,rep='tsne',pca=True,**kwargs):
 	#d = pairwise_distance(data_typed[t][k])
 	#x2p0(d,entropy_gaussian,tol,perp,n_iter)
 	#binary_search(d,np.ones(n),entropy_gaussian,perp*np.ones(n),tol,n_iter)
@@ -426,10 +430,13 @@ if __name__ == "__main__":
 
 	# Add Model Args
 	parser.add_argument('-N0','--N0',help = 'Number of Initial Dimensions',
-						type=int,default=None)
+						type=int,default=50)
 
 	parser.add_argument('-N','--N',help = 'Number of Final Dimensions',
 						type=int,default=2)#
+
+	parser.add_argument('-Ns','--Ns',help = 'Step Size of Initial Samples',
+						type=int,default=1)#
 						
 	parser.add_argument('-P','--perp',help = 'Perplexity',
 						type=float,default=30.0)#
@@ -451,36 +458,81 @@ if __name__ == "__main__":
 
 
 	# Import Data
-	temperatures_Ising = ['temperatures_Ising_L20', 'temperatures_Ising_L40',
+	
+	def formatter(file,inds):
+		inds = inds.copy()
+		if inds[1] is not None and (inds[1] >= 0 or inds[1] < -1):
+			while file[inds[1]+1].isdigit():
+				inds[1] += 1
+		if inds[1] == -1 or inds[1] == len(file): 
+			inds[1] = None
+		else:
+			inds[1] += inds[1]
+		return file[inds[0]:inds[1]]
+	
+	joiner = lambda *strings: '_'.join([s for s in strings])
+	
+	header_sets = ['Ising','gauge'] # ['potts']
+	header_configs = 'spinConfigs'
+	header_temperatures = 'temperatures'
+	configs = {}
+	temperatures = {}
+	data_params = {}
+	inds = {'Ising': [-3,-1],'gauge': [-3,-1],'potts': [6,7]}
+	
+	temperatures['Ising'] = ['temperatures_Ising_L20', 'temperatures_Ising_L40',
 						  'temperatures_Ising_L80']
 	
-	temperatures_gauge = ['temperatures_gaugeTheory_L20', 
+	temperatures['gauge'] = ['temperatures_gaugeTheory_L20', 
 						  'temperatures_gaugeTheory_L40',
 						  'temperatures_gaugeTheory_L80']
 	
-	ising = ['spinConfigs_Ising_L20','spinConfigs_Ising_L40',
+	temperatures['potts'] = ['Potts_q4temp_data_t_keys',
+							 'Potts_q6temp_data_t_keys',
+							 'Potts_q10temp_data_t_keys']
+	
+	
+	configs['Ising'] = ['spinConfigs_Ising_L20','spinConfigs_Ising_L40',
 		     'spinConfigs_Ising_L80']
 	
-	gauge = ['spinConfigs_gaugeTheory_L20', 'spinConfigs_gaugeTheory_L40', 
+	configs['gauge'] = ['spinConfigs_gaugeTheory_L20', 'spinConfigs_gaugeTheory_L40', 
 		     'spinConfigs_gaugeTheory_L80']
 	 
-	data_files = ising + gauge + temperatures_Ising + temperatures_gauge
+	configs['potts'] = ['Potts_q4temp_data_t','Potts_q6temp_data_t',
+						 'Potts_q10temp_data_t']
+		
 	
-	data_types_config = ['spinConfigs_Ising','spinConfigs_gauge']
-	data_types_temps = ['temperatures_Ising','temperatures_gauge']
-	data_obj_format = {k: 'array' for k in data_types_config+data_types_temps}
+	configs_sets = sum([list(joiner(header_configs,s,formatter(c,inds[s]))
+								for c in configs[s]) for s in header_sets],[])
+	temperatures_sets = sum([list(joiner(header_temperatures,s,
+											   formatter(t,inds[s]))
+							for t in temperatures[s])  for s in header_sets],[])
+	 
+	data_files = sum([c for k,c in configs.items() if k in header_sets] + 
+					 [t for k,t in temperatures.items()if k in header_sets],[])
+	
+	data_types_configs = [joiner(header_configs,s) for s in header_sets]
+	data_types_temps = [joiner(header_temperatures,s) for s in header_sets]
+	
+	
+	# data_files = ising + gauge + temperatures_Ising + temperatures_gauge
+	# data_types_config = ['spinConfigs_Ising','spinConfigs_gauge']
+	# data_types_temps = ['temperatures_Ising','temperatures_gauge']
+	data_obj_format = {k: 'array' for k in data_types_configs+data_types_temps}
 	data_reps = ['tsne','pca']
 	
 	data_params =  {'data_files': data_files,
-		            'data_types':data_types_config+data_types_temps,
+		            'data_types':data_types_configs+data_types_temps,
 					'data_format': 'npz', 
 					'data_obj_format': data_obj_format,
 					'data_dir': 'dataset/tsne/',
 					'one_hot': [False],
 					'data_name_format':['','pca','perp','N0','']}
-	 
+	
+	data_params['data_sets'] = configs_sets + temperatures_sets
 	data_params.update(vars(args))
 	Data_Process().format(data_params,initials=False)
+	
 	if data_params['file_dir'] == '':
 		data_params['file_dir'] = data_params['data_dir']
 	
@@ -489,32 +541,32 @@ if __name__ == "__main__":
 	
 	data,data_sizes,_,_ = Data_Process().importer(data_params,
 							data_typing='dict',data_lists=True,upconvert=True,
-							directory=data_params['file_dir'])
+							directory=data_params['file_dir'],disp=True)
 	
-	display(True,True,'Data Imported... \n'+str(data_sizes)+'\n'+ (
+	display(True,False,'Data Imported... \n'+str(data_sizes)+ (
+												'\nwith parameters: ' )+ (
 												data_params['data_file']+'\n'))
-
 	# Setup Data
 	
 	# Change keys structure for appropriate plot labels (i.e. L_XX size labels)
 	ind_data = [-3,None]
 	ind_type = [0,None]
 		
-	data_typed = dict_modify(data,data_types_config+data_types_temps,
+	data_typed = dict_modify(data,data_types_configs+data_types_temps,
 				              f=lambda k,v: v.copy(),i=ind_data,j=ind_type)
 	
-	data_sizes = dict_modify(data_sizes,data_types_config+data_types_temps,
+	data_sizes = dict_modify(data_sizes,data_types_configs+data_types_temps,
 				              f=lambda k,v: v,i=ind_data,j=ind_type)
 	
 	data_keys = {t: sorted(list(d.keys())) for t,d in data_typed.items()}
 	
-	Y = {r: dict_modify(data,data_types_config,
+	Y = {r: dict_modify(data,data_types_configs,
 				              f=lambda k,v: [],i=ind_data,j=ind_type)
 			for r in data_reps}
 	
 	Y2 = Y.copy()
 	
-	data_types_config = [t[slice(*ind_type)] for t in data_types_config]
+	data_types_configs = [t[slice(*ind_type)] for t in data_types_configs]
 	data_types_temps  = [t[slice(*ind_type)] for t in data_types_temps]
 	
 	
@@ -531,15 +583,14 @@ if __name__ == "__main__":
 	
 	comp = lambda x,i: {k:v[:,i] for k,v in x.items() if np.any(v)}
 	
-
 	# tSNE and PCA Analysis
 
-	for t in sorted(data_types_config):
+	for t in sorted(data_types_configs):
 		
 		for r in data_reps:
 			
 			if r == 'pca':
-				continue
+				pass
 		
 			# Check if Data Exists
 			params = data_params.copy()
@@ -557,15 +608,11 @@ if __name__ == "__main__":
 					 data_key=r+'_'+t)
 				
 			else:
-				print('New Data for',file_name)
+				print('New Data for')
 				for k in data_keys[t]:   
 					print(r,t,k)
-					Y[r][t][k] = dim_reduce(data = data_typed[t][k],
-										 N = data_params['N'],
-										 N0 = data_params['N0'], 
-										 perp = data_params['perp'], 
-										 rep = r, 
-										 pca = data_params['pca'])
+					Y[r][t][k] = dim_reduce(data_typed[t][k],**data_params)
+										 
 					
 				Data_Proc.exporter({file_header: Y[r][t]},data_params)
 				

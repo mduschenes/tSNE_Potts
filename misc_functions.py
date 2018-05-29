@@ -115,14 +115,12 @@ def dict_arg(args,key_type=str,val_type=float):
 		raise argparse.ArgumentTypeError('Not key-value pairs args')
 		return {}
 
-	types = {'key':[],'vals':[]}
+	types = {}
 	for k,t in zip(['keys','vals'],[key_type,val_type]):
 		if isinstance(t,type): 
 			types[k] = [t for _ in range(len(args))]
 		else:
 			types[k] = t
-	
-	
 
 	dict_arg = {}
 	for i,(k,v) in enumerate(zip(args[0::2], args[1::2])):
