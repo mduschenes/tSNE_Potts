@@ -6,6 +6,7 @@ import numpy as np
 import copy,os,random
 
 from MonteCarloPlot import MonteCarloPlot
+from Model import Model
 from data_functions import Data_Process
 from misc_functions import display,hashable,dim_reduct
 from dim_reduce_functions import dim_reduce
@@ -125,10 +126,15 @@ class ModelAnalysis(object):
 			model_props = data['model_props'][k]
 			
 			# Measure Data
+			
+			m = Model(model=model_props,
+					 observe= self.data_props['observe_props'][
+											  'observables_mean'][1:])
+			
 			data['observables'][k] = self.measure(sites, 
 												 model_props['neighbour_sites'],
 												 model_props['T'],
-												 model_props['observables'])
+												 m.observables_functions)
 			# Save Data
 			if model_props.get('data_save',True):
 				Data_Process().exporter({'observables':data['observables'][k]},

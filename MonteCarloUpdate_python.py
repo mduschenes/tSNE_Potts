@@ -269,9 +269,9 @@ class MonteCarloUpdate(object):
 		def cluster_update(i):
 			cluster_bool[i] = True
 			cluster[i] = cluster_value0
-			for j in (j for j in neighbours[i] if (not cluster_bool[j]) and 
-											(sites[j] == cluster_value0)):
-				if state_update[T] > np.random.random():
+			for j in neighbours[i]:
+				if sites[j] == cluster_value0 and not cluster_bool[j] and (
+						state_update[T] > np.random.random()):
 					recurse(j)
 			return
 		

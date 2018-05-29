@@ -69,10 +69,9 @@ class Model(object):
 			  'metropolis': self.models_params[t]['state_update']['metropolis'],
 			  'wolff': self.models_params[t]['state_update']['wolff']}
 		
-			for k in ['value','int','order','twoptcorr']:
+			for k in ['value','int','order','magnetization','twoptcorr']:
 				self.models_params[t][k] = getattr(self,t+'_'+k,
 												   lambda *args:[])
-					
 
 		# Define Model Value function and Name for given Input
 		self.model_params = self.models_params[self.model_name]
@@ -147,6 +146,10 @@ class Model(object):
 				axis=(0,-2,-1))))/np.shape(sites)[-1]
 
 	
+	def magnetization(self,sites,neighbours,T):
+		magnet = self.model_params['magnetization']
+		return magnet(sites)
+	
 	def order(self,sites,neighbours,T):
 		site_order = self.model_params['order']        
 		return site_order(sites)
@@ -165,8 +168,10 @@ class Model(object):
  
 	def susceptibility(self,sites,neighbours,T):        
 	  wrapper = lambda x: np.power(x,2)
-	  return np.reshape((self.obs_mean(sites,neighbours,T,self.order,wrapper) - 
-			 wrapper(self.obs_mean(sites,neighbours,T,self.order,np.abs)))*(
+	  return np.reshape((self.obs_mean(sites,neighbours,T,self.magnetization,
+																	wrapper) - 
+			 wrapper(self.obs_mean(sites,neighbours,T,self.magnetization,
+																	np.abs)))*(
 			 np.shape(sites)[-1]/T),
 			 (np.size(T),-1))
 	
@@ -214,8 +219,12 @@ class Model(object):
 		
 
 	# Model Order Parameter
+	
+	def ising_magnetization(self,s,u):
+		return np.mean(s,axis=-1)
+		
 	def ising_order(self,s):
-		return np.sum(s,axis=-1)/np.shape(s)[-1]
+		return self.ising_magnetization(s)
 	
 	def ising_twoptcorr(self,s):
 		shape_l = np.shape(s)[-1]
@@ -223,9 +232,13 @@ class Model(object):
 									  np.take(s,i,axis=-1))
 					   for i in range(shape_l)],axis=(0,-1))/shape_l
 	
+	
+	def potts_magnetization(self,s,u=1):
+		return np.mean(self.potts_int(s,u), axis=-1)
+	
 	def potts_order(self,s,u=1):
-		return np.mean(np.array([(self.q*np.mean(self.potts_int(s,u),
-								 axis=-1)- 1)/(self.q-1)
+		return np.mean(np.array([(self.q*self.potts_magnetization(s,u)-1)/(
+																self.q-1)
 						 for u in range(1,2)]),axis=0)
 
 	def potts_twoptcorr(self,s):
