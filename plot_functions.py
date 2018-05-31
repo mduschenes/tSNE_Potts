@@ -9,6 +9,8 @@ import copy
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
+from matplotlib.colors import LinearSegmentedColormap
+from colour import Color
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 #from matplotlib.ticker import MaxNLocator
 matplotlib.rcParams['text.usetex'] = True
@@ -16,11 +18,9 @@ matplotlib.rcParams['text.usetex'] = True
 # Define Figure Fonts
 #rcParams['axes.labelsize']  = 11
 #rcParams['figure.figsize']  = fig_size
-#rcParams['font.family']     = 'serif'
-#rcParams['font.serif']      = ['Computer Modern']
-#rcParams['font.size']       = 9
-##rcParams['text.fontsize']   = 10 ##text.fontsize is deprecated
-#rcParams['text.usetex']     = True
+matplotlib.rcParams['font.family']     = 'serif'
+matplotlib.rcParams['font.serif']      = ['Computer Modern']
+matplotlib.rcParams['font.size']   = 16
 #rcParams['legend.fontsize'] = 9
 #rcParams['xtick.labelsize'] = 9
 #rcParams['ytick.labelsize'] = 9
@@ -101,7 +101,7 @@ def set_props(plot,fig,ax,plot_props):
 	# Plot Legend
 	if not plot_props.get('other',{}).get('sup_legend'):
 		plt.legend(*(list_sort(ax.get_legend_handles_labels(),1)),
-					prop={'size': 7})
+					prop={'size': 14},loc=(0.1,0.85))
 
 
 	# Plot Colourbar
@@ -109,6 +109,9 @@ def set_props(plot,fig,ax,plot_props):
 		
 		
 		if plot_props.get('other',{}).get('cbar_plot') is not False:
+			
+			ax_pos = ax.get_position()
+			
 			cax = make_axes_locatable(ax).append_axes('right',
 												  size='5%',pad=0.05)
 			plt.cla()
@@ -121,19 +124,23 @@ def set_props(plot,fig,ax,plot_props):
 			else:
 				cbar = plt.colorbar(plot,cax=cax)
 		
-		if plot_props.get('data',{}).get('plot_range') is not None:
-			try:
-				cbar_vals=np.array(list(set(
-										 plot_props['data']['plot_range'])))
-				cbar.set_ticks(cbar_vals+0.5)
-				cbar.set_ticklabels(cbar_vals)
-			except RuntimeError:
-				cbar_vals = np.linspace(
-									min(plot_props['data']['plot_range']),
-									max(plot_props['data']['plot_range']),5)
-				cbar.set_ticks(cbar_vals)
-				cbar.set_ticklabels(cbar_vals)
-
+			if plot_props.get('data',{}).get('plot_range') is not None:
+				try:
+					cbar_vals=np.array(list(set(
+											 plot_props['data']['plot_range'])))
+					cbar.set_ticks(cbar_vals+0.5)
+					cbar.set_ticklabels(cbar_vals)
+				except RuntimeError:
+					cbar_vals = np.linspace(
+										min(plot_props['data']['plot_range']),
+										max(plot_props['data']['plot_range']),5)
+					cbar.set_ticks(cbar_vals)
+					cbar.set_ticklabels(cbar_vals)
+				ticklabs = cbar.ax.get_yticklabels()
+				cbar.ax.set_yticklabels(ticklabs, fontsize=10)
+			ax.set_position(ax_pos)
+		else:
+			fig.colorbar(plot, ax=ax).ax.set_visible(False)
 	# Plot Ticks
 	for w,wlim in plot_props.get('other',{}).get('axis_ticks',{}).items():
 		if wlim.get('lim'):
@@ -187,8 +194,10 @@ def get_props(data,domain,key,plot_props):
 		if data.dtype == np.integer and (
 					plot_props.get('data',{}).get('plot_range') is not None):
 			
-			cmap=plt.cm.get_cmap(plot_props.get(
-						'other',{}).get('cbar_color','jet'),n_plot_range)
+			
+			color_list = plot_props.get('other',{}).get('cbar_color','jet')
+			
+			cmap=plt.cm.get_cmap(color_list,n_plot_range)
 			cmap.set_bad(
 				color = plot_props.get('other',{}).get('cbar_color_bad',
 													   'magenta'))
@@ -202,11 +211,20 @@ def get_props(data,domain,key,plot_props):
 			
 		
 		else:
-			cmap=plt.cm.get_cmap(plot_props.get(
-						'other',{}).get('cbar_color','jet'))
-			cmap.set_bad(
-				color = plot_props.get('other',{}).get('cbar_color_bad',
-													   'magenta'))
+			color_list = plot_props.get('other',{}).get('cbar_color','jet')
+			if isinstance(color_list,list):
+				ncolors = np.size(data) #color_list[2]
+				color_list =list(Color(color_list[0]).range_to(
+								 Color(color_list[1]),
+								 ncolors))
+				color_list = list(map(lambda x: (x.red,x.green,x.blue),
+												color_list))
+				cmap = colors.ListedColormap(color_list)
+			else:
+				cmap=plt.cm.get_cmap(color_list)
+			
+			cmap.set_bad(color = plot_props.get('other',{}).get(
+									'cbar_color_bad', 'magenta'))
 			plot_props.get('plot',{})['cmap'] = cmap
 			
 

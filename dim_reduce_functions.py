@@ -392,24 +392,30 @@ def plot_props(keys,data_typed,data_rep,data_type):
 		 k: {
 		
 		  'ax':   {'title' : '', 
-					'xlabel': 'x1', 
-					'ylabel': 'x2'},
+					'xlabel': r'x_1' if '80' in k else '', 
+					'ylabel': r'x_2'},
 		  
-		  'plot':  {'c': np.reshape(data_typed[(
+		  'plot':  {'s':10,
+					'c': np.reshape(data_typed[(
 							 'temperatures'+'_'+data_type)][k],(-1,))},
 		  
 		  'data':  {'plot_type':'scatter',
-					'plot_range': np.reshape(data_typed[(
-							 'temperatures'+'_'+data_type)][k],(-1,)),
+					# 'plot_range': np.reshape(data_typed[(
+							 # 'temperatures'+'_'+data_type)][k],(-1,)),
 					'data_process':lambda data: np.real(data),
 					'domain_process':lambda domain: np.real(domain)},
 					
 		  'other': {'cbar_plot':True, 'cbar_title':'Temperatures',
-				   'cbar_color':'jet','cbar_color_bad':'magenta',
-					'label': lambda x='':x,'pause':0.01,
+				   'cbar_color': 'bwr',
+				   #['green','blue',np.size(data_typed[(
+					#		 'temperatures'+'_'+data_type)])],
+							 #'jet',
+					'cbar_color_bad':'magenta',
+					'label': lambda x='':'L = %s'%x[-2:],'pause':0.01,
 					'sup_legend': False,
-					'sup_title': {'t': data_rep + ' Representation - ' +
-									   data_type}
+					'sup_title': {'t': ''}
+					# data_rep + ' Representation - ' +
+									   # data_type}
 					}
 		 }
 		for k in keys}
@@ -447,10 +453,13 @@ if __name__ == "__main__":
 	parser.add_argument('-repeat','--repeat',help = 'Repeat tSNE',
 						action='store_true')
 						
-	parser.add_argument('--data_dir',help = 'Data Directory',
-						type=str,default='dataset/tsne/')
+	parser.add_argument('--header_sets',help = 'Data Set Headers',
+						type=str, nargs = '+', default = ['Ising','gauge'])
 						
-	parser.add_argument('--file_dir',help = 'File Output Data Directory',
+	parser.add_argument('--data_dir',help = 'Data Output Directory',
+						type=str,default='dataset/tsn2/')
+						
+	parser.add_argument('--file_dir',help = 'File Dataset Directory',
 						type=str,default='dataset/tsne/')
 						
 	# Parse Args Command
@@ -472,7 +481,7 @@ if __name__ == "__main__":
 	
 	joiner = lambda *strings: '_'.join([s for s in strings])
 	
-	header_sets = ['Ising','gauge'] # ['potts']
+	header_sets = ['Ising','gauge'] #['potts']
 	header_configs = 'spinConfigs'
 	header_temperatures = 'temperatures'
 	configs = {}
@@ -536,7 +545,6 @@ if __name__ == "__main__":
 	if data_params['file_dir'] == '':
 		data_params['file_dir'] = data_params['data_dir']
 	
-	
 	# Import Data
 	
 	data,data_sizes,_,_ = Data_Process().importer(data_params,
@@ -559,6 +567,9 @@ if __name__ == "__main__":
 				              f=lambda k,v: v,i=ind_data,j=ind_type)
 	
 	data_keys = {t: sorted(list(d.keys())) for t,d in data_typed.items()}
+
+	data_types_configs = [t[slice(*ind_type)] for t in data_types_configs]
+	data_types_temps  = [t[slice(*ind_type)] for t in data_types_temps]
 	
 	Y = {r: dict_modify(data,data_types_configs,
 				              f=lambda k,v: [],i=ind_data,j=ind_type)
@@ -566,11 +577,11 @@ if __name__ == "__main__":
 	
 	Y2 = Y.copy()
 	
-	data_types_configs = [t[slice(*ind_type)] for t in data_types_configs]
-	data_types_temps  = [t[slice(*ind_type)] for t in data_types_temps]
+
 	
 	
 	# Setup Plotting
+	imax = 2
 	plot_keys = {}
 	plot_bool = {}
 	for r in data_reps:
@@ -594,22 +605,24 @@ if __name__ == "__main__":
 		
 			# Check if Data Exists
 			params = data_params.copy()
+			params.pop('data_sets');
 			file_header = r+'_'+t
-			file_name = file_header + data_params['data_file']
-			params['data_files'] = file_name+ '.'+data_params['data_format']
+			file_name = '%s_%s'%(r,t)# + 'pca_spinConfigs_gauge' #file_header + data_params['data_file']
+			params['data_files'] = file_name + '.'+data_params['data_format']
 			data = Data_Proc.importer(params,data_obj_format='dict',
-										format='npz')
+										format='npz',directory = data_params['data_dir'])
 			if data is not None:
 				print('Previous Data Found for',file_name)
-				Y[r][t] = data[0][file_name].item()
-				
+				print(t,{k: np.shape(v) for k,v in data_typed['temperatures_'+t[-5:]].items()})
+				Y[r][t] = data[0][file_name]
+
 				Data_Proc.plotter(comp(Y[r][t],1),comp(Y[r][t],0),
 					 plot_props(Y[r][t].keys(),data_typed,r,t[-5:]),
 					 data_key=r+'_'+t)
-				
 			else:
-				print('New Data for')
-				for k in data_keys[t]:   
+				print('New Data for',file_name)
+				continue
+				for k in data_keys[t][:1]:   
 					print(r,t,k)
 					Y[r][t][k] = dim_reduce(data_typed[t][k],**data_params)
 										 
@@ -617,7 +630,7 @@ if __name__ == "__main__":
 				Data_Proc.exporter({file_header: Y[r][t]},data_params)
 				
 			
-			Data_Proc.plotter(comp(Y[r][t],1),comp(Y[r][t],0),
+				Data_Proc.plotter(comp(Y[r][t],1),comp(Y[r][t],0),
 					 plot_props(Y[r][t].keys(),data_typed,r,t[-5:]),
 					 data_key=r+'_'+t)
-	Data_Proc.plot_save(data_params,read_write='a')   
+	Data_Proc.plot_save(data_params,read_write='a',fig_size=(7,9))   

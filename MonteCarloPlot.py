@@ -162,7 +162,7 @@ class MonteCarloPlot(object):
 				# region[sites] = np.copy(sites0[sites])
 				# return region
 
-		def sup_title(label,every_word=True,**kwargs):
+		def sup_title(label='',every_word=True,**kwargs):
 			return caps(label+str_check(kwargs.get('sup_title','')),
 						every_word=every_word,sep_char=' ',split_char='_')
 			# caps(label,every_word=True,sep_char=' ',split_char='_') + (
@@ -203,14 +203,13 @@ class MonteCarloPlot(object):
 												   sep_char=' ',split_char='_'),
 								'cbar_plot':False,
 								'cbar_title':'Spin Values',
-								'cbar_color':'bone',
+								'cbar_color':'viridis',
 								'cbar_color_bad':'magenta',
 								'pause':0.01,
-								'sup_legend': False,
-								'sup_title': {'t':
-											sup_title('Monte Carlo %s Updates'%(
-												self.model_props['algorithm']),
-												**kwargs)}
+								'sup_title': {'t': ''}
+											#sup_title('Monte Carlo %s Updates'%(
+											#	self.model_props['algorithm']),
+											#	**kwargs)}
 								}
 					 }
 					for k in keys}
@@ -231,20 +230,21 @@ class MonteCarloPlot(object):
 				if k[0] != plot_keys[0][0][0]:
 					return plot_props_sites['title']
 				else:
-					return 'T = %0.2f'%k[1]
+					return ''
 				
 			def plot_ylabel(k,**kwargs):
 				if k[1] != plot_keys[0][0][1]:
 					return plot_props_sites['ylabel']
 				else:
-					return caps(k[0])
+					return '' #caps(k[0])
 						   
 				
 			def plot_xlabel(k,**kwargs):
 				if k[0] != plot_keys[-1][-1][0]:
 					return plot_props_sites['xlabel']
 				else:
-					return r'$%s$: %d'%(kwargs['i_mc'][0],kwargs['i_mc'][1])
+					return 'T = %0.2f'%k[1] 
+					#r'$%s$: %d'%(kwargs['i_mc'][0],kwargs['i_mc'][1])
 				
 			
 			def cbar_plot(k,**kwargs):
@@ -302,7 +302,7 @@ class MonteCarloPlot(object):
 					  'other': {'label': lambda x='':caps(str_check(x),
 												   every_word=True,
 												   sep_char=' ',split_char='_'),
-								'sup_legend': True,
+								'sup_legend': {'loc':'best'},
 								'sup_title': {'t':
 											sup_title('Observables Histogram \n',
 														**kwargs)},
@@ -387,10 +387,9 @@ class MonteCarloPlot(object):
 											  'y':{'lim':10,'ticksmax':None,
 															 'ticksmin':None}},
 								'pause':0.01,
-								'sup_legend': True,
+								'sup_legend': {'loc': (0.85,0.7)},
 								'sup_title': {'t':
-											sup_title('Observables / Site \n ',
-														**kwargs)}
+											sup_title(**kwargs)}
 								}
 					 }
 					for k in keys}
@@ -410,7 +409,9 @@ class MonteCarloPlot(object):
 			
 			def plot_title(k,**kwargs):
 				if k == 'susceptibility':
-					units = ' [$\mathrm{J}^{-1}$]'
+					units = r' [$\mathrm{J}^{-1}$]'
+				if k == 'energy':
+					units = r' [$\mathrm{J}$]'
 				else:
 					units = ''
 				return caps(str_check(k),every_word=True,
@@ -464,23 +465,23 @@ class MonteCarloPlot(object):
 						k: {
 		
 				  'ax':     {'title' : '', 
-							'xlabel': 'x1', 
-							'ylabel': 'x2'},
+							'xlabel': 'x_1', 
+							'ylabel': 'x_2'},
 				  
-				  'plot':  {},
+				  'plot':  {'s':10},
 				  
 				  'data':  {'plot_type':'scatter',
 							'data_process':lambda data: np.real(data),
 							'domain_process':lambda domain: np.real(domain)},
 							
 				  'other': {'cbar_plot':True, 'cbar_title':'Temperatures',
-						   'cbar_color':'jet','cbar_color_bad':'magenta',
+						   'cbar_color':'bwr','cbar_color_bad':'magenta',
 							'label': lambda x='':x,'pause':0.01,
-							'sup_legend': False,
-							'sup_title': {'t': sup_title(str_check(plot_type)+(
-												' Representation \n ' ),
-												every_word=None,
-												**kwargs)}
+							'sup_title': {'t': ''}
+							# sup_title(str_check(plot_type)+(
+												# ' Representation \n ' ),
+												# every_word=None,
+												# **kwargs)}
 							}
 				 }
 				for k in keys}
@@ -499,20 +500,24 @@ class MonteCarloPlot(object):
 			
 			
 			def plot_title(k,**kwargs):
-				return ''
+				return '%s = %s'%(kwargs['arr_1'][0],
+														caps(str_check(k[1]),
+															every_word=True,
+															sep_char=' ',
+															split_char='_'))
 				
 			def plot_ylabel(k,**kwargs):
 				if k[1] != plot_keys[0][0][1]:
 					return ''
 				else:
-					return 'x2'
+					return r'x_2'
 						   
 				
 			def plot_xlabel(k,**kwargs):
 				if k[0] != plot_keys[-1][-1][0]:
 					return ''
 				else:
-					return 'x1'
+					return r'x_1'
 				
 			
 			def cbar_plot(k,**kwargs):
@@ -522,11 +527,7 @@ class MonteCarloPlot(object):
 					return False 
 			
 			def plot_label(k,**kwargs):
-				return lambda k: '%s = %s'%(kwargs['arr_1'][0],
-														caps(str_check(k[1]),
-															every_word=True,
-															sep_char=' ',
-															split_char='_'))
+				return lambda k: ''
 
 			
 			def plot_c(k,**kwargs):

@@ -219,10 +219,10 @@ if __name__ == "__main__":
 	update_props = {'Neqb':args.Neqb, 'Nmeas':args.Nmeas, 'Nratio': args.Nratio,
 					'Nmeas_f':args.Nmeas_f, 'Ncluster':1}
 	
-	observe_props = {'configurations':   [args.sites_plot,'sites','cluster'],
+	observe_props = {'configurations':   [args.sites_plot,'sites'],
 			         'observables':      [True,'energy','order'],
-                     'observables_mean': [True,'energy','order','specific_heat',
-									                          'susceptibility']}
+                     'observables_mean': [True,'energy','order','specific_heat'
+									                          ]}
 	data_props = {
 		'data_properties':['model_name','d', 'data_dir', # algorithm
 						   'plot','sort','dim_reduc','analysis','observe_props',

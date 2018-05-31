@@ -182,7 +182,8 @@ class MonteCarloUpdate(object):
 					if 'sites' in var_type: break
 				plot_obj.plot_save(self.model_props,
 								        label=self.model_props['algorithm'],
-										fig_keys='configurations')
+										fig_keys='configurations',
+										fig_size = (6,12))
 				Data_Proc().exporter(
 							  {var_type:np.asarray(data_sites[i_iter])},
 							   self.model_props,

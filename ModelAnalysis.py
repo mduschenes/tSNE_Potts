@@ -76,8 +76,6 @@ class ModelAnalysis(object):
 			return
 			
 			
-			
-			
 		data = self.sort(data,p,self.data_props,t)
 	
 		# Plot Sorted Data
@@ -183,7 +181,7 @@ class ModelAnalysis(object):
 		
 		# Save Figures
 		if model_props.get('data_save',True):
-			plot_obj.plot_save(model_props,read_write='ow',fig_size=(12,9))
+			plot_obj.plot_save(model_props,read_write='ow',fig_size=(12,7))
 			
 		return
 		
@@ -313,7 +311,7 @@ class ModelAnalysis(object):
 												data_files = model_props[
 													'data_file']+temp_name,
 												disp=True)
-			input('Prepare for data concatenation')
+			#input('Prepare for data concatenation')
 			if data_temp is None:
 				print('New %s Data at '%rep,parameters[:len(branch)],
 					branch)
@@ -323,7 +321,7 @@ class ModelAnalysis(object):
 				# Ns = np.array(random.sample(,
 										# int(np.shape(data)[1]*Ns)))
 										
-				input('Prepare for data concatenation after random choice')
+				#input('Prepare for data concatenation after random choice')
 				data = np.concatenate(tuple([d[i:i+Ns]
 											 for d in data]),axis=0)
 				if True:

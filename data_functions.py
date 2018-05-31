@@ -165,7 +165,8 @@ class Data_Process(object):
 										
 			plt.suptitle(**props.get('other',{}).get('sup_title',{}))
 			if props.get('other',{}).get('sup_legend'):
-				fig.legend(*(list_sort(ax.get_legend_handles_labels(),1)))
+				fig.legend(*(list_sort(ax.get_legend_handles_labels(),1)),
+							**props['other']['sup_legend'])
 
 		return
             
@@ -184,7 +185,7 @@ class Data_Process(object):
 	def plot_save(self,data_params={'data_dir':'dataset/',
 									'figure_format':None},
 					   fig_keys = None,directory=None,
-					   label = '',read_write='w',fig_size=(8.5,11)):
+					   label = '',read_write='w',fig_size=None):#(8.5,11)):
         
         # Save Figures for current Data_Process Instance
 		
@@ -240,7 +241,7 @@ class Data_Process(object):
 				elif read_write == 'ow':
 					file_end = ''
 				plt.savefig(file + file_end+'.'+format,
-							bbox_inches='tight',dpi=500)
+							dpi=500,bbox_inches='tight')
 				fig.set_size_inches(plot_size) 
 			
 		return
@@ -317,6 +318,9 @@ class Data_Process(object):
 		if directory is None:
 			directory = data_params.get('data_dir',self.DIRECTORY)
 
+		if not os.path.isdir(directory):
+			os.makedirs(directory)
+			
 		# Import Data				
 		
 		def import_func(file,directory,format,key,type=None,**kwargs):		
@@ -449,7 +453,6 @@ class Data_Process(object):
 		
 		
 		# Type of Data Sets and Data Set Keys
-		print('Data Typing')
 		if data_typing is None:
 			data_typing = data_params.get('data_typing','dict')
 		
@@ -473,7 +476,6 @@ class Data_Process(object):
 			data_typed = {}
 			data_keys = {}
 			for t in data_params['data_types']:
-				print('Data Type ',t)
 				# Define Sets
 				data_typed[t] = data_typer(data,t,data_typed)
 				if data_typed[t] == {}: 
