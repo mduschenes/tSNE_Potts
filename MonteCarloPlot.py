@@ -56,7 +56,7 @@ class MonteCarloPlot(object):
 			if K == 'configurations':
 				self.plot_obj.plotter(
 							data = {kt: data[K][kt[0]] 
-								 for kt in flatten(self.plot_keys[K]) 
+								 for kt in flatten(self.plot_keys[K])
 								 if kt[1] in kwargs['arr_0'][1]},
 							plot_props = self.MC_plot_props(K,self.plot_keys[K],
 														**kwargs),
@@ -148,6 +148,7 @@ class MonteCarloPlot(object):
 
 	# Data type dependent plot properties keys
 	def MC_plot_props(self,plot_type,plot_keys,**kwargs):
+		FONT_SIZE = 14
 				
 		# Function plot sites or clusters of sites
 		def sites_region(sites):
@@ -188,10 +189,10 @@ class MonteCarloPlot(object):
 								'xlabel': '', 
 								'ylabel': ''},
 					  'ax_attr': {'get_xticklabels':{'visible':False,
-													 'fontsize':12},
+													 'fontsize':FONT_SIZE},
 								  'xaxis': {'ticks_position': 'none'},
 								  'get_yticklabels':{'visible':False,
-													 'fontsize':12},
+													 'fontsize':FONT_SIZE},
 								  'yaxis': {'ticks_position': 'none'}},
 					  'plot':  {'interpolation':'nearest'},
 					  
@@ -201,11 +202,19 @@ class MonteCarloPlot(object):
 					  'other': {'label': lambda x='':caps(str_check(x),
 												   every_word=True,
 												   sep_char=' ',split_char='_'),
-								'cbar_plot':False,
-								'cbar_title':'Spin Values',
-								'cbar_color':'viridis',
-								'cbar_color_bad':'magenta',
-								'pause':0.01,
+								'cbar': {										
+										'plot':False,
+										'title':{'label':'Spin Values',
+												 'size':FONT_SIZE},
+										'color':'viridis',
+										'color_bad':'magenta',
+										'labels': {'fontsize': 10},
+										'vals_slice':slice(1,None,2)},
+								'pause':0.5,
+								'sup_legend': None,
+								'legend': {'prop':{'size': FONT_SIZE},
+										   'loc':(0.1,0.85)
+										  },
 								'sup_title': {'t': ''}
 											#sup_title('Monte Carlo %s Updates'%(
 											#	self.model_props['algorithm']),
@@ -218,7 +227,11 @@ class MonteCarloPlot(object):
 			# Set Varying Properties                  
 			def set_prop(props,key,func,**kwargs):
 				for k in props.keys():
-					props[k][key[0]][key[1]] = func(k,**kwargs)
+					props_k = props[k]
+					for key_i in key[:-1]:
+						if not props_k.get(key_i): props_k.update({key_i:{}})
+						props_k = props_k[key_i]
+					props_k[key[-1]] = func(k,**kwargs)
 				return
 			 
 				
@@ -275,8 +288,7 @@ class MonteCarloPlot(object):
 			set_prop(plot_props,['ax','ylabel'],plot_ylabel,**kwargs)
 			set_prop(plot_props,['data','data_process'],data_process,**kwargs)
 			set_prop(plot_props,['data','plot_range'],plot_range,**kwargs)
-			set_prop(plot_props,['other','cbar_plot'],cbar_plot,**kwargs)
-				
+			set_prop(plot_props,['other','cbar','plot'],cbar_plot,**kwargs)
 			return plot_props
 
 
@@ -302,7 +314,8 @@ class MonteCarloPlot(object):
 					  'other': {'label': lambda x='':caps(str_check(x),
 												   every_word=True,
 												   sep_char=' ',split_char='_'),
-								'sup_legend': {'loc':'best'},
+								'legend': {'prop':{'size': FONT_SIZE},
+										   'loc':'best'},
 								'sup_title': {'t':
 											sup_title('Observables Histogram \n',
 														**kwargs)},
@@ -387,7 +400,8 @@ class MonteCarloPlot(object):
 											  'y':{'lim':10,'ticksmax':None,
 															 'ticksmin':None}},
 								'pause':0.01,
-								'sup_legend': {'loc': (0.85,0.7)},
+								'sup_legend': True,
+								'legend': {'loc': (0.85,0.7)},
 								'sup_title': {'t':
 											sup_title(**kwargs)}
 								}
@@ -410,7 +424,7 @@ class MonteCarloPlot(object):
 			def plot_title(k,**kwargs):
 				if k == 'susceptibility':
 					units = r' [$\mathrm{J}^{-1}$]'
-				if k == 'energy':
+				elif k == 'energy':
 					units = r' [$\mathrm{J}$]'
 				else:
 					units = ''
@@ -430,10 +444,17 @@ class MonteCarloPlot(object):
 
 			
 			def data_process(k,**kwargs):
+				def data_mean(x,wrapper=lambda x: x):
+					if isinstance(x,list) and (
+									len(set([np.size(y) for y in x])) > 1):
+						return [np.mean(wrapper(y),axis=-1) for y in x]
+					else:
+						return np.mean(wrapper(x),axis=-1)
+						
 				if k == 'order':
-					return lambda x:  np.mean(np.abs(x),axis=-1)
+					return lambda x:  data_mean(x,np.abs)
 				else:
-					return lambda x:  np.mean(x,axis=-1)
+					return lambda x:  data_mean(x)
 			
 			
 			
@@ -467,7 +488,12 @@ class MonteCarloPlot(object):
 				  'ax':     {'title' : '', 
 							'xlabel': 'x_1', 
 							'ylabel': 'x_2'},
-				  
+				  'ax_attr': {'get_xticklabels':{'visible':False,
+													 'fontsize':12},
+								  'xaxis': {'ticks_position': 'none'},
+								  'get_yticklabels':{'visible':False,
+													 'fontsize':12},
+								  'yaxis': {'ticks_position': 'none'}},
 				  'plot':  {'s':10},
 				  
 				  'data':  {'plot_type':'scatter',
@@ -477,6 +503,7 @@ class MonteCarloPlot(object):
 				  'other': {'cbar_plot':True, 'cbar_title':'Temperatures',
 						   'cbar_color':'bwr','cbar_color_bad':'magenta',
 							'label': lambda x='':x,'pause':0.01,
+							'legend': {'prop':{'size': FONT_SIZE}},
 							'sup_title': {'t': ''}
 							# sup_title(str_check(plot_type)+(
 												# ' Representation \n ' ),

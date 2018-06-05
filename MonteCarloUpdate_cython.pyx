@@ -13,6 +13,7 @@ import numpy as np
 cimport numpy as cnp
 from numpy cimport ndarray
 cimport cython
+from cpython.array cimport array, clone
 
 import warnings,copy,sys
 warnings.filterwarnings("ignore")
@@ -136,7 +137,6 @@ cdef class MonteCarloUpdate(object):
 									  dtype=self.model_props['data_value_type'])
 		cdef SITE_TYPE[::1] cluster = np.zeros(N_sites,
 									  dtype=self.model_props['data_value_type'])
-		cdef int[::1] cluster_bool = np.zeros(N_sites,dtype=np.intc)
 		cdef int[:,::1] neighbours = self.model_props['neighbour_sites'][0]
 
 		# Ensure Recursion Depth Limit is Adequate
@@ -198,7 +198,7 @@ cdef class MonteCarloUpdate(object):
 				# Perform Equilibration Monte Carlo steps initially
 				for i_mc in range(Neqb):
 					for i_sweep in range(N_sites):
-						MC_alg(sites, cluster, cluster_bool.copy(),
+						MC_alg(sites, cluster,
 							   neighbours, N_sites, N_neighbours,
 							   t, (float(i_sweep)/N_sites)/Nratio, 
 						       state_update, state_gen, state_int)					
@@ -206,7 +206,7 @@ cdef class MonteCarloUpdate(object):
 				# Perform Measurement Monte Carlo Steps
 				for i_mc in range(Nmeas):
 					for i_sweep in range(N_sites):
-						MC_alg(sites, cluster, cluster_bool.copy(),
+						MC_alg(sites, cluster,
 							   neighbours, N_sites, N_neighbours,
 							   t, (float(i_sweep)/N_sites)/Nratio, 
 						       state_update, state_gen, state_int)
@@ -218,7 +218,7 @@ cdef class MonteCarloUpdate(object):
 						# display(print_it=disp_updates,
 								# m='Monte Carlo Step: %d'%(i_mc))
 						
-						plot_obj.MC_plotter( 
+				plot_obj.MC_plotter( 
 						  {'configurations': {'sites': np.asarray(sites),
 											  'cluster':np.asarray(cluster)}},
 												**{'arr_0': ['T',[t]],
@@ -256,7 +256,6 @@ cdef class MonteCarloUpdate(object):
 	@cython.cdivision(True)
 	cpdef void metropolis(self,SITE_TYPE[::1] sites,
 							  SITE_TYPE[::1] cluster,
-							  int [::1] cluster_bool,
 							  int[:,::1] neighbours,
 							  int N_sites,int N_neighbours,
 							  double T,
@@ -293,12 +292,13 @@ cdef class MonteCarloUpdate(object):
 				
 		return
 
+		
+		
 	@cython.boundscheck(False)
 	@cython.wraparound(False)
 	@cython.cdivision(True)
 	def wolff(self,SITE_TYPE[::1] sites,
 							  SITE_TYPE[::1] cluster,
-							  int [::1] cluster_bool,
 							  int[:,::1] neighbours,
 							  int N_sites,int N_neighbours,
 							  double T,
@@ -306,45 +306,91 @@ cdef class MonteCarloUpdate(object):
 							  dict state_update, 
 							  object state_gen,
 							  object state_int):  
+		
+		
 		# Create Cluster Array and Choose Random Site
-
-		@cython.boundscheck(False)
-		@cython.wraparound(False)
-		@cython.cdivision(True)
-		def cluster_update(int i):
-
-			# Add indices to cluster
-			cluster_bool[i] = 1
-			cluster[i] = cluster_value0
-			cdef int[::1] nn = neighbours[i]
-			cdef int n=0,j = 0
-			for j in range(N_neighbours):
-				n = nn[j]
-				if (cluster_bool[n]==0) and (sites[n] == cluster_value0):
-					if state_update[T] >  np.random.random():
-						cluster_update(n)
-			return
-		cdef int isite = np.random.randint(N_sites) #int(drand48()*(N_sites))
+		cdef int [::1] cluster_stack = ndarray(N_sites,dtype=int)
+		#cluster[:] = 0 #np.zeros(N_sites)
+		#cdef int [::1] cluster_bool = cluster[:]
+		cdef int i = np.random.randint(N_sites) #int(drand48()*(N_sites))
+		cdef int cluster_ind = 0
+		cdef int nn,j = 0
 		
-		cdef SITE_TYPE cluster_value0 = sites[isite]
-
+		cdef SITE_TYPE cluster_value0 = sites[i]
+		cdef SITE_TYPE cluster_value = state_gen(1,cluster_value0)
+		
 		# Perform cluster algorithm to find indices in cluster
-		# cdef SITE_TYPE[::1] cluster_new = np.zeros(N_sites,
-		# 											dtype=type(cluster[0]))
-		cluster[:] = 0 #cluster_new
+		#cluster_add(i)
+		cluster_stack[cluster_ind]
+		sites[i] = cluster_value
+		cluster_ind = 1
+		while cluster_ind:
+			cluster_ind -= 1
+			i = cluster_stack[cluster_ind]
+			for j in range(N_neighbours):
+				nn = neighbours[i,j]
+				if sites[nn] == cluster_value0 and ( # and not cluster_bool[nn]
+						state_update[T] > np.random.random()):
+					cluster_stack[cluster_ind] = nn
+					sites[nn] = cluster_value
+					cluster_ind += 1
 		
-		cluster_update(isite)
-
-		# Flip spins in cluster to new value
-		cdef SITE_TYPE val = state_gen(1,cluster_value0)
-
-		cdef int i = 0
-
-		for i in range(N_sites):
-			if cluster_bool[i] == 1:
-				sites[i] = val
+		
 
 		return
+		
+		
+	# @cython.boundscheck(False)
+	# @cython.wraparound(False)
+	# @cython.cdivision(True)
+	# def wolff_rec(self,SITE_TYPE[::1] sites,
+							  # SITE_TYPE[::1] cluster,
+							  # int[:,::1] neighbours,
+							  # int N_sites,int N_neighbours,
+							  # double T,
+							  # double update_status,							  
+							  # dict state_update, 
+							  # object state_gen,
+							  # object state_int):  
+		# # Create Cluster Array and Choose Random Site
+
+		# @cython.boundscheck(False)
+		# @cython.wraparound(False)
+		# @cython.cdivision(True)
+		# def cluster_update(int i):
+
+			# # Add indices to cluster
+			# cluster_bool[i] = 1
+			# cluster[i] = cluster_value0
+			# cdef int[::1] nn = neighbours[i]
+			# cdef int n=0,j = 0
+			# for j in range(N_neighbours):
+				# n = nn[j]
+				# if (cluster_bool[n]==0) and (sites[n] == cluster_value0):
+					# if state_update[T] >  np.random.random():
+						# cluster_update(n)
+			# return
+		# cdef int isite = np.random.randint(N_sites) #int(drand48()*(N_sites))
+		
+		# cdef SITE_TYPE cluster_value0 = sites[isite]
+
+		# # Perform cluster algorithm to find indices in cluster
+		# # cdef SITE_TYPE[::1] cluster_new = np.zeros(N_sites,
+		# # 											dtype=type(cluster[0]))
+		# cluster[:] = 0 #cluster_new
+		
+		# cluster_update(isite)
+
+		# # Flip spins in cluster to new value
+		# cdef SITE_TYPE val = state_gen(1,cluster_value0)
+
+		# cdef int i = 0
+
+		# for i in range(N_sites):
+			# if cluster_bool[i] == 1:
+				# sites[i] = val
+
+		# return
 		
 		
 	@cython.boundscheck(False)
@@ -352,7 +398,6 @@ cdef class MonteCarloUpdate(object):
 	@cython.cdivision(True)
 	cpdef void metropolis_wolff(self,SITE_TYPE[::1] sites,
 							  SITE_TYPE[::1]  cluster,
-							  int [::1] cluster_bool,
 							  int[:,::1] neighbours,
 							  int N_sites,int N_neighbours,
 							  double T,
@@ -362,11 +407,11 @@ cdef class MonteCarloUpdate(object):
 							  object state_int):
 
 		if update_status < 1:
-			self.metropolis(sites, cluster, cluster_bool,
+			self.metropolis(sites, cluster,
 							neighbours, N_sites, N_neighbours, T, update_status, 
 						    state_update['metropolis'], state_gen, state_int)
 		else:
-			self.wolff(sites, cluster, cluster_bool,
+			self.wolff(sites, cluster,
 					   neighbours, N_sites, N_neighbours,T, update_status, 
 					   state_update['wolff'], state_gen, state_int)
 		return

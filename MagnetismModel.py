@@ -176,7 +176,7 @@ parser.add_argument('-dim_reduc','--dim_reduc',help = 'Reduce Dimensions Data',
 					action='store_true')
 
 parser.add_argument('--sort_params',help = 'Sort Parameters',
-					nargs = '+',type=str,default=['q','L','T'])	
+					nargs = '+',type=str,default=['L','q','T'])	
 					
 parser.add_argument('--dim_reduc_params',help = 'Dimensional Reduce Parameters',
 					nargs = '+',
@@ -221,8 +221,8 @@ if __name__ == "__main__":
 	
 	observe_props = {'configurations':   [args.sites_plot,'sites'],
 			         'observables':      [True,'energy','order'],
-                     'observables_mean': [True,'energy','order','specific_heat'
-									                          ]}
+                     'observables_mean': [True,'energy','order','specific_heat',
+									                   'susceptibility'       ]}
 	data_props = {
 		'data_properties':['model_name','d', 'data_dir', # algorithm
 						   'plot','sort','dim_reduc','analysis','observe_props',

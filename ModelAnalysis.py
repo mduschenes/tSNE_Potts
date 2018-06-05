@@ -205,7 +205,6 @@ class ModelAnalysis(object):
 			# Set Tree
 			for k in branches.keys():
 				set_tree(tree,branches[k],data.get(k,data),branch_func,*args)
-			
 			return tree, branches
 
 		def get_branch(tree,branch,depth=-1):
@@ -223,9 +222,13 @@ class ModelAnalysis(object):
 		def get_tree(branches,root=[]):
 			if max([len(b) for b in branches]) > 0:
 				tree = {}
-				for b0 in set([b[0] for b in branches]):
-					tree[b0]=get_tree([b[1:] for b in branches if b[0] == b0],
-										root)
+				b0_list = []
+				for b in branches:
+					b0_list.extend(np.atleast_1d(b[0]))
+				for b0 in set(b0_list):
+					tree[b0]=get_tree([b[1:] for b in branches 
+									         if b0 in np.atleast_1d(b[0])],
+											root)
 			else:
 				if isinstance(root,np.ndarray):
 					tree = np.copy(root)
@@ -236,29 +239,40 @@ class ModelAnalysis(object):
 		def set_tree(tree, branch, data, branch_func= lambda t,b,d,*a:d, *args):
 			for b in branch[:-1]:
 				tree = tree[b]
-			tree[branch[-1]] = branch_func(tree,branch,data,*args)
+			tree = branch_func(tree,branch,data,*args)
+			
 		
 		def sites_sorted(tree,branch,data,root):
-			if tree[branch[-1]] == root:
-				return dim_reduct(data)
-			else:
-				return np.append(tree[branch[-1]],dim_reduct(data),axis=0)
+			for i,b in enumerate(np.atleast_1d(branch[-1])):
+				if tree[b] == root:
+					#if b == 2.1: print('newroot',b,np.shape(tree[b]),np.shape(data[i]))
+					tree[b] = data[i]
+				else:
+					#if b == 2.1: print('oldroot',b,np.shape(tree[b]),np.shape(data[i]),np.shape(np.append(tree[b],data[i],axis=0)))
+					tree[b] = np.append(tree[b],data[i],axis=0)
+				#if b == 2.1: print('final',branch,b,np.shape(tree[b]))
+			return tree
 			
 		def observables_sorted(tree,branch,data,root,depth):
-			if tree[branch[-1]] == root:
-				return data[0]
-			else:
-				for k in data[0].keys():
-					tree[branch[-1]][k] = np.append(np.atleast_1d(
-														tree[branch[-1]][k]),
-												    np.atleast_1d(data[0][k]),
-													axis=-1)
-				return tree[branch[-1]] 
+			for i,b in enumerate(np.atleast_1d(branch[-1])):
+				for j in range(np.shape(data)[0]):
+					for k in data[j].keys():
+						if k not in tree[b].keys():
+							tree[b][k] = data[j][k][i]
+						else:
+							#print('tuple',branch,k,np.shape(data[j][k][i]),np.shape(tree[b].get(k)))
+							tree[b][k] = np.append(np.atleast_1d(tree[b][k]),
+												   np.atleast_1d(
+												   dim_reduct(data[j][k][i])),
+												   axis=-1)
+						#print(branch,k,np.shape(tree[b][k]))
+			return tree
+		
 
 		def model_props_sorted(tree,branch,data,depth):
 			
 			if tree[branch[-1]] != {}:
-				return tree[branch[-1]]
+				return tree
 			
 			# Update data properties
 			props = {} #copy.deepcopy(data)
@@ -284,8 +298,8 @@ class ModelAnalysis(object):
 						   s+'_sorted'] = props['observe_props'].get(s,[True,s])
 				
 			Data_Process().format(props, file_update=True)
-			
-			return props
+			tree[branch[-1]] = props
+			return tree
 			
 		def reduce_sorted(tree,branch,data,root,model_props,rep):
 			
@@ -300,13 +314,14 @@ class ModelAnalysis(object):
 			
 			# Check if Data Exists
 			if tree[b] != root:
-				return tree[b]
+				return tree
 			
 			dim_reduc_params = data_props['analysis_params'][
 										  'dim_reduc_params'].copy()
 			temp_name = '_'.join(['rep',rep[0],
 							'_'.join(p for p in parameters[1:len(branch)]) + (
-							'_'.join(str(b) for b in branch[1:]))])
+							'_'.join(str(b) for b in branch[1:]))]) + (
+							'.'+model_props['data_format'][rep])
 			data_temp = Data_Process().importer(model_props,
 												data_files = model_props[
 													'data_file']+temp_name,
@@ -327,20 +342,23 @@ class ModelAnalysis(object):
 				if True:
 					data =  dim_reduce(data,rep=rep, **dim_reduc_params)
 				
-				Data_Process().exporter({temp_name:data},model_props,
+				Data_Process().exporter({temp_name.split('.')[0]:data},
+									     model_props,
 										 read_write = 'a')
 				
 				
 			else:
 				print('Previous %s Data at '%rep,parameters[:len(branch)],
 					branch,
-					np.shape(data_temp[0][model_props['data_file']+temp_name]))
+					np.shape(data_temp[0][model_props['data_file']+
+								temp_name.split('.')[0]]))
 				
-				data = data_temp[0][model_props['data_file']+temp_name]
+				data = data_temp[0][model_props['data_file']+
+									temp_name.split('.')[0]]
 			
 			keys = keys_func(keys,data)
-				
-			return (keys,data)
+			tree[b] = (keys,data)
+			return tree
 			
 			
 		
@@ -388,7 +406,7 @@ class ModelAnalysis(object):
 				root[s] = []
 				depth[s] = None
 			elif s == 'observables':
-				root[s] = []
+				root[s] = {}
 				depth[s] = None
 				args[s] = (root[s],depth[s])
 			elif s == 'model_props':

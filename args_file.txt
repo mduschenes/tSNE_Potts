@@ -9,14 +9,14 @@
 
 { 'T': np.array(list(np.linspace(2.25,0.92,12))+list(np.linspace(0.9,0.51,18))+list(np.linspace(0.5,0.25,20)))}
 { 'd': [2]}
-{ 'q': [6,10]}
-{ 'L': [30]}
+{ 'q': [4,6,10]}
+{ 'L': [80]}
 { 'Ne': [int(1e5)]}
 { 'Nm': [int(5e3)]}
 { 'Nf': [int(0.5e1)]}
-{ 'Nr': [0.8]}
+{ 'Nr': [0.7]}
 { 'alg': ['metropolis_wolff']}
-{ '-data_dir': ['dataset/dataset_May28_7pm']}
+{ '-data_dir': ['dataset/']}
 
 # { 'T':np.array(list(np.linspace(2.25,0.92,12))+list(np.linspace(0.9,0.51,18))+list(np.linspace(0.5,0.25,20))) }
 # { 'd': [2]}

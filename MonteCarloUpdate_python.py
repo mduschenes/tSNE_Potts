@@ -92,7 +92,6 @@ class MonteCarloUpdate(object):
 		N_neighbours = len(self.model_props['neighbour_sites'][0,0,:])
 		sites = np.zeros(N_sites,dtype=self.model_props['data_value_type'])
 		cluster = np.zeros(N_sites, dtype=self.model_props['data_value_type'])
-		cluster_bool = np.zeros(N_sites,dtype=bool)
 		neighbours = self.model_props['neighbour_sites'][0]
 
 		# Ensure Recursion Depth Limit is Adequate
@@ -148,7 +147,7 @@ class MonteCarloUpdate(object):
 				# Perform Equilibration Monte Carlo steps initially
 				for i_mc in range(Neqb):
 					for i_sweep in range(N_sites):
-						MC_alg(sites, cluster, cluster_bool,
+						MC_alg(sites, cluster,
 							   neighbours, N_sites, N_neighbours,
 							   t, (i_sweep/N_sites)/Nratio, 
 						       state_update, state_gen, state_int)
@@ -156,23 +155,22 @@ class MonteCarloUpdate(object):
 				# Perform Measurement Monte Carlo Steps
 				for i_mc in range(Nmeas):
 					for i_sweep in range(N_sites):
-						MC_alg(sites, cluster, cluster_bool,
+						MC_alg(sites, cluster,
 							   neighbours, N_sites, N_neighbours,
 							   t, (i_sweep/N_sites)/Nratio,
 						       state_update, state_gen, state_int)
-					
 					# Update Configurations
 					if i_mc % Nmeas_f == 0:
 						i_mc_meas = i_mc//Nmeas_f
 						data_sites[i_iter,i_t,i_mc_meas,:] = sites
 						# display(print_it=disp_updates,
 								# m='Monte Carlo Step: %d'%(i_mc))
-						
 				plot_obj.MC_plotter(
 						  {'configurations': {'sites': np.asarray(sites),
 											  'cluster':np.asarray(cluster)}},
 												**{'arr_0': ['T',[t]],
-												  'i_mc':['t_{MC}',i_mc+1]})                
+												  'i_mc':['t_{MC}',i_mc+1]})
+					                
 			  
 				display(print_it=disp_updates,m='Updates: T = %0.2f'%t)
 				
@@ -201,7 +199,7 @@ class MonteCarloUpdate(object):
 			
 			
 	# Update Algorithms
-	def metropolis(self,sites, cluster, cluster_bool, neighbours,
+	def metropolis(self,sites, cluster, neighbours,
 						N_sites,N_neighbours, T, update_status,
 						state_update, state_gen, state_int):
 		# Randomly alter random spin sites and accept spin alterations
@@ -229,85 +227,51 @@ class MonteCarloUpdate(object):
 		return
 
 
-	def wolff(self,sites, cluster, cluster_bool, neighbours,
+	def wolff(self,sites, cluster, neighbours,
 						N_sites,N_neighbours, T, update_status,
 						state_update, state_gen, state_int):      
-
-		# Cluster Function
-		def cluster_update(i):
-			# Add indices to cluster
-			cluster_bool[i] = True
-			cluster[i] = cluster_value0
-
-			for j in neighbours[i]:
-				if sites[j] == cluster_value0 and not cluster_bool[j] and (
-						state_update[T] > np.random.random()):
-					cluster_update(j)
-
-			return
 		
-		# Create Cluster Array and Choose Random Site
-		
-		isite = np.random.randint(N_sites)
-
-		cluster_value0 = sites[isite]
-
-		# Perform cluster algorithm to find indices in cluster
-		cluster[:] = 0 #np.zeros(N_sites)
-		cluster_bool[:] = 0
-		cluster_update(isite)
-
-		# Flip spins in cluster to new value
-		sites[cluster_bool] = state_gen(1,cluster_value0)
-		return
-
-	def wolff_rec(self,sites, cluster, cluster_bool, neighbours,
-						N_sites,N_neighbours, T, update_status,
-						state_update, state_gen, state_int):      
-	
-
-		@tail_recursive
-		def cluster_update(i):
-			cluster_bool[i] = True
-			cluster[i] = cluster_value0
-			for j in neighbours[i]:
-				if sites[j] == cluster_value0 and not cluster_bool[j] and (
-						state_update[T] > np.random.random()):
-					recurse(j)
-			return
-		
-
-		def node_gen(i):
-			return (j for j in neighbours[i] if (not cluster_bool[j]) and 
-											(sites[j] == cluster_value0))
+		# Add to Cluster
 		def cluster_add(i):
-			cluster_bool[i] = True
-			cluster[i] = cluster_value0
-			return
-		
-		
+			cluster_stack[cluster_ind] = i
+			#cluster_bool[i] = 1
+			#cluster[i] = cluster_value
+			sites[i] = cluster_value
 		
 		# Create Cluster Array and Choose Random Site
-		isite = np.random.randint(N_sites)
-		cluster_value0 = sites[isite]
-		cluster[:] = 0 #np.zeros(N_sites)
+		
+		cluster_stack = np.empty(N_sites,dtype=int)
+		#cluster[:] = 0 #np.zeros(N_sites)
+		#cluster_bool = cluster[:]
+		i = np.random.randint(N_sites)
+
+		cluster_value0 = sites[i]
+		cluster_value = state_gen(1,cluster_value0)
+		
 		# Perform cluster algorithm to find indices in cluster
-		cluster_update(isite)
+		cluster_ind = 0
+		cluster_add(i)
+		cluster_ind = 1
+		while cluster_ind:
+			cluster_ind -= 1
+			i = cluster_stack[cluster_ind]
+			for j in neighbours[i]:
+				if sites[j] == cluster_value0 and ( # and not cluster_bool[j]
+						state_update[T] > np.random.random()):
+					cluster_add(j)
+					cluster_ind += 1
+		return	   
 
-		# Update spins in cluster to new value
-		sites[cluster_bool] = state_gen(1,cluster_value0)
-		return		   
-
-	def metropolis_wolff(self,sites, cluster, cluster_bool, neighbours,
+	def metropolis_wolff(self,sites, cluster, neighbours,
 						N_sites,N_neighbours, T, update_status,
 						state_update, state_gen, state_int):      
 
 		if update_status < 1:
-			self.metropolis(sites, cluster, cluster_bool,
+			self.metropolis(sites, cluster,
 							neighbours, N_sites, N_neighbours, T, update_status, 
 						    state_update['metropolis'], state_gen, state_int)
 		else:
-			self.wolff(sites, cluster, cluster_bool,
+			self.wolff(sites, cluster,
 					   neighbours, N_sites, N_neighbours,T, update_status, 
 					   state_update['wolff'], state_gen, state_int)
 		return

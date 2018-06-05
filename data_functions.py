@@ -131,7 +131,7 @@ class Data_Process(object):
 
 		
 		# Plot for each data key
-		for key in keys:
+		for key in sorted(keys):
 		
 			display(print_it=disp,time_it=False,
 						m = 'Plotting %s'%(str_check(key)))
@@ -150,9 +150,9 @@ class Data_Process(object):
 				fig = self.figs[data_key][key]
 				plt.figure(fig.number)
 				fig.sca(ax)
-			# Plot Data
-			# try:
 			
+			# Plot Data
+			#try:
 			getattr(plot_functions,'plot_' + props.get('data',{}).get(
 					'plot_type','plot'))(data[key],domain[key],fig,ax,props)
 			# except AttributeError:
@@ -162,11 +162,12 @@ class Data_Process(object):
 				# display(m='Figure %s Created'%(
 										# plot_props[key]['data']['plot_type']))
 										
-										
+			
+			# Figure Title and Legend
 			plt.suptitle(**props.get('other',{}).get('sup_title',{}))
 			if props.get('other',{}).get('sup_legend'):
 				fig.legend(*(list_sort(ax.get_legend_handles_labels(),1)),
-							**props['other']['sup_legend'])
+							**props.get('other',{}).get('legend',{}))
 
 		return
             

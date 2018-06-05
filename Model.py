@@ -146,7 +146,7 @@ class Model(object):
 				axis=(0,-2,-1))))/np.shape(sites)[-1]
 
 	
-	def magnetization(self,sites,neighbours,T):
+	def magnetization(self,sites,neighbours,T,u=1):
 		magnet = self.model_params['magnetization']
 		return magnet(sites)
 	
@@ -160,19 +160,19 @@ class Model(object):
 	
 	def specific_heat(self,sites,neighbours,T):  
 	  wrapper = lambda x: np.power(x,2)
-	  return np.reshape((self.obs_mean(sites,neighbours,T,self.energy,wrapper) - 
-			 wrapper(self.obs_mean(sites,neighbours,T,self.energy)))*(
+	  return np.reshape((self.obs_mean(self.energy,wrapper,sites,neighbours,T) - 
+			 wrapper(self.obs_mean(self.energy,None,sites,neighbours,T)))*(
 			 np.shape(sites)[-1]/wrapper(T)),
 			 (np.size(T),-1))
   
  
 	def susceptibility(self,sites,neighbours,T):        
 	  wrapper = lambda x: np.power(x,2)
-	  return np.reshape((self.obs_mean(sites,neighbours,T,self.magnetization,
-																	wrapper) - 
-			 wrapper(self.obs_mean(sites,neighbours,T,self.magnetization,
-																	np.abs)))*(
-			 np.shape(sites)[-1]/T),
+	  return np.reshape(np.mean([(self.obs_mean(self.magnetization, wrapper,
+										sites,neighbours,T,u) - 
+			 wrapper(self.obs_mean(self.magnetization, np.abs,
+									sites,neighbours,T,u)))*(
+			 np.shape(sites)[-1]/T) for u in range(0,self.q)],axis=0),
 			 (np.size(T),-1))
 	
 		
@@ -186,8 +186,11 @@ class Model(object):
 
 
 
-	def obs_mean(self,sites,neighbours,T,func,wrapper=lambda x:x):
-		return np.mean(wrapper(func(sites,neighbours,T)),axis=-1)
+	def obs_mean(self,func=None,wrapper=None,*args):
+		if func is None: func = lambda x:x
+		if wrapper is None: wrapper = lambda x:x
+		
+		return np.mean(wrapper(func(*args)),axis=-1)
 
 
 

@@ -10,17 +10,18 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from matplotlib.colors import LinearSegmentedColormap
-from colour import Color
+#from colour import Color
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 #from matplotlib.ticker import MaxNLocator
-matplotlib.rcParams['text.usetex'] = True
 
-# Define Figure Fonts
+# Define Figure Font Properties
+FONT_SIZE = 16
+matplotlib.rcParams['text.usetex'] = True
 #rcParams['axes.labelsize']  = 11
 #rcParams['figure.figsize']  = fig_size
 matplotlib.rcParams['font.family']     = 'serif'
 matplotlib.rcParams['font.serif']      = ['Computer Modern']
-matplotlib.rcParams['font.size']   = 16
+matplotlib.rcParams['font.size']   = FONT_SIZE
 #rcParams['legend.fontsize'] = 9
 #rcParams['xtick.labelsize'] = 9
 #rcParams['ytick.labelsize'] = 9
@@ -101,46 +102,46 @@ def set_props(plot,fig,ax,plot_props):
 	# Plot Legend
 	if not plot_props.get('other',{}).get('sup_legend'):
 		plt.legend(*(list_sort(ax.get_legend_handles_labels(),1)),
-					prop={'size': 14},loc=(0.1,0.85))
+					**plot_props.get('other',{}).get('legend',{}))
 
 
 	# Plot Colourbar
 	if plot_props.get('data',{}).get('plot_type','plot') in plot_image_types:
 		
-		
-		if plot_props.get('other',{}).get('cbar_plot') is not False:
-			
-			ax_pos = ax.get_position()
-			
-			cax = make_axes_locatable(ax).append_axes('right',
+		cbar_props = plot_props.get('other',{}).get('cbar',{}).copy()
+		cax = make_axes_locatable(ax).append_axes('right',
 												  size='5%',pad=0.05)
-			plt.cla()
-			fig.sca(cax)
-			
-			if plot_props.get('other',{}).get('cbar_plot') is True:
-				cbar = plt.colorbar(plot,cax= cax,
-						 label=plot_props.get('other',{}).get(
-											  'cbar_title',''))
-			else:
-				cbar = plt.colorbar(plot,cax=cax)
 		
-			if plot_props.get('data',{}).get('plot_range') is not None:
+		if plot_props.get('data',{}).get('plot_range') is not None:
 				try:
 					cbar_vals=np.array(list(set(
 											 plot_props['data']['plot_range'])))
-					cbar.set_ticks(cbar_vals+0.5)
-					cbar.set_ticklabels(cbar_vals)
+					vals_slice = cbar_props.get('vals_slice',slice(0,None,1))
+					cbar_labels = cbar_vals[vals_slice]
+					cbar_vals = cbar_vals[vals_slice]+0.5
 				except RuntimeError:
 					cbar_vals = np.linspace(
 										min(plot_props['data']['plot_range']),
 										max(plot_props['data']['plot_range']),5)
-					cbar.set_ticks(cbar_vals)
-					cbar.set_ticklabels(cbar_vals)
-				ticklabs = cbar.ax.get_yticklabels()
-				cbar.ax.set_yticklabels(ticklabs, fontsize=10)
-			ax.set_position(ax_pos)
+					cbar_labels = cbar_vals
+												  
+		
+		if cbar_props.get('plot') is not False:
+			
+			plt.cla()
+			fig.sca(cax)
+			if cbar_props.get('plot') is True:
+				cbar = plt.colorbar(plot,cax=cax,
+									ticks = cbar_vals)
+			else:
+				cbar = plt.colorbar(plot,cax=cax,ticks = cbar_vals)
+			
+			cbar.ax.set_yticklabels(cbar_labels,
+										**cbar_props.get('labels',{}))
+			cbar.set_label(**cbar_props.get('title',{}))
 		else:
-			fig.colorbar(plot, ax=ax).ax.set_visible(False)
+			fig.colorbar(plot, cax=cax).ax.set_visible(False)
+	
 	# Plot Ticks
 	for w,wlim in plot_props.get('other',{}).get('axis_ticks',{}).items():
 		if wlim.get('lim'):
@@ -179,6 +180,7 @@ def get_props(data,domain,key,plot_props):
 	# Setup Image Colourbar
 	if plot_props.get('data',{}).get('plot_type','plot') in plot_image_types or(
 				plot_props.get('other',{}).get('cbar_plot')):
+		cbar_props = plot_props.get('other',{}).get('cbar')
 		# Colorbar Range
 		if plot_props.get('data',{}).get('plot_range') is None:
 			vmin = np.min(data[~np.isnan(data)])
@@ -191,16 +193,12 @@ def get_props(data,domain,key,plot_props):
 		n_plot_range = len(plot_range)
 		
 		# Colorbar Normalization
+		color_list = cbar_props.get('color','jet')
 		if data.dtype == np.integer and (
 					plot_props.get('data',{}).get('plot_range') is not None):
-			
-			
-			color_list = plot_props.get('other',{}).get('cbar_color','jet')
-			
+						
 			cmap=plt.cm.get_cmap(color_list,n_plot_range)
-			cmap.set_bad(
-				color = plot_props.get('other',{}).get('cbar_color_bad',
-													   'magenta'))
+			cmap.set_bad(color = cbar_props.get('color_bad', 'magenta'))
 			
 			norm = colors.BoundaryNorm(plot_props['data']['plot_range'],
 									   ncolors=n_plot_range)
@@ -211,20 +209,19 @@ def get_props(data,domain,key,plot_props):
 			
 		
 		else:
-			color_list = plot_props.get('other',{}).get('cbar_color','jet')
-			if isinstance(color_list,list):
-				ncolors = np.size(data) #color_list[2]
-				color_list =list(Color(color_list[0]).range_to(
-								 Color(color_list[1]),
-								 ncolors))
-				color_list = list(map(lambda x: (x.red,x.green,x.blue),
-												color_list))
-				cmap = colors.ListedColormap(color_list)
-			else:
-				cmap=plt.cm.get_cmap(color_list)
+			cmap=plt.cm.get_cmap(color_list)
+			# if isinstance(color_list,list):
+				# ncolors = np.size(data) #color_list[2]
+				# color_list =list(Color(color_list[0]).range_to(
+								 # Color(color_list[1]),
+								 # ncolors))
+				# color_list = list(map(lambda x: (x.red,x.green,x.blue),
+												# color_list))
+				# cmap = colors.ListedColormap(color_list)
 			
-			cmap.set_bad(color = plot_props.get('other',{}).get(
-									'cbar_color_bad', 'magenta'))
+				
+			
+			cmap.set_bad(color = cbar_props.get('color_bad', 'magenta'))
 			plot_props.get('plot',{})['cmap'] = cmap
 			
 
@@ -241,7 +238,6 @@ def get_props(data,domain,key,plot_props):
 	
 	x = np.squeeze(plot_props.get('data',{}).get('domain_process',
 								lambda x:np.real(x))(domain))
-
 	return y,x, plot_props.get('plot',{})
 	
 #def cursor_annotate(plot,leg,fig,ax):
