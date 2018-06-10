@@ -219,8 +219,8 @@ cdef class MonteCarloUpdate(object):
 								# m='Monte Carlo Step: %d'%(i_mc))
 						
 				plot_obj.MC_plotter( 
-						  {'configurations': {'sites': np.asarray(sites),
-											  'cluster':np.asarray(cluster)}},
+						{'configurations': {('sites',t): np.asarray(sites),
+											('cluster',t):np.asarray(cluster)}},
 												**{'arr_0': ['T',[t]],
 												  'i_mc':['t_{MC}',i_mc]})                 
 			  

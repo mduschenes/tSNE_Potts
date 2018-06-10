@@ -221,8 +221,8 @@ if __name__ == "__main__":
 	
 	observe_props = {'configurations':   [args.sites_plot,'sites'],
 			         'observables':      [True,'energy','order'],
-                     'observables_mean': [True,'energy','order','specific_heat',
-									                   'susceptibility'       ]}
+                     'observables_mean': [True,'energy','order','specific_heat']}#,
+									                 #  'susceptibility'       ]}
 	data_props = {
 		'data_properties':['model_name','d', 'data_dir', # algorithm
 						   'plot','sort','dim_reduc','analysis','observe_props',

@@ -15,9 +15,9 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 #from matplotlib.ticker import MaxNLocator
 
 # Define Figure Font Properties
-FONT_SIZE = 16
+FONT_SIZE = 22
 matplotlib.rcParams['text.usetex'] = True
-#rcParams['axes.labelsize']  = 11
+matplotlib.rcParams['axes.labelsize']  = FONT_SIZE
 #rcParams['figure.figsize']  = fig_size
 matplotlib.rcParams['font.family']     = 'serif'
 matplotlib.rcParams['font.serif']      = ['Computer Modern']
@@ -29,6 +29,18 @@ matplotlib.rcParams['font.size']   = FONT_SIZE
 #matplotlib.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
 #matplotlib.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
 #matplotlib.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
+
+class MidpointNormalize(colors.Normalize):
+    def __init__(self, vmin=None, vmax=None, midpoint=None, clip=False):
+        self.midpoint = midpoint
+        colors.Normalize.__init__(self, vmin, vmax, clip)
+
+    def __call__(self, value, clip=None):
+        # I'm ignoring masked values and all kinds of edge cases to make a
+        # simple example...
+        x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
+        return np.ma.masked_array(np.interp(value, x, y))
+
 
 plot_image_types = ['image','scatter']
 list_sort = lambda a,j: list(zip(*sorted(list(zip(*a)),key=lambda i:i[j])))
@@ -112,35 +124,33 @@ def set_props(plot,fig,ax,plot_props):
 		cax = make_axes_locatable(ax).append_axes('right',
 												  size='5%',pad=0.05)
 		
-		if plot_props.get('data',{}).get('plot_range') is not None:
-				try:
-					cbar_vals=np.array(list(set(
-											 plot_props['data']['plot_range'])))
-					vals_slice = cbar_props.get('vals_slice',slice(0,None,1))
-					cbar_labels = cbar_vals[vals_slice]
-					cbar_vals = cbar_vals[vals_slice]+0.5
-				except RuntimeError:
-					cbar_vals = np.linspace(
-										min(plot_props['data']['plot_range']),
-										max(plot_props['data']['plot_range']),5)
-					cbar_labels = cbar_vals
-												  
+		plt.cla()
+		fig.sca(cax)
+		cbar = plt.colorbar(plot,cax=cax)
+		cbar.set_label(**cbar_props.get('title',{}))
 		
-		if cbar_props.get('plot') is not False:
+		if plot_props.get('data',{}).get('plot_range') is not None:
+			try:
+				cbar_vals=np.array(list(set(
+										 plot_props['data']['plot_range'])))
+				vals_slice = cbar_props.get('vals_slice',slice(0,None,1))
+				cbar_labels = cbar_vals[vals_slice]
+				cbar_vals = cbar_vals[vals_slice]+0.5
+			except RuntimeError:
+				cbar_vals = np.linspace(
+									min(plot_props['data']['plot_range']),
+									max(plot_props['data']['plot_range']),5)
+				cbar_labels = cbar_vals
+			cbar.set_ticks(cbar_vals)
+			cbar.set_ticklabels(cbar_labels)
 			
-			plt.cla()
-			fig.sca(cax)
-			if cbar_props.get('plot') is True:
-				cbar = plt.colorbar(plot,cax=cax,
-									ticks = cbar_vals)
-			else:
-				cbar = plt.colorbar(plot,cax=cax,ticks = cbar_vals)
-			
-			cbar.ax.set_yticklabels(cbar_labels,
-										**cbar_props.get('labels',{}))
-			cbar.set_label(**cbar_props.get('title',{}))
 		else:
-			fig.colorbar(plot, cax=cax).ax.set_visible(False)
+			cbar_vals = None
+			cbar_labels = None
+		
+		if cbar_props.get('plot') == False:
+			cbar.ax.set_visible(False)
+
 	
 	# Plot Ticks
 	for w,wlim in plot_props.get('other',{}).get('axis_ticks',{}).items():
@@ -160,14 +170,23 @@ def set_props(plot,fig,ax,plot_props):
 		if '_attr' in prop:
 			obj = locals()[prop.replace('_attr','')]
 			for k,p in plot_props[prop].items():
+				if not callable(p):
+					p0 = p
+					p = lambda a: p0
 				if 'get_' in k:
-					plt.setp(getattr(obj,k)(),**p);
+					obj_k = getattr(obj,k)()
 				else:
-					plt.setp(getattr(obj,k),**p);
+					obj_k = getattr(obj,k)
+					
+				plt.setp(obj_k,**p(plt.getp(obj,k.replace('get_',''))));
 		else:
 			obj = locals().get(prop,None)
-			if obj:
-				plt.setp(obj,**plot_props.get(prop,{}));
+			prop_obj = plot_props.get(prop,{})
+			for p in prop_obj.copy():
+				if callable(prop_obj[p]):
+					prop_obj[p] = prop_obj.pop(p)(plt.getp(obj,p))
+			
+			plt.setp(obj,**prop_obj);
 
 	# Pause
 	plt.pause(plot_props['other'].get('pause',0.01))
@@ -219,10 +238,11 @@ def get_props(data,domain,key,plot_props):
 												# color_list))
 				# cmap = colors.ListedColormap(color_list)
 			
-				
+			#norm = MidpointNormalize(cbar_props.get('midpoint'))
 			
 			cmap.set_bad(color = cbar_props.get('color_bad', 'magenta'))
 			plot_props.get('plot',{})['cmap'] = cmap
+			#plot_props.get('plot',{})['norm'] = MidpointNormalize(cbar_props.get('midpoint'))
 			
 
 		

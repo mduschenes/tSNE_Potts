@@ -19,13 +19,14 @@ DIRECTORY = 'dataset/'
 DELIM = [' ','.']
 BACKEND = 'Agg'
 DISP = False
+ORIENTATION = False
 
 class Data_Process(object):
     
     # Create figure and axes dictionaries for dataset keys
 	def __init__(self,keys=[None],plot=[False],
 				 np_file = None,img_file=None,backend=None,
-				 directory=None,delim=None,disp=False):
+				 directory=None,delim=None,disp=False,orientation=None):
 		 
 		# Standardized attributes
 		for f,F in [(v,V) for v,V in locals().items() 
@@ -53,7 +54,7 @@ class Data_Process(object):
 			self.data_key = 'data_key'
 			
 			# Create Figures and Axes with keys
-			self.figures_axes(keys)
+			self.figures_axes(keys,self.ORIENTATION)
 
 		return  
     
@@ -185,12 +186,13 @@ class Data_Process(object):
 	# Save all current figures
 	def plot_save(self,data_params={'data_dir':'dataset/',
 									'figure_format':None},
-					   fig_keys = None,directory=None,
+					   fig_keys = None,directory=None,format=None,
 					   label = '',read_write='w',fig_size=None):#(8.5,11)):
         
         # Save Figures for current Data_Process Instance
-		
-		format = data_params.get('figure_format',self.IMG_FILE)
+		if format is None:
+			format = data_params.get('figure_format',self.IMG_FILE)
+			
 		# Data Directory
 		if directory is None:
 			directory = data_params.get('data_dir','dataset/')
@@ -203,7 +205,8 @@ class Data_Process(object):
 		if fig_keys is None:
 			fig_keys = self.figs.keys()
 		
-		for fig_k,fig_i in [(k,f) for k,f in self.figs.items()if k in fig_keys]:
+		for fig_k,fig_i in [(k,f) for k,f in self.figs.items()
+							if k in fig_keys and self.plot[k]]:
 			
 			for ifig in set([f.number for f in fig_i.values()]):
 			
@@ -218,7 +221,7 @@ class Data_Process(object):
 
 				# Set File Name and ensure no Overwriting
 				if not label in [None,'']:
-					label = '_' + label
+					label = '_' + str_check(label)
 				else:
 					label = ''
 				
@@ -251,7 +254,7 @@ class Data_Process(object):
     
     
 	 # Create figures and axes for each passed set of keys for datasets
-	def figures_axes(self,Keys):     
+	def figures_axes(self,Keys,orientation=False):     
 		
 		if not isinstance(Keys,dict):
 			Keys = {self.data_key: Keys}
@@ -269,7 +272,14 @@ class Data_Process(object):
 				self.axes[keys_label] = {}
 				self.figs[keys_label] = {}
 
-				fig, ax = plt.subplots(*(np.shape(keys)[:2]))
+				key_shape = np.shape(keys)[:2]
+				
+				if orientation and np.size(key_shape) == 1:
+					key_shape = (1,)+key_shape
+				elif orientation:
+					key_shape = (key_shape[1],key_shape[0])
+					
+				fig, ax = plt.subplots(*(key_shape))
 				
 				fig.canvas.set_window_title('Figure: %d  %s Datasets'%(
 												  fig.number,caps(keys_label)))
@@ -505,8 +515,8 @@ class Data_Process(object):
 	# Export Data
 	def exporter(self,data,
 				 data_params={'data_dir':'dataset/','data_file':None},
-				 export=True, label = '', directory=None, disp=None,
-				  format = None,read_write='w',delim=None):
+				 export=True, label = '', directory=None, file=None,
+				 disp=None,format = None,read_write='w',delim=None):
 	   
 	   
 		if not export:
@@ -520,6 +530,12 @@ class Data_Process(object):
 		if delim is None:
 			delim = data_params.get('delim',self.DELIM)
 	   
+		# Label
+		if not label in [None,'']:
+			label = '_' + str_check(label)
+		else:
+			label = ''
+	   
 	   # Check if Data is dict type
 		data = dict_check(data.copy(),'') 
 		delim_check(data,delim)
@@ -532,12 +548,15 @@ class Data_Process(object):
 			os.makedirs(directory)
 			
 		# Data Names
-		if not data_params.get('data_file'):
-			file = lambda value: value
-		
-		elif not callable(data_params['data_file']):
-			g = data_params['data_file']
-			file  = lambda k: g + k
+		if file is None:
+			if not data_params.get('data_file'):
+				file = lambda value: label+value
+			else:
+				file = data_params.get('data_file')
+				
+		if not callable(file):
+			g = file
+			file  = lambda k: g + label + k
 		
 		# Data Format
 		
@@ -567,12 +586,12 @@ class Data_Process(object):
 			i = 0
 			file_end = ''
 			file_k = file(k).split('.')[0].replace(' ','')
-			while os.path.isfile(directory+file_k+label+
+			while os.path.isfile(directory+file_k+
 								 file_end+ '.' +format[k]):
 				file_end = '_%d'%i
 				i+=1
 			
-			file_path = directory+file_k+label
+			file_path = directory+file_k
 			
 			display(print_it=disp,time_it=False,
 					m = 'Exporting %s'%(k))
@@ -582,6 +601,8 @@ class Data_Process(object):
 					return
 				else:
 					v = np.asarray(v)
+						
+			
 						
 			if format[k] == 'npy':
 				try:

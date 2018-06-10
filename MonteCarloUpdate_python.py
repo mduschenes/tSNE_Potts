@@ -12,7 +12,7 @@ from MonteCarloPlot import MonteCarloPlot
 
 from data_functions import Data_Process as Data_Proc
 from misc_functions import (flatten,array_dict, caps, display,
-							recurse,tail_recursive)
+							recurse,tail_recursive,dict_str)
 
 
 
@@ -115,14 +115,6 @@ class MonteCarloUpdate(object):
 					  str(self.model_props['L']),
 					   str(self.model_props['T'])))+'\nNeqb = %d, Nmeas = %d'%(
 						Neqb,Nmeas),line_break=1)
-					  
-		# Save Model_Props
-		if self.model_props.get('data_save',True):
-			for var_type in self.model_props['data_types']:
-				if 'model_props' in var_type: break
-			for f in ['txt',self.model_props.get('props_format','npy')]:
-				Data_Proc().exporter({var_type:self.model_props},
-							            self.model_props,format=f)
 
 		# Perform Monte Carlo Algorithm for n_iter configurations        
 		for i_iter in range(n_iter):
@@ -130,6 +122,16 @@ class MonteCarloUpdate(object):
 			# Update dictionary and plotting for each Iteration
 			self.model_props.update(iter_props[i_iter])
 			Data_Proc().format(self.model_props)
+			
+			# Save Model_Props
+			if self.model_props.get('data_save',True):
+				for var_type in self.model_props['data_types']:
+					if 'model_props' in var_type: break
+				for f in ['txt',self.model_props.get('props_format','npy')]:
+					Data_Proc().exporter({var_type:self.model_props},
+											self.model_props,format=f,
+											label=dict_str(iter_props[i_iter]))
+			
 			
 			# Initialize sites with random spin at each site for each Iteration
 			sites = state_gen(N_sites)
@@ -166,8 +168,8 @@ class MonteCarloUpdate(object):
 						# display(print_it=disp_updates,
 								# m='Monte Carlo Step: %d'%(i_mc))
 				plot_obj.MC_plotter(
-						  {'configurations': {'sites': np.asarray(sites),
-											  'cluster':np.asarray(cluster)}},
+						{'configurations': {('sites',t): np.asarray(sites),
+						    				('cluster',t):np.asarray(cluster)}},
 												**{'arr_0': ['T',[t]],
 												  'i_mc':['t_{MC}',i_mc+1]})
 					                
@@ -179,13 +181,14 @@ class MonteCarloUpdate(object):
 				for var_type in self.model_props['data_types']:
 					if 'sites' in var_type: break
 				plot_obj.plot_save(self.model_props,
-								        label=self.model_props['algorithm'],
+								        label=dict_str(iter_props[i_iter]),
 										fig_keys='configurations',
 										fig_size = (6,12))
 				Data_Proc().exporter(
 							  {var_type:np.asarray(data_sites[i_iter])},
 							   self.model_props,
 							   format=self.model_props['data_format']['sites'],
+							   label=dict_str(iter_props[i_iter]),
 							   read_write='a')    
 		
 			display(print_it=disp_updates,

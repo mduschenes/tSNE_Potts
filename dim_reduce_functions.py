@@ -387,43 +387,66 @@ def dim_reduce(data,N=2,N0=None,perp=30.0,rep='tsne',pca=True,**kwargs):
 		return tsne0(data,N,N0,perp,pca)
 
 		
-def plot_props(keys,data_typed,data_rep,data_type):
+def plot_props(keys,data_typed,data_rep,data_type,orientation):
+	FONT_SIZE = 22
+
+	
+	if orientation:
+		cbar_plot =lambda i,k: True if i == len(keys)-1 else False
+		xlabel = lambda i,k: r'x_1'
+		ylabel = lambda i,k: r'x_2' if i == 0 else ''
+	else:
+		cbar_plot =lambda i,k: True #if i == len(keys)-1 else False
+		xlabel = lambda i,k: r'x_1' if i == len(keys)-1 else ''
+		ylabel = lambda i,k: r'x_2' 
+		
+		
 	return {
 		 k: {
 		
-		  'ax':   {'title' : '', 
-					'xlabel': r'x_1' if '80' in k else '', 
-					'ylabel': r'x_2'},
-		  
-		  'plot':  {'s':10,
+		  'ax':   {'title' : 'L = %s'%k[-2:], 
+					'xlabel': xlabel(i,k), 
+					'ylabel': ylabel(i,k),
+					'xlim': lambda lims: tuple([x*1.1 for x in lims]),
+					'ylim': lambda lims: tuple([x*1.1 for x in lims])},
+		  'ax_attr': {'get_xticklabels':{'visible':False,
+													 'fontsize':15},
+					  'xaxis': {'ticks_position': 'none'},
+					  
+					  'get_yticklabels':{'visible':False,
+											 'fontsize':15},
+					   'yaxis': {'ticks_position': 'none'}},
+		  'plot':  {'s':30,
 					'c': np.reshape(data_typed[(
 							 'temperatures'+'_'+data_type)][k],(-1,))},
 		  
 		  'data':  {'plot_type':'scatter',
-					# 'plot_range': np.reshape(data_typed[(
-							 # 'temperatures'+'_'+data_type)][k],(-1,)),
 					'data_process':lambda data: np.real(data),
 					'domain_process':lambda domain: np.real(domain)},
 					
-		  'other': {'cbar_plot':True, 'cbar_title':'Temperatures',
-				   'cbar_color': 'bwr',
-				   #['green','blue',np.size(data_typed[(
-					#		 'temperatures'+'_'+data_type)])],
-							 #'jet',
-					'cbar_color_bad':'magenta',
-					'label': lambda x='':'L = %s'%x[-2:],'pause':0.01,
-					'sup_legend': False,
-					'sup_title': {'t': ''}
-					# data_rep + ' Representation - ' +
-									   # data_type}
-					}
-		 }
-		for k in keys}
+		  'other': {'label': lambda x='':'',#'L = %s'%x[-2:],
+								'cbar': {										
+										'plot':cbar_plot(i,k),
+										'title':{'label':'Temperatures',
+												 'size':FONT_SIZE},
+										'color':'bwr',
+										'midpoint': 2.269,
+										'labels': {'fontsize': FONT_SIZE}},
+								'pause':0.01,
+								'sup_legend': False,
+								'legend': {'prop':{'size': FONT_SIZE}
+										   #'loc':(0.1,0.85)
+										  },
+								'sup_title': {'t': ''}
+
+								}
+		}
+		for i,k in enumerate(sorted(keys))}
 
 
 
 if __name__ == "__main__":
-#    print("Run Y = tsne.tsne(X, N, perplexity) to perform t-SNE on your dataset.")
+#    print("Run Y = tsne.tsne(X, N, perplexity) to perform t-SNE on dataset.")
 #    print("Running example on 2,500 MNIST digits...")
 #    X = np.loadtxt("mnist2500_X.txt")
 #    labels = np.loadtxt("mnist2500_labels.txt")
@@ -436,7 +459,7 @@ if __name__ == "__main__":
 
 	# Add Model Args
 	parser.add_argument('-N0','--N0',help = 'Number of Initial Dimensions',
-						type=int,default=50)
+						type=int,default=None)
 
 	parser.add_argument('-N','--N',help = 'Number of Final Dimensions',
 						type=int,default=2)#
@@ -450,11 +473,20 @@ if __name__ == "__main__":
 	parser.add_argument('-pca','--pca',help = 'Initially Perform PCA',
 						action='store_true')
 
-	parser.add_argument('-repeat','--repeat',help = 'Repeat tSNE',
+	parser.add_argument('-import_files','--import_files',help = 'Import Files',
 						action='store_true')
 						
-	parser.add_argument('--header_sets',help = 'Data Set Headers',
+	parser.add_argument('--models',help = 'Data Set Models',
 						type=str, nargs = '+', default = ['Ising','gauge'])
+
+	parser.add_argument('--data_reps',help = 'Data Representations',
+						type=str, nargs = '+', default = ['tsne','pca'])
+						
+	parser.add_argument('--file_name',help = 'File to Import',
+						type=str,default=None)
+						
+	parser.add_argument('-plot','--plot',help = 'Plot Data',
+						action='store_true')
 						
 	parser.add_argument('--data_dir',help = 'Data Output Directory',
 						type=str,default='dataset/tsn2/')
@@ -481,7 +513,9 @@ if __name__ == "__main__":
 	
 	joiner = lambda *strings: '_'.join([s for s in strings])
 	
-	header_sets = ['Ising','gauge'] #['potts']
+	models = args.models
+	delattr(args,'models')
+	
 	header_configs = 'spinConfigs'
 	header_temperatures = 'temperatures'
 	configs = {}
@@ -502,33 +536,33 @@ if __name__ == "__main__":
 	
 	
 	configs['Ising'] = ['spinConfigs_Ising_L20','spinConfigs_Ising_L40',
-		     'spinConfigs_Ising_L80']
+						'spinConfigs_Ising_L80']
 	
-	configs['gauge'] = ['spinConfigs_gaugeTheory_L20', 'spinConfigs_gaugeTheory_L40', 
-		     'spinConfigs_gaugeTheory_L80']
+	configs['gauge'] = ['spinConfigs_gaugeTheory_L20', 
+						'spinConfigs_gaugeTheory_L40', 
+						'spinConfigs_gaugeTheory_L80']
 	 
 	configs['potts'] = ['Potts_q4temp_data_t','Potts_q6temp_data_t',
 						 'Potts_q10temp_data_t']
 		
 	
 	configs_sets = sum([list(joiner(header_configs,s,formatter(c,inds[s]))
-								for c in configs[s]) for s in header_sets],[])
+								for c in configs[s]) for s in models],[])
 	temperatures_sets = sum([list(joiner(header_temperatures,s,
 											   formatter(t,inds[s]))
-							for t in temperatures[s])  for s in header_sets],[])
+							for t in temperatures[s])  for s in models],[])
 	 
-	data_files = sum([c for k,c in configs.items() if k in header_sets] + 
-					 [t for k,t in temperatures.items()if k in header_sets],[])
+	data_files = sum([c for k,c in configs.items() if k in models] + 
+					 [t for k,t in temperatures.items()if k in models],[])
 	
-	data_types_configs = [joiner(header_configs,s) for s in header_sets]
-	data_types_temps = [joiner(header_temperatures,s) for s in header_sets]
-	
+	data_types_configs = [joiner(header_configs,s) for s in models]
+	data_types_temps = [joiner(header_temperatures,s) for s in models]
 	
 	# data_files = ising + gauge + temperatures_Ising + temperatures_gauge
 	# data_types_config = ['spinConfigs_Ising','spinConfigs_gauge']
 	# data_types_temps = ['temperatures_Ising','temperatures_gauge']
 	data_obj_format = {k: 'array' for k in data_types_configs+data_types_temps}
-	data_reps = ['tsne','pca']
+	data_reps = args.data_reps
 	
 	data_params =  {'data_files': data_files,
 		            'data_types':data_types_configs+data_types_temps,
@@ -562,7 +596,6 @@ if __name__ == "__main__":
 		
 	data_typed = dict_modify(data,data_types_configs+data_types_temps,
 				              f=lambda k,v: v.copy(),i=ind_data,j=ind_type)
-	
 	data_sizes = dict_modify(data_sizes,data_types_configs+data_types_temps,
 				              f=lambda k,v: v,i=ind_data,j=ind_type)
 	
@@ -578,19 +611,26 @@ if __name__ == "__main__":
 	Y2 = Y.copy()
 	
 
-	
+	for t in data_types_temps:
+		print({(t,k): np.shape(v) for k,v in data_typed[t].items()})
 	
 	# Setup Plotting
+	orientation = False
+	if orientation:
+		fig_size = (20,16)
+	else:
+		fig_size = (14,20)
 	imax = 2
 	plot_keys = {}
 	plot_bool = {}
 	for r in data_reps:
 		for t in data_typed.keys():
-			plot_keys[r+'_'+t] = data_keys[t]
-			plot_bool[r+'_'+t]= True
+			if t not in data_types_temps:
+				plot_keys[r+'_'+t] = data_keys[t]
+				plot_bool[r+'_'+t]= True
 	
 	Data_Process().plot_close()        
-	Data_Proc = Data_Process(plot_keys,plot_bool)
+	Data_Proc = Data_Process(plot_keys,plot_bool,orientation=orientation)
 	
 	comp = lambda x,i: {k:v[:,i] for k,v in x.items() if np.any(v)}
 	
@@ -600,37 +640,53 @@ if __name__ == "__main__":
 		
 		for r in data_reps:
 			
-			if r == 'pca':
-				pass
+		
 		
 			# Check if Data Exists
+			data_key = r+'_'+t
 			params = data_params.copy()
 			params.pop('data_sets');
-			file_header = r+'_'+t
-			file_name = '%s_%s'%(r,t)# + 'pca_spinConfigs_gauge' #file_header + data_params['data_file']
-			params['data_files'] = file_name + '.'+data_params['data_format']
-			data = Data_Proc.importer(params,data_obj_format='dict',
-										format='npz',directory = data_params['data_dir'])
+			file_header = data_key
+			if not args.file_name:
+				file_name = file_header
+			else:
+				file_name = args.file_name 
+			params['data_files'] = file_name
+
+			if (file_header in file_name) and args.import_files:
+				data = Data_Proc.importer(params,data_obj_format='dict',
+										format='npz',
+										directory = data_params['data_dir'])
+			else:
+				data = None
+				
 			if data is not None:
 				print('Previous Data Found for',file_name)
-				print(t,{k: np.shape(v) for k,v in data_typed['temperatures_'+t[-5:]].items()})
-				Y[r][t] = data[0][file_name]
-
-				Data_Proc.plotter(comp(Y[r][t],1),comp(Y[r][t],0),
-					 plot_props(Y[r][t].keys(),data_typed,r,t[-5:]),
-					 data_key=r+'_'+t)
+				Y[r][t] = list(data[0].values())[0]
+				if args.plot:
+					Data_Proc.plotter(comp(Y[r][t],1),comp(Y[r][t],0),
+								plot_props(Y[r][t].keys(),data_typed,r,t[-5:],
+											orientation),
+								data_key=data_key)
+					break
 			else:
 				print('New Data for',file_name)
-				continue
-				for k in data_keys[t][:1]:   
+				
+				if args.import_files:
+					Data_Proc.plot[data_key] = False
+					continue
+				for k in data_keys[t][:1]: 
 					print(r,t,k)
-					Y[r][t][k] = dim_reduce(data_typed[t][k],**data_params)
+					Y[r][t][k] = dim_reduce(data_typed[t][k],rep=r,**data_params)
 										 
 					
-				Data_Proc.exporter({file_header: Y[r][t]},data_params)
+				Data_Proc.exporter({file_name: Y[r][t]},data_params)
 				
-			
-				Data_Proc.plotter(comp(Y[r][t],1),comp(Y[r][t],0),
-					 plot_props(Y[r][t].keys(),data_typed,r,t[-5:]),
+				if args.plot:
+					Data_Proc.plotter(comp(Y[r][t],1),comp(Y[r][t],0),
+					 plot_props(Y[r][t].keys(),data_typed,r,t[-5:],
+									orientation),
 					 data_key=r+'_'+t)
-	Data_Proc.plot_save(data_params,read_write='a',fig_size=(7,9))   
+	if args.plot:
+		Data_Proc.plot_save(data_params,read_write='ow',
+							fig_size=fig_size,format='pdf')   

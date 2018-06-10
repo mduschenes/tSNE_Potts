@@ -10,7 +10,6 @@ Created on Sat Mar 24 15:54:40 2018
 import numpy as np
 import time,argparse,re
 
-
 ##### Model Functions ########
 
 times = [time.clock()]
@@ -66,6 +65,7 @@ def caps(word,every_word=False,sep_char=' ',split_char=' '):
 	except IndexError:
 		return word
 
+		
 		
 class Recurse(Exception):
 	def __init__(self,*args,**kwargs):
@@ -132,6 +132,9 @@ def dict_arg(args,key_type=str,val_type=float):
 	return dict_arg	
 	
 
+def dict_str(d,sep_char=' ',split_char=' '):
+	return '_'.join(list(map(lambda x: str_check(x[0])[slice(0,1,1)] + (
+								str_check(x[1])), d.items())))
 	
 def attr_wrapper(attribute={}):
 	def attr_decorator(func):

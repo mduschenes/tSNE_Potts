@@ -39,7 +39,8 @@ class MonteCarloPlot(object):
 		
 		# Define Plotting Instance
 		Data_Process().plot_close()
-		self.plot_obj = Data_Process(plot_keys,plot_bool,backend = 'Agg')
+		self.plot_obj = Data_Process(plot_keys,plot_bool,
+									orientation=kwargs.get('orientation',False))
 		self.plot_save = self.plot_obj.plot_save
 		self.plot_keys = plot_keys
 		
@@ -55,7 +56,7 @@ class MonteCarloPlot(object):
 				
 			if K == 'configurations':
 				self.plot_obj.plotter(
-							data = {kt: data[K][kt[0]] 
+							data = {kt: data[K].get(kt,data[K].get(kt[1],None))
 								 for kt in flatten(self.plot_keys[K])
 								 if kt[1] in kwargs['arr_0'][1]},
 							plot_props = self.MC_plot_props(K,self.plot_keys[K],
@@ -178,6 +179,16 @@ class MonteCarloPlot(object):
 					# self.model_props['update_props']['Nmeas'],
 					# self.model_props['update_props']['Nmeas_f'])
 
+		# Set Varying Properties                  
+		def set_prop(props,key,func,**kwargs):
+			for k in props.keys():
+				props_k = props[k]
+				for key_i in key[:-1]:
+					if not props_k.get(key_i): props_k.update({key_i:{}})
+					props_k = props_k[key_i]
+				props_k[key[-1]] = func(k,**kwargs)
+			return
+					
 		if plot_type == 'configurations':
 			
 			def Plot_Props(keys):
@@ -204,11 +215,11 @@ class MonteCarloPlot(object):
 												   sep_char=' ',split_char='_'),
 								'cbar': {										
 										'plot':False,
-										'title':{'label':'Spin Values',
+										'title':{'label':'',#'Spin Values',
 												 'size':FONT_SIZE},
 										'color':'viridis',
 										'color_bad':'magenta',
-										'labels': {'fontsize': 10},
+										'labels': {'fontsize': 8},
 										'vals_slice':slice(1,None,2)},
 								'pause':0.5,
 								'sup_legend': None,
@@ -224,17 +235,6 @@ class MonteCarloPlot(object):
 					for k in keys}
 					  
 					  
-			# Set Varying Properties                  
-			def set_prop(props,key,func,**kwargs):
-				for k in props.keys():
-					props_k = props[k]
-					for key_i in key[:-1]:
-						if not props_k.get(key_i): props_k.update({key_i:{}})
-						props_k = props_k[key_i]
-					props_k[key[-1]] = func(k,**kwargs)
-				return
-			 
-				
 			# Properties Specific to Plot
 			plot_props_sites = {'title': '', 'xlabel': '', 'ylabel': ''}
 				
@@ -256,7 +256,7 @@ class MonteCarloPlot(object):
 				if k[0] != plot_keys[-1][-1][0]:
 					return plot_props_sites['xlabel']
 				else:
-					return 'T = %0.2f'%k[1] 
+					return '' #T = %0.2f'%k[1] 
 					#r'$%s$: %d'%(kwargs['i_mc'][0],kwargs['i_mc'][1])
 				
 			
@@ -270,7 +270,6 @@ class MonteCarloPlot(object):
 				
 				data_plot_shape = [int(np.power(self.model_props['N_sites'],
 							1/self.model_props['d']))]*self.model_props['d']
-				
 				return lambda d: np.reshape(sites_region(d),
 											data_plot_shape)
 			
@@ -323,19 +322,7 @@ class MonteCarloPlot(object):
 					 }
 					for k in keys}
 			 
-			
-			
-		   
-			
 
-					  
-			# Set Varying Properties                  
-			def set_prop(props,key,func,**kwargs):
-				for k in props.keys():
-					props[k][key[0]][key[1]] = func(k,**kwargs)
-				return
-			
-			
 			def plot_title(k,**kwargs):
 				return ''
 				
@@ -414,12 +401,6 @@ class MonteCarloPlot(object):
 			
 
 					  
-			# Set Varying Properties                  
-			def set_prop(props,key,func,**kwargs):
-				for k in props.keys():
-					props[k][key[0]][key[1]] = func(k,**kwargs)
-				return
-			
 			
 			def plot_title(k,**kwargs):
 				if k == 'susceptibility':
@@ -490,40 +471,35 @@ class MonteCarloPlot(object):
 							'ylabel': 'x_2'},
 				  'ax_attr': {'get_xticklabels':{'visible':False,
 													 'fontsize':12},
-								  'xaxis': {'ticks_position': 'none'},
-								  'get_yticklabels':{'visible':False,
+							  'xaxis': {'ticks_position': 'none'},
+							  'get_yticklabels':{'visible':False,
 													 'fontsize':12},
-								  'yaxis': {'ticks_position': 'none'}},
+								'yaxis': {'ticks_position': 'none'}},
 				  'plot':  {'s':10},
 				  
 				  'data':  {'plot_type':'scatter',
 							'data_process':lambda data: np.real(data),
 							'domain_process':lambda domain: np.real(domain)},
-							
-				  'other': {'cbar_plot':True, 'cbar_title':'Temperatures',
-						   'cbar_color':'bwr','cbar_color_bad':'magenta',
-							'label': lambda x='':x,'pause':0.01,
-							'legend': {'prop':{'size': FONT_SIZE}},
-							'sup_title': {'t': ''}
-							# sup_title(str_check(plot_type)+(
-												# ' Representation \n ' ),
-												# every_word=None,
-												# **kwargs)}
+				  'other': {'label': lambda x='':x,
+								'cbar': {										
+										'plot':True,
+										'title':{'label':'Temperatures',
+												 'size':FONT_SIZE},
+										'color':'bwr',
+										'labels': {'fontsize': 22},
+										'vals_slice':slice(1,None,2)},
+								'pause':0.5,
+								'sup_legend': None,
+								'legend': {'prop':{'size': FONT_SIZE}
+										   #'loc':(0.1,0.85)
+										  },
+								'sup_title': {'t': ''}
 							}
 				 }
 				for k in keys}
 			 
 			
 			
-		   
-			
-
-					  
-			# Set Varying Properties                  
-			def set_prop(props,key,func,**kwargs):
-				for k in props.keys():
-					props[k][key[0]][key[1]] = func(k,**kwargs)
-				return
 			
 			
 			def plot_title(k,**kwargs):
@@ -569,7 +545,7 @@ class MonteCarloPlot(object):
 			set_prop(plot_props,['ax','ylabel'],plot_ylabel,**kwargs)
 			set_prop(plot_props,['other','label'],plot_label,**kwargs)
 			set_prop(plot_props,['plot','c'],plot_c,**kwargs)
-			set_prop(plot_props,['other','cbar_plot'],cbar_plot,**kwargs)
+			set_prop(plot_props,['other','cbar','plot'],cbar_plot,**kwargs)
 			#set_prop(plot_props,['data','plot_range'],plot_c,**kwargs)
 			
 			return plot_props

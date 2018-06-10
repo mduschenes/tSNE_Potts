@@ -25,7 +25,7 @@ class ModelAnalysis(object):
 		# Import Data
 		data = Data_Process().importer(data_props,upconvert=False,disp=False)
 		
-		# Used Typed Data Format
+		# Used Typed Data Format		
 		self.data = data[2] if data is not None else data
 		self.data_props = data_props
 		
@@ -34,9 +34,18 @@ class ModelAnalysis(object):
 	
 	def process(self,data=None):
 	
-		def data_set(keys,string=''):
-			return list((k,k.replace(string,'')) for k in keys)
-				
+		def data_set(keys,string='',exceptions={None:None}):
+			keys_tuple = []
+			for k in keys:
+				if k in exceptions.keys():
+					for p0 in data['model_props_sorted'].keys():
+						for s in data[d][p0].keys():
+							keys_tuple.append(((exceptions[k],data[d][p0][s]), 
+												k.replace(string,'')))
+				else:
+					keys_tuple.append((k,k.replace(string,'')))
+			return keys_tuple
+			
 		if data is None:
 			data = self.data
 		
@@ -52,31 +61,32 @@ class ModelAnalysis(object):
 		
 		# Sort and Reduce Dimensions of Data
 		
-		p = self.data_props['analysis_params']['sort_params']	
+		p_sort = self.data_props['analysis_params']['sort_params']	
 		keys = {'sort': ['observables_mean_sorted'],
 				'dim_reduc':['tsne','pca']}
-		string = '_mean'
+		string = '_mean' 
+		exceps = {'sites_sorted':'configurations'}
 		if self.data_props.get('sort') and self.data_props.get('dim_reduc'):
 			display(m='Sorting and Reducing Data',time_it=False)
-			t = self.data_props['data_types']
-			data_keys = data_set(keys['sort']+keys['dim_reduc'],string)
+			data_types = self.data_props['data_types']
+			data_keys = data_set(keys['sort']+keys['dim_reduc'],string,exceps)
 		
 		elif self.data_props.get('sort'):
 			display(m='Sorting Data',time_it=False)
-			t = ['sites','observables','model_props']
-			data_keys = data_set(keys['sort'],string)
+			data_types = ['sites','observables','model_props']
+			data_keys = data_set(keys['sort'],string,exceps)
 		
 		elif self.data_props.get('dim_reduc'):
 			display(m='Reducing Data',time_it=False)
-			t = ['sites','model_props','tsne','pca']
-			data_keys = data_set(keys['dim_reduc'],string)
+			data_types = ['sites','model_props','tsne','pca']
+			data_keys = data_set(keys['dim_reduc'],string,exceps)
 		
 		else:
 			display(print_it=True,time_it=False,m='Model Analysis Complete...')
 			return
 			
 			
-		data = self.sort(data,p,self.data_props,t)
+		data = self.sort(data,p_sort,self.data_props,data_types)
 	
 		# Plot Sorted Data
 		if self.data_props.get('plot'):
@@ -84,12 +94,13 @@ class ModelAnalysis(object):
 			for p0 in data['model_props_sorted'].keys():
 				self.plot({k: data[d][p0] for (k,d) in data_keys},
 				data['model_props_sorted'][p0],
-				{'arr_0':[p[2],{a1: sorted(list(data['sites_sorted'][p0][
+				{'arr_0':[p_sort[2],{a1: sorted(list(data['sites_sorted'][p0][
 												a1].keys())) for a1 in data[
 										 'sites_sorted'][p0].keys()}],
-				'arr_1': [p[1],sorted(list(data['sites_sorted'][p0
+				'arr_1': [p_sort[1],sorted(list(data['sites_sorted'][p0
 																].keys()))],
-				'sup_title':'%s = %s'%(p[0],str(p0))})
+				'sup_title':'%s = %s'%(p_sort[0],str(p0)),
+				 'orientation': False})
 			
 		display(print_it=True,time_it=False,m='Model Analysis Complete...')
 		return
@@ -105,9 +116,38 @@ class ModelAnalysis(object):
 							for p in data['model_props'][key]['iter_props']])]})
 			return
 		
+		def plot_sites(data,key):
+			data_sites = {('sites',t): d[-1,:] 
+							for d,t in zip(np.atleast_3d(data['sites'][key]),
+											data['model_props'][key]['T'])}
+			self.plot({#'observables':data['observables'][key],
+					   'configurations': data_sites},
+					   data['model_props'][key],
+					   {'arr_0': ['T',data['model_props'][key]['T']],
+						'arr_1':['algorithm',np.atleast_1d([p['algorithm'] 
+							for p in data['model_props'][key]['iter_props']])]})
+			return
+		
 		
 		if not data.get('observables'):
 			data['observables'] = {}
+			
+		# Update Plotting Properties
+		for s in set(list(data_props['observe_props'].keys()) + 
+						  data_props.get('data_types',[])):
+			if s in ['sorted']:
+				continue
+			elif s in ['sites']:
+				t = 'configurations'
+				data_props['observe_props']['configurations'] = [True,s]
+			elif s in ['tsne','pca']:
+				t = s
+				data_props['observe_props'][s] = [True,s]
+			else:
+				t = s+'_sorted'
+			data_props['observe_props'][t] = data_props['observe_props'].get(t,
+											 data_props['observe_props'].get(s,
+											 [True,s]))
 		
 		for k,sites in data['sites'].items():
 		
@@ -119,6 +159,8 @@ class ModelAnalysis(object):
 				# Plot Data
 				if data_props.get('plot') and False:
 					plot_observables(data,k)
+				#if data_props.get('plot'):
+					plot_sites(data,k)
 				continue
 
 			model_props = data['model_props'][k]
@@ -137,11 +179,15 @@ class ModelAnalysis(object):
 			if model_props.get('data_save',True):
 				Data_Process().exporter({'observables':data['observables'][k]},
 							   model_props,
+							   file=k,
 							   format=model_props['data_format']['observables'])
+							   
 						
 			# Plot Data
 			if data_props.get('plot') and False:
 				plot_observables(data,k)
+			#if data_props.get('plot'):
+				plot_sites(data,k)
 		return
 			
 
@@ -172,7 +218,7 @@ class ModelAnalysis(object):
 										format = 'pdf') is not None:
 				return
 
-		plot_obj = MonteCarloPlot({k: model_props['observe_props'].get(k,
+		plot_obj = MonteCarloPlot({k: self.data_props['observe_props'].get(k,
 									[True,k]) for k in data.keys()},
 							      model_props, **plot_args)
 								  
@@ -245,12 +291,9 @@ class ModelAnalysis(object):
 		def sites_sorted(tree,branch,data,root):
 			for i,b in enumerate(np.atleast_1d(branch[-1])):
 				if tree[b] == root:
-					#if b == 2.1: print('newroot',b,np.shape(tree[b]),np.shape(data[i]))
 					tree[b] = data[i]
 				else:
-					#if b == 2.1: print('oldroot',b,np.shape(tree[b]),np.shape(data[i]),np.shape(np.append(tree[b],data[i],axis=0)))
 					tree[b] = np.append(tree[b],data[i],axis=0)
-				#if b == 2.1: print('final',branch,b,np.shape(tree[b]))
 			return tree
 			
 		def observables_sorted(tree,branch,data,root,depth):
@@ -260,12 +303,10 @@ class ModelAnalysis(object):
 						if k not in tree[b].keys():
 							tree[b][k] = data[j][k][i]
 						else:
-							#print('tuple',branch,k,np.shape(data[j][k][i]),np.shape(tree[b].get(k)))
 							tree[b][k] = np.append(np.atleast_1d(tree[b][k]),
 												   np.atleast_1d(
 												   dim_reduct(data[j][k][i])),
 												   axis=-1)
-						#print(branch,k,np.shape(tree[b][k]))
 			return tree
 		
 
@@ -287,15 +328,6 @@ class ModelAnalysis(object):
 			props['data_name_format'] = [props['data_name_format'][0]] + (
 										[props['analysis_params'][
 											   'sort_params'][0]]+[''])
-			
-			for s in set(list(props['observe_props'].keys())+ data_types):
-				if s in ['sites', 'sorted']:
-					continue
-				elif s in ['tsne','pca']:
-					props['observe_props'][s] = [True,s]
-				else:
-					props['observe_props'][
-						   s+'_sorted'] = props['observe_props'].get(s,[True,s])
 				
 			Data_Process().format(props, file_update=True)
 			tree[branch[-1]] = props
@@ -379,7 +411,7 @@ class ModelAnalysis(object):
 			data_types = ['sites'] + [s for s in data_types
 										if s not in ['sites','sorted']]
 							
-		file_header = data_props['data_dir'].split('/')[-2]
+		file_header = os.path.split(data_props['data_dir'])[0]
 		file_format = lambda s: file_header + s
 		if data.get('sorted'):
 			for k,v in (data['sorted'].copy()).items():

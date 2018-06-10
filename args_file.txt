@@ -15,6 +15,7 @@
 { 'Nm': [int(5e3)]}
 { 'Nf': [int(0.5e1)]}
 { 'Nr': [0.7]}
+{ '-model_name': ['potts']}
 { 'alg': ['metropolis_wolff']}
 { '-data_dir': ['dataset/']}
 
