@@ -123,6 +123,10 @@ class MonteCarloPlot(object):
 
 				kwargs['reduc_param'] = {a1: data[K][a1][0]
 										 for a1 in kwargs['arr_1'][1]}
+				kwargs['sort_values'] = {a1: data[K][a1][2]
+										 for a1 in kwargs['arr_1'][1]}
+											
+										 
 				self.plot_obj.plotter(
 					data = {kt: data[K][kt[1]][1][:,1] 
 								for kt in flatten(self.plot_keys[K])
@@ -384,11 +388,11 @@ class MonteCarloPlot(object):
 												   sep_char=' ',split_char='_'),
 								'axis_ticks':{'x':{'lim':1,'ticksmax':1/2,
 														   'ticksmin':1/4},
-											  'y':{'lim':10,'ticksmax':None,
+											  'y':{'lim':1,'ticksmax':None,
 															 'ticksmin':None}},
 								'pause':0.01,
 								'sup_legend': True,
-								'legend': {'loc': (0.85,0.7)},
+								'legend': {'loc': (0.85,0.65)},
 								'sup_title': {'t':
 											sup_title(**kwargs)}
 								}
@@ -462,7 +466,11 @@ class MonteCarloPlot(object):
 			elif plot_type == 'pca':
 				plot_type = plot_type.upper()
 			
+			
 			def Plot_Props(keys):
+				import matplotlib.markers as mp
+				markers = mp.MarkerStyle().filled_markers
+				Nm = len(markers)
 				return {
 						k: {
 		
@@ -475,7 +483,15 @@ class MonteCarloPlot(object):
 							  'get_yticklabels':{'visible':False,
 													 'fontsize':12},
 								'yaxis': {'ticks_position': 'none'}},
-				  'plot':  {'s':10},
+				  'plot':  {'s':10,
+							'plot_ind':['marker','c'],
+							'marker':[markers[i%Nm] 
+									for i,v in enumerate(kwargs['sort_values'])]
+									if kwargs.get('sort_values') else '.'},
+															 
+							# 'zorder':lambda p,P: p['c']}, 
+													# # if p['c']<np.mean(P['c']) 
+												# # else np.mean(P['c'])-p['c']},
 				  
 				  'data':  {'plot_type':'scatter',
 							'data_process':lambda data: np.real(data),
@@ -484,7 +500,7 @@ class MonteCarloPlot(object):
 								'cbar': {										
 										'plot':True,
 										'title':{'label':'Temperatures',
-												 'size':FONT_SIZE},
+												 'size':22},
 										'color':'bwr',
 										'labels': {'fontsize': 22},
 										'vals_slice':slice(1,None,2)},

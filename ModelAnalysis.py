@@ -56,7 +56,10 @@ class ModelAnalysis(object):
 		
 		# Process Each Data Set
 		display(print_it=True,time_it=False,m='Processing Observables')
-		self.observables(data,self.data_props)
+		observables_functions = self.data_props.get('observables_functions',
+										   self.data_props['observe_props'][
+														'observables_mean'][1:])
+		self.observables(data,observables_functions,self.data_props)
 		
 		
 		# Sort and Reduce Dimensions of Data
@@ -105,7 +108,7 @@ class ModelAnalysis(object):
 		display(print_it=True,time_it=False,m='Model Analysis Complete...')
 		return
 	
-	def observables(self,data,data_props):
+	def observables(self,data,observables_functions,data_props):
 		
 		def plot_observables(data,key):
 			self.plot({#'observables':data['observables'][key],
@@ -167,9 +170,7 @@ class ModelAnalysis(object):
 			
 			# Measure Data
 			
-			m = Model(model=model_props,
-					 observe= self.data_props['observe_props'][
-											  'observables_mean'][1:])
+			m = Model(model=model_props,observe=observables_functions)
 			
 			data['observables'][k] = self.measure(sites, 
 												 model_props['neighbour_sites'],
@@ -227,7 +228,7 @@ class ModelAnalysis(object):
 		
 		# Save Figures
 		if model_props.get('data_save',True):
-			plot_obj.plot_save(model_props,read_write='ow',fig_size=(12,7))
+			plot_obj.plot_save(model_props,read_write='ow',fig_size=(18,12))
 			
 		return
 		
@@ -336,13 +337,15 @@ class ModelAnalysis(object):
 		def reduce_sorted(tree,branch,data,root,model_props,rep):
 			
 			keys_func = lambda k,d: np.repeat(k,np.shape(d)[0]//len(k))
+			data_func = lambda data,N0,N: np.concatenate(tuple([d[N0:N0+N]
+														for d in data]),axis=0)
 			
 			for b in branch:
 				data = data[b]
 				model_props = model_props.get(b,model_props)					
 			
 			keys = sorted(data.keys())
-			data = [data[k] for k in keys]
+			data_concat = [data[k] for k in keys]
 			
 			# Check if Data Exists
 			if tree[b] != root:
@@ -358,21 +361,21 @@ class ModelAnalysis(object):
 												data_files = model_props[
 													'data_file']+temp_name,
 												disp=True)
-			#input('Prepare for data concatenation')
+			
+			Ns = int(np.shape(data_concat)[1]*dim_reduc_params.pop('Ns'))
+			N0 = 0
+			data_concat = data_func(data_concat,N0,Ns)
 			if data_temp is None:
 				print('New %s Data at '%rep,parameters[:len(branch)],
 					branch)
-				Ns = int(np.shape(data)[1]*dim_reduc_params.pop('Ns'))
-				#i = int(random.random()*np.shape(data)[1]*(1-Ns))
-				i = 0
+				#N0 = int(random.random()*np.shape(data)[1]*(1-Ns))
 				# Ns = np.array(random.sample(,
 										# int(np.shape(data)[1]*Ns)))
 										
 				#input('Prepare for data concatenation after random choice')
-				data = np.concatenate(tuple([d[i:i+Ns]
-											 for d in data]),axis=0)
 				if True:
-					data =  dim_reduce(data,rep=rep, **dim_reduc_params)
+					data_reduc =  dim_reduce(data_concat,rep=rep, 
+												**dim_reduc_params)
 				
 				Data_Process().exporter({temp_name.split('.')[0]:data},
 									     model_props,
@@ -385,11 +388,11 @@ class ModelAnalysis(object):
 					np.shape(data_temp[0][model_props['data_file']+
 								temp_name.split('.')[0]]))
 				
-				data = data_temp[0][model_props['data_file']+
+				data_reduc = data_temp[0][model_props['data_file']+
 									temp_name.split('.')[0]]
 			
-			keys = keys_func(keys,data)
-			tree[b] = (keys,data)
+			keys = keys_func(keys,data_reduc)
+			tree[b] = (keys,data_reduc,[int(np.mean(d)) for d in data_concat])			
 			return tree
 			
 			

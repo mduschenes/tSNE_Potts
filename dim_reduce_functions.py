@@ -416,7 +416,7 @@ def plot_props(keys,data_typed,data_rep,data_type,orientation):
 					  'get_yticklabels':{'visible':False,
 											 'fontsize':15},
 					   'yaxis': {'ticks_position': 'none'}},
-		  'plot':  {'s':30,
+		  'plot':  {'s':40,
 					'c': np.reshape(data_typed[(
 							 'temperatures'+'_'+data_type)][k],(-1,))},
 		  
@@ -428,7 +428,7 @@ def plot_props(keys,data_typed,data_rep,data_type,orientation):
 								'cbar': {										
 										'plot':cbar_plot(i,k),
 										'title':{'label':'Temperatures',
-												 'size':FONT_SIZE},
+												 'size':25},
 										'color':'bwr',
 										'midpoint': 2.269,
 										'labels': {'fontsize': FONT_SIZE}},

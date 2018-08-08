@@ -60,7 +60,6 @@ def plot_decorator(plot_func):
 		# Plot Data and Get Plot Properties
 		plot = {}
 		
-		
 		if not isinstance(data,dict):
 			data = {plot_props.get('other',{}).get('plot_key',''): data}
 		
@@ -70,8 +69,8 @@ def plot_decorator(plot_func):
 		for k,d in data.items():
 			if (d is not None) or (d != []):
 				y,x,props = get_props(d,domain[k],k,plot_props)
-				plot[k] = plot_func(x,y,props)
-		
+
+				plot[k] = plotter(x,y,plot_func,fig,ax,props)		
 		
 		# Set Plot Properties
 		set_props(plot[k],fig,ax,plot_props)
@@ -80,6 +79,35 @@ def plot_decorator(plot_func):
         
 	return plot_wrapper
 
+	
+def plotter(x,y,plot_func,fig,ax,props):
+	
+	props0 = props.copy()
+	plot_ind = props0.pop('plot_ind',None)
+	
+	if not plot_ind:
+		plot_obj = plot_func(x,y,props0)
+	else:
+		
+		if not isinstance(plot_ind,list):
+			plot_ind = props.keys()
+		props0_ind = props0.copy()
+		
+		for p in [p for p in plot_ind if p not in ['c']]:
+			props0_ind.pop(p,None);
+		props0_ind['zorder'] = -np.inf
+		plot_obj = plot_func(x,y,props0_ind)
+		
+		for i,(xi,yi) in enumerate(zip(x,y)):
+			for p in plot_ind:
+				v = props0[p]
+				if callable(v):
+					props0[p] = v(props0,props)
+				elif isinstance(v,(list,np.ndarray)):
+					props0[p] = v[i]
+			plot_func(xi,yi,props0)
+			
+	return plot_obj
 
 @plot_decorator
 def plot_plot(x,y,props):

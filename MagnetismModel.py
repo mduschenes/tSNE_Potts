@@ -221,8 +221,9 @@ if __name__ == "__main__":
 	
 	observe_props = {'configurations':   [args.sites_plot,'sites'],
 			         'observables':      [True,'energy','order'],
-                     'observables_mean': [True,'energy','order','specific_heat']}#,
-									                 #  'susceptibility'       ]}
+                     'observables_mean': [True,'energy','order',
+												'specific_heat']}#
+									                   # 'susceptibility'    ]}
 	data_props = {
 		'data_properties':['model_name','d', 'data_dir', # algorithm
 						   'plot','sort','dim_reduc','analysis','observe_props',
@@ -239,6 +240,8 @@ if __name__ == "__main__":
 		'analysis_params': {'sort_params': args.sort_params,
 							'dim_reduc_params': args.dim_reduc_params},
 		'observe_props': observe_props,
+		'observables_functions': ['energy','order','specific_heat',
+								  'susceptibility'],
 		'data_typing': 'dict_split'				  
 				 }
 	data_props['data_files'] = tuple(set('*.'+ f 
@@ -277,11 +280,4 @@ if __name__ == "__main__":
 	# Analyse Results
 	if args.analysis:
 		s.process(data_props)
-		s.process.process() 
-	
-	
-	
-		
-
-		
-	
+		s.process.process()
