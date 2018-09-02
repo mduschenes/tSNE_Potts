@@ -24,7 +24,7 @@ class system(object):
     #  Order Parameters: Hamiltonian Coupling Constants, 
     #                    Order Parameter Function
     # Observables: List of Observed quantities
-    #  Monte Carlo Update Parameters: Perform Monte Carlo Update
+    # Monte Carlo Update Parameters: Perform Monte Carlo Update
     #                                 Number of initial updates Neqb,
     #                                 Number of Measurement Updates Nmeas
     #                                 Measurement Update Frequency Nmeas_f

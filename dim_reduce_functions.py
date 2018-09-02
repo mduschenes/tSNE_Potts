@@ -50,6 +50,12 @@ def KL_entropy(p,q):
 
 
 def binary_search(x,a,f,f0,tol,n_iter):
+		# x is input data for a function f
+		# a are input parameters for a function f, to be searched for
+		# f is a function to be searched over
+		# f0 is the function value to be approached with f(a)
+		# tol is the tolerance allowed between |f(a) - f0|
+		# n_iter is the number of allowed iterations of search
 		
 		fi,y = f(x,a)        
 		n = np.shape(y)[0]
