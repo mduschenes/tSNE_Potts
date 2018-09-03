@@ -27,3 +27,8 @@ General data-processing and plotting modules, which create subplots based on key
 
 # misc_functions
 Contains have some miscellaneous functions.
+
+# dim_reduce_functions
+Performs dimensional reduction algorithms.
+PCA: Performs principal component analysis on datasets X = [X_0, X_1,...X_M]^T, where X_i are N-dimensional vectors. Returns $\tilde{N} < N$ components.
+t-SNE: Performs t-distributed stochastic neighbour embedding, with optional initial PCA processing. Initially performs binary search for variances in input data that correspond to a user-defined perplexity.
