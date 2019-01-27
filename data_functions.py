@@ -4,7 +4,7 @@ Created on Sat Mar 24 19:54:38 2018
 @author: Matt
 """
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import numpy as np
 import os,glob,copy
@@ -45,11 +45,7 @@ class Data_Process(object):
 			
 			self.keys = keys
 			
-			if np.size(plot) == 1 and not isinstance(plot,dict):
-				self.plot = {k: np.atleast_1d(plot)[0] for k in keys}
-			else:
-				self.plot = plot
-			
+			self.plot_set(plot)
 			
 			self.data_key = 'data_key'
 			
@@ -72,9 +68,6 @@ class Data_Process(object):
 			disp = self.DISP
 			
 		# Ensure Data, Domain and Keys are Dictionaries
-
-		self.plot[data_key] = True
-
 				
 		plot_key = ''
 		if not isinstance(data,dict):
@@ -83,7 +76,7 @@ class Data_Process(object):
 		if data_key is None:
 			data_key = self.data_key
 
-
+		self.plot[data_key] = True
 
 		if keys is None:
 			keys = [k for k in data.keys() if k in self.axes.get(data_key,
@@ -100,11 +93,7 @@ class Data_Process(object):
 				return np.reshape(x,np.shape(y))
 			else:
 				return x
-		
-		# print('data',data)
-		# print('\n')
-		# print('domain',domain)
-		# print('\n')
+
 		for k in keys:    
 			if not isinstance(domain,dict) and isinstance(data[k],dict):
 				dom[k]={ki: shape_data(domain,data[k][ki]) 
@@ -122,10 +111,6 @@ class Data_Process(object):
 				dom = domain
 
 		domain = dom
-			
-		# print('data',data)
-		# print('\n')
-		# print('domain',domain)
 
 		# Create Figures and Axes
 		self.figures_axes({data_key:keys})            
@@ -139,18 +124,20 @@ class Data_Process(object):
 			props = plot_props.get(key,plot_props)
 			# props['other']['backend'] = self.BACKEND
 			props['other']['plot_key'] = key
-			try:
-				ax = self.axes[data_key][key]
-				fig = self.figs[data_key][key]
-				plt.figure(fig.number)
-				fig.sca(ax)
-			except:
-				self.figures_axes({data_key:keys})
+			# try:
+			ax = self.axes[data_key][key]
+			fig = self.figs[data_key][key]
+			plt.figure(fig.number)
+			fig.sca(ax)
+			ax.cla()
+		# except:
+			# 	self.figures_axes({data_key:keys})
 				
-				ax = self.axes[data_key][key]
-				fig = self.figs[data_key][key]
-				plt.figure(fig.number)
-				fig.sca(ax)
+			# 	ax = self.axes[data_key][key]
+			# 	fig = self.figs[data_key][key]
+			# 	plt.figure(fig.number)
+			# 	fig.sca(ax)
+			# 	ax.cla()
 			
 			# Plot Data
 			#try:
@@ -166,14 +153,25 @@ class Data_Process(object):
 			
 			# Figure Title and Legend
 			plt.suptitle(**props.get('other',{}).get('sup_title',{}))
-			if props.get('other',{}).get('sup_legend'):
+			if props.get('other',{}).get('sup_legend') and (
+				len(ax.get_legend_handles_labels()) > 1):
 				fig.legend(*(list_sort(ax.get_legend_handles_labels(),1)),
 							**props.get('other',{}).get('legend',{}))
 
 		return
             
 
-
+	# Set to Plot
+	def plot_set(self,plot,keys=None,update=True):
+		if keys is None:
+			keys = self.keys
+		if np.size(plot) == 1 and not isinstance(plot,dict) and update:
+			self.plot = {k: np.atleast_1d(plot)[0] for k in keys}
+		elif (not isinstance(plot,dict)) and update:
+			self.plot = {k: plot for k in keys}
+		else:
+			self.plot = plot
+		return
 
 	# Clost all current figures and reset figures and axes dictionaries
 	def plot_close(self):
@@ -240,7 +238,7 @@ class Data_Process(object):
 
 				# Save Figure as File_Format
 				if read_write == 'w': 
-					if i > 0: return 
+					if i > 0: pass 
 					else: file_end = ''
 				elif read_write == 'ow':
 					file_end = ''
@@ -255,7 +253,6 @@ class Data_Process(object):
     
 	 # Create figures and axes for each passed set of keys for datasets
 	def figures_axes(self,Keys,orientation=False):     
-		
 		if not isinstance(Keys,dict):
 			Keys = {self.data_key: Keys}
 			   
@@ -306,6 +303,7 @@ class Data_Process(object):
 					 'data_dir': 'dataset/',
 					 'data_lists': False,
 					 'one_hot': [False,'y_'],
+					 'upconvert':False
 					},directory=None,data_files = None,
 					format=None,data_typing=None,
 					data_obj_format=None,disp=None,
@@ -328,6 +326,13 @@ class Data_Process(object):
 		
 		if directory is None:
 			directory = data_params.get('data_dir',self.DIRECTORY)
+
+
+		if data_lists is None:
+			data_lists = data_params.get('data_lists',False)
+
+		if upconvert is None:
+			upconvert = data_params.get('upconvert',False)
 
 		if not os.path.isdir(directory):
 			os.makedirs(directory)
@@ -504,7 +509,8 @@ class Data_Process(object):
 		for k,f in format.items():
 			for t,v in data_keys.items():
 				if upconvert and f in ['npy','txt'] and k in v and (
-					   data_params.get('data_obj_format',{}).get(t) == 'array'):
+					   data_params.get('data_obj_format',{}).get(t,'dict') == 
+					   									'array'):
 					self.exporter({k:data[k]},data_params,format=self.NP_FILE)
 		
 		return data, data_sizes, data_typed, data_keys

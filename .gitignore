@@ -12,6 +12,14 @@ OLD*/
 **/OLD*/
 **/*dataset*/
 *Data/
+clusters.py
+embedding.py
+gaussians.py
+data_functions_old.py
+plot_functions_old.py
+misc_functions_old.py
+
+
 
 # Specific File Formats
 *.txt

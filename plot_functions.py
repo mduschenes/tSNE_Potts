@@ -16,7 +16,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Define Figure Font Properties
 FONT_SIZE = 22
-matplotlib.rcParams['text.usetex'] = True
+matplotlib.rcParams['text.usetex'] = False
 matplotlib.rcParams['axes.labelsize']  = FONT_SIZE
 #rcParams['figure.figsize']  = fig_size
 matplotlib.rcParams['font.family']     = 'serif'
@@ -72,8 +72,8 @@ def plot_decorator(plot_func):
 
 				plot[k] = plotter(x,y,plot_func,fig,ax,props)		
 		
-		# Set Plot Properties
-		set_props(plot[k],fig,ax,plot_props)
+			# Set Plot Properties
+			set_props(plot[k],fig,ax,plot_props)
         
 		return     
         
@@ -140,7 +140,9 @@ def plot_image(x,y,props):
 def set_props(plot,fig,ax,plot_props):
 	
 	# Plot Legend
-	if not plot_props.get('other',{}).get('sup_legend'):
+	if (not plot_props.get('other',{}).get('sup_legend')) and  (
+		plot_props.get('other',{}).get('plot_legend',False)) and (
+		len(ax.get_legend_handles_labels()) > 1):
 		plt.legend(*(list_sort(ax.get_legend_handles_labels(),1)),
 					**plot_props.get('other',{}).get('legend',{}))
 
@@ -286,6 +288,7 @@ def get_props(data,domain,key,plot_props):
 	
 	x = np.squeeze(plot_props.get('data',{}).get('domain_process',
 								lambda x:np.real(x))(domain))
+
 	return y,x, plot_props.get('plot',{})
 	
 #def cursor_annotate(plot,leg,fig,ax):

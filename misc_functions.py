@@ -8,7 +8,7 @@ Created on Sat Mar 24 15:54:40 2018
 
 
 import numpy as np
-import time,argparse,re
+import time,argparse,re,copy
 
 ##### Model Functions ########
 
@@ -166,6 +166,34 @@ def str_check(v,float_lim=None):
 	else: 
 		return v.replace('[','').replace(']','')
 
+def line_break(string,line_length,delim=' ',line_space=''):
+	string_split = string.split(delim)
+	line_length = max(line_length,max([len(s) for s in string_split]))
+	string = []
+	while string_split != []:
+		n = 0
+		t = []
+		while string_split != [] and n+len(string_split[0]) <= line_length:
+			s = string_split.pop(0)
+			n += len(s)
+			t.append(s)
+		string.append(delim.join(t))
+	return ('\n'+line_space).join(string)
+
+def list_sort(a,j):
+	return list(zip(*sorted(list(zip(*a)),key=lambda i:i[j])))
+
+def list_sort_unique(a,j):
+	return a
+
+def index_nested(a,i):
+	i = np.atleast_1d(i)
+	if len(i) > 1:
+		return index_nested(a[i[0]],i[1:])
+	else:
+		return a[i[0]]
+
+
 def delim_check(d,delim=[' ','.']):
 	if isinstance(d,dict):
 		for k in d.copy().keys():
@@ -217,7 +245,63 @@ def array_dict(d):
 	else:
 		return [{}],1
 
-		
+def dict_reorder(d,keys=None,return_inner=False):
+	# Reorganize dictionary of dictionaries containing keys, into 
+	# dictionary of the fields of the dictionaryies associated with these keys.
+	if all([isinstance(v,dict) for v in d.values()]):
+		if keys is None:
+			keys = list(set(flatten([list(k.keys()) for k in d.values()])))
+		keys = np.atleast_1d(keys)
+		if return_inner and (len(keys) == 1):
+			return {k: v.get(keys[0]) for k,v in d.items()}
+		else:
+			return {key: {k: v.get(key) for k,v in d.items()} for key in keys}
+	else:
+		if keys is None:
+			keys = list(set([k for k in d.values()]))
+		keys = np.atleast_1d(keys)
+		if return_inner and len(keys) == 1:
+			return [k for k,v in d.items() if v == keys[0]]
+		else:
+			return {key: [k for k,v in d.items() if v == key] for key in keys}	
+		return d
+
+
+def dict_feed(d1,d2,keys=None,return_inner=False,direct_access_d2=False):
+	# Reorganize dictionary of dictionaries containing keys, into 
+	# dictionary of the fields of the dictionaryies associated with these keys.
+	# These dictionaries values are fed as input to d2.
+	d1 = copy.deepcopy(d1)
+	d2 = copy.deepcopy(d2)
+	if all([isinstance(v,dict) for v in d1.values()]):
+		if keys is None:
+			keys = list(set(flatten([list(k.keys()) for k in d1.values()])))
+		keys = np.atleast_1d(keys)
+
+		if (not isinstance(d2,dict)) or (not direct_access_d2):
+			d2 = {k: d2 for k in keys}
+
+		key = keys[0]
+		v = list(d1.values())[0]
+
+		if return_inner and len(keys) == 1:
+			return {k: index_nested(d2[keys[0]],v[keys[0]]) 
+							for k,v in d1.items()}
+		else:
+			return {key: {k: index_nested(d2[key],v[key]) 
+							for k,v in d1.items()} for key in keys}
+	else:
+		if keys is None:
+			keys = list(set([k for k in d.values()]))
+		keys = np.atleast_1d(keys)
+		if return_inner and len(keys) == 1:
+			return [index_nested(d2[k],v) 
+							for k,v in d1.items() if k == keys[0]]
+		else:
+			return {key: [index_nested(d2[k],v) 
+							for k,v in d1.items() if k == key] for key in keys}	
+		return d1
+
 # Check if variable is dictionary
 def dict_check(dictionary,key):
 				
@@ -245,37 +329,36 @@ def dict_make(vals,keys,val_type='constant'):
 def array_sort(a,b,axis=0,dtype='list'):
 	b = np.reshape(b,(-1,))
 
+	f = lambda a,b,i: np.reshape(np.take(a,np.where(b==i),axis),
+									   (-1,)+np.shape(a)[1:])
+	b_sorted = sorted(set(b))
+							
+
 	if dtype == 'dict':
-		return {i: np.reshape(np.take(a,np.where(b==i),axis),
-							  (-1,)+np.shape(a)[1:]) 
-								for i in sorted(set(b))},sorted(set(b))
+		return {i: f(a,b,i) for i in b_sorted},b_sorted
 
 	elif dtype == 'list':
-		return ([np.reshape(np.take(a,np.where(b==i),axis),
-					   (-1,)+np.shape(a)[1:]) for i in sorted(set(b))],
-						 sorted(set(b)))
+		return ([f(a,b,i) for i in b_sorted], b_sorted)
 	elif dtype == 'ndarray':
-		return (np.array([np.reshape(np.take(a,np.where(b==i),axis),
-					   (-1,)+np.shape(a)[1:]) for i in sorted(set(b))]),
-						 sorted(set(b)))
+		return (np.array([f(a,b,i) for i in b_sorted]),
+						 b_sorted)
 	elif dtype == 'sorted':
-		return np.concatenate(
-							[np.reshape(np.take(a,np.where(b==i),axis),
-									   (-1,)+np.shape(a)[1:])
-							for i in sorted(set(b))],1), sorted(set(b))
+		return np.concatenate([f(a,b,i) for i in b_sorted],1),b_sorted
 
 	else:
-		return a,sorted(set(b))
+		return a,b_sorted
 
  # Converts data X to n+1-length one-hot form        
 def one_hot(X,n=None):
 
 	n = int(np.amax(X))+1 if n is None else int(n)+1
 
-	sx = np.shape(np.atleast_1d(X))
+	sx = np.shape(np.atleast_2d(X))
 
+	if np.size(sx) > 2 or sx[1] > 1:
+		return X
 
-	y = np.zeros(sx+(n,),dtype=np.int32)
+	y = np.zeros(sx+(0,n),dtype=np.int32)
 
 	for i in range(n):
 		p = np.zeros(n)
