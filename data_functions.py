@@ -57,106 +57,119 @@ class Data_Process(object):
 
 
      # Plot Data by keyword
-	def plotter(self,data,domain=None,plot_props={},data_key=None,keys=None,
+	def plotter(self,data,domain=None,plot_props={},data_keys=None,keys=None,
 				disp=None):
-		
-		if not self.plot.get(data_key,True):
-			return
+		if data_keys is None and self.axes.keys() is not {}:
+			data_keys = list(self.axes.keys())
+		elif data_keys is None:
+			data_keys = self.data_key
+		data_keys = np.atleast_1d(data_keys)
+		keys0 = keys
+		for i,data_key in enumerate(data_keys):
+			keys = keys0
 
-		# Display
-		if disp is None:
-			disp = self.DISP
-			
-		# Ensure Data, Domain and Keys are Dictionaries
+			if not self.plot.get(data_key,True):
+				return
+
+			# Display
+			if disp is None:
+				disp = self.DISP
 				
-		plot_key = ''
-		if not isinstance(data,dict):
-			data = {plot_key: data}
+			# Ensure Data, Domain and Keys are Dictionaries
+					
+			plot_key = ''
+			if not isinstance(data,dict):
+				data = {plot_key: data}
 
-		if data_key is None:
-			data_key = self.data_key
-
-		self.plot[data_key] = True
-
-		if keys is None:
-			keys = [k for k in data.keys() if k in self.axes.get(data_key,
-														   data.keys())
-									   or k == plot_key]
-
-		keys = [k for k in keys if data.get(k,[]) != []]
-
-		dom = {}
-		
-		def shape_data(x,y):
-			x = np.atleast_1d(x)
-			if x is not None and np.size(x) == np.size(y):
-				return np.reshape(x,np.shape(y))
-			else:
-				return x
-
-		for k in keys:    
-			if not isinstance(domain,dict) and isinstance(data[k],dict):
-				dom[k]={ki: shape_data(domain,data[k][ki]) 
-							for ki in data[k].keys()}
-			elif not isinstance(domain,dict):
-				dom[k] = shape_data(domain,data[k])
-			elif isinstance(data[k],dict):
-				if isinstance(domain[k],dict):
-					dom[k] = {ki: shape_data(domain[k][ki],data[k][ki])
-								for ki in data[k].keys()}
+			if data_key is None:
+				data_key = self.data_key
+				if self.data_key in data_keys[:i]:
+					return
 				else:
-					dom[k] = {ki: shape_data(domain[k],data[k][ki]) 
+					data_keys[i] = data_key
+
+
+			self.plot[data_key] = True
+
+			if keys is None:
+				keys = [k for k in data.keys() if k in self.axes.get(data_key,
+															   data.keys())
+										   or k == plot_key]
+
+			keys = [k for k in keys if data.get(k,[]) != []]
+
+			dom = {}
+			
+			def shape_data(x,y):
+				x = np.atleast_1d(x)
+				if x is not None and np.size(x) == np.size(y):
+					return np.reshape(x,np.shape(y))
+				else:
+					return x
+
+			for k in keys:    
+				if not isinstance(domain,dict) and isinstance(data[k],dict):
+					dom[k]={ki: shape_data(domain,data[k][ki]) 
 								for ki in data[k].keys()}
-			else:
-				dom = domain
+				elif not isinstance(domain,dict):
+					dom[k] = shape_data(domain,data[k])
+				elif isinstance(data[k],dict):
+					if isinstance(domain[k],dict):
+						dom[k] = {ki: shape_data(domain[k][ki],data[k][ki])
+									for ki in data[k].keys()}
+					else:
+						dom[k] = {ki: shape_data(domain[k],data[k][ki]) 
+									for ki in data[k].keys()}
+				else:
+					dom = domain
 
-		domain = dom
+			domain = dom
 
-		# Create Figures and Axes
-		self.figures_axes({data_key:keys})            
-
-		
-		# Plot for each data key
-		for key in sorted(keys):
-		
-			display(print_it=disp,time_it=False,
-						m = 'Plotting %s'%(str_check(key)))
-			props = plot_props.get(key,plot_props)
-			# props['other']['backend'] = self.BACKEND
-			props['other']['plot_key'] = key
-			# try:
-			ax = self.axes[data_key][key]
-			fig = self.figs[data_key][key]
-			plt.figure(fig.number)
-			fig.sca(ax)
-			ax.cla()
-		# except:
-			# 	self.figures_axes({data_key:keys})
+			# Create Figures and Axes
+			self.figures_axes({data_key:keys})            
+			
+			
+			# Plot for each data key
+			for key in sorted(keys):
+			
+				display(print_it=disp,time_it=False,
+							m = 'Plotting %s'%(str_check(key)))
+				props = plot_props.get(key,plot_props)
+				# props['other']['backend'] = self.BACKEND
+				props['other']['plot_key'] = key
+				# try:
+				ax = self.axes[data_key][key]
+				fig = self.figs[data_key][key]
+				plt.figure(fig.number)
+				fig.sca(ax)
+				ax.cla()
+			# except:
+				# 	self.figures_axes({data_key:keys})
+					
+				# 	ax = self.axes[data_key][key]
+				# 	fig = self.figs[data_key][key]
+				# 	plt.figure(fig.number)
+				# 	fig.sca(ax)
+				# 	ax.cla()
 				
-			# 	ax = self.axes[data_key][key]
-			# 	fig = self.figs[data_key][key]
-			# 	plt.figure(fig.number)
-			# 	fig.sca(ax)
-			# 	ax.cla()
-			
-			# Plot Data
-			#try:
-			getattr(plot_functions,'plot_' + props.get('data',{}).get(
-					'plot_type','plot'))(data[key],domain[key],fig,ax,props)
-			# except AttributeError:
-				# props.get('data',{}).get('plot_type')(
-							   # data[key],domain[key],fig,ax,props)
+				# Plot Data
+				#try:
+				getattr(plot_functions,'plot_' + props.get('data',{}).get(
+						'plot_type','plot'))(data[key],domain[key],fig,ax,props)
+				# except AttributeError:
+					# props.get('data',{}).get('plot_type')(
+								   # data[key],domain[key],fig,ax,props)
 
-				# display(m='Figure %s Created'%(
+					# display(m='Figure %s Created'%(
 										# plot_props[key]['data']['plot_type']))
-										
-			
-			# Figure Title and Legend
-			plt.suptitle(**props.get('other',{}).get('sup_title',{}))
-			if props.get('other',{}).get('sup_legend') and (
-				len(ax.get_legend_handles_labels()) > 1):
-				fig.legend(*(list_sort(ax.get_legend_handles_labels(),1)),
-							**props.get('other',{}).get('legend',{}))
+											
+				
+				# Figure Title and Legend
+				plt.suptitle(**props.get('other',{}).get('sup_title',{}))
+				if props.get('other',{}).get('sup_legend') and (
+					len(ax.get_legend_handles_labels()) > 1):
+					fig.legend(*(list_sort(ax.get_legend_handles_labels(),1)),
+								**props.get('other',{}).get('legend',{}))
 
 		return
             
@@ -185,7 +198,7 @@ class Data_Process(object):
 	def plot_save(self,data_params={'data_dir':'dataset/',
 									'figure_format':None},
 					   fig_keys = None,directory=None,format=None,
-					   label = '',read_write='w',fig_size=None):#(8.5,11)):
+					   label = '',read_write='w',fig_size=(8.5,11)):#(8.5,11)):
         
         # Save Figures for current Data_Process Instance
 		if format is None:
