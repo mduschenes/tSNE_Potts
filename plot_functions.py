@@ -143,6 +143,7 @@ def set_props(plot,fig,ax,plot_props):
 	if (not plot_props.get('other',{}).get('sup_legend')) and  (
 		plot_props.get('other',{}).get('plot_legend',False)) and (
 		len(ax.get_legend_handles_labels()) > 1):
+		# ax.get_legend().remove()
 		plt.legend(*(list_sort(ax.get_legend_handles_labels(),1)),
 					**plot_props.get('other',{}).get('legend',{}))
 
@@ -283,6 +284,7 @@ def get_props(data,domain,key,plot_props):
 													 lambda x:str_check(x))(key)
 
 	# Setup Plot Data
+
 	y = np.squeeze(plot_props.get('data',{}).get('data_process',
 								lambda x:np.real(x))(data))
 	

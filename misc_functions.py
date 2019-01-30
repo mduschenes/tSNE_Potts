@@ -332,19 +332,15 @@ def array_sort(a,b,axis=0,dtype='list'):
 	f = lambda a,b,i: np.reshape(np.take(a,np.where(b==i),axis),
 									   (-1,)+np.shape(a)[1:])
 	b_sorted = sorted(set(b))
-							
 
 	if dtype == 'dict':
 		return {i: f(a,b,i) for i in b_sorted},b_sorted
-
 	elif dtype == 'list':
-		return ([f(a,b,i) for i in b_sorted], b_sorted)
+		return [f(a,b,i) for i in b_sorted], b_sorted
 	elif dtype == 'ndarray':
-		return (np.array([f(a,b,i) for i in b_sorted]),
-						 b_sorted)
+		return np.asarray([f(a,b,i) for i in b_sorted]),b_sorted
 	elif dtype == 'sorted':
 		return np.concatenate([f(a,b,i) for i in b_sorted],1),b_sorted
-
 	else:
 		return a,b_sorted
 

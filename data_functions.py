@@ -10,7 +10,7 @@ import numpy as np
 import os,glob,copy
 
 from misc_functions import (flatten,dict_check, one_hot,caps,display,
-							list_sort,str_check,delim_check)
+							list_sort,str_check,delim_check,dict_reorder)
 import plot_functions
 
 NP_FILE = 'npz'
@@ -273,8 +273,7 @@ class Data_Process(object):
 
 			keys_new = [k if k not in self.axes.get(keys_label,{}).keys() 
 						else None for k in flatten(keys,False)]
-			
-			if not None in keys_new and self.plot[keys_label]:
+			if not None in keys_new and self.plot[keys_label] and keys_new != []:
 				
 				if len(self.axes.get(keys_label,{})) > 1: 
 					print('Figure Keys Updated...')
@@ -291,7 +290,7 @@ class Data_Process(object):
 					
 				fig, ax = plt.subplots(*(key_shape))
 				
-				fig.canvas.set_window_title('Figure: %d  %s Datasets'%(
+				fig.canvas.set_window_title('Figure %d:  %s Datasets'%(
 												  fig.number,caps(keys_label)))
 				for k,a in zip(keys_new,flatten(np.atleast_1d(ax).tolist(),
 																		False)):
@@ -316,7 +315,11 @@ class Data_Process(object):
 					 'data_dir': 'dataset/',
 					 'data_lists': False,
 					 'one_hot': [False,'y_'],
-					 'upconvert':False
+					 'upconvert':False,
+					 'data_seed':{'train':{'seed_type':'test',
+					 					   'seed_proportion':[0,0,1/20]},
+					 			'test':{'seed_type':'test',
+					 					   'seed_proportion':[0,1,1/20]}}
 					},directory=None,data_files = None,
 					format=None,data_typing=None,
 					data_obj_format=None,disp=None,
@@ -332,7 +335,10 @@ class Data_Process(object):
 					
 		# Data Files Dictionary
 		# Check of importing batch of files
-		data_params = dict_check(data_params,'data_files')            
+		data_params = dict_check(data_params,'data_files')
+
+		if not data_params.get('data_sets'):
+			data_params['data_sets'] = data_params['data_files']            
 
 		if data_files is None:
 			data_files = data_params.get('data_files','*.'+self.NP_FILE)
@@ -352,7 +358,7 @@ class Data_Process(object):
 			
 		# Import Data				
 		
-		def import_func(file,directory,format,key,type=None,**kwargs):		
+		def import_func(file,directory,format,key,dtype=None,**kwargs):		
 			formatter = lambda s,f: s.split('.')[0] + '.'+f.split('.')[-1]			
 			if not os.path.getsize(directory + formatter(file,format)) > 0:
 				return None			
@@ -375,9 +381,9 @@ class Data_Process(object):
 			else:
 				data = None
 			
-			type = key if type is None else type
+			dtype = key if dtype is None else dtype
 			
-			return process(key,data,type)
+			return process(key,data,dtype)
 		
 		def process(key,data,dtype):
 
@@ -470,14 +476,7 @@ class Data_Process(object):
 					data[k] = one_hot(data[k])
 		
 		
-		# Size of Data Sets
-		data_sizes = {}
-		for k in data.keys():
-			v_shape = np.shape(data[k])
-			if data_lists and (np.size(v_shape)==1):
-				data[k] = np.reshape(data[k],(v_shape[0],1))
-			data_sizes[k] = np.shape(data[k])
-		delim_check(data_sizes,delim)
+
 		
 		
 		
@@ -493,30 +492,180 @@ class Data_Process(object):
 				k_list = [k for k in data.keys() if (dtype in k) and (
 							 k not in dt.keys() for dt in data_typed.values())]
 				if data_typing == 'dict':
-					return {k: process(k,data[k],dtype) for k in k_list}
+					return {k: process(k,data[k],dtype) for k in k_list},k_list
 			
 				elif data_typing == 'dict_split':
 					return {k.split(dtype)[0]: process(k,data[k],dtype) 
-							for k in k_list}
+							for k in k_list},k_list
 				
 				else:
-					return [process(k,data[k],dtype) for k in k_list]
+					return [process(k,data[k],dtype) for k in k_list],k_list
 		
 			data_typed = {}
 			data_keys = {}
 			for t in data_params['data_types']:
 				# Define Sets
-				data_typed[t] = data_typer(data,t,data_typed)
-				if data_typed[t] == {}: 
+				data_typed[t],data_keys[t] = data_typer(data,t,data_typed)
+				if data_typed[t] == {}:
 					data_typed.pop(t);
 					continue
 				
-				data_keys[t] = list(data_typed[t].keys())
 				
 				# Check Delimeters
 				delim_check(data_typed[t],delim)
-				delim_check(data_keys[t],delim) 
-		
+				delim_check(data_keys[t],delim)
+
+			# If missing data, seed data into different types
+			if data_params.get('data_seed'):
+
+				index_types = (list,np.ndarray,slice)
+				new_types = [(t,d) for t,d in data_params['data_seed'].items() 
+							if (t not in data_typed.keys()) and (
+								data_typed.get(d['seed_type']))]
+				other_types = [t for t in data_typed.keys() if  (
+										t not in data_params['data_seed']) and (
+										t not in dict_reorder(
+											data_params['data_seed'],
+											'seed_type',True).values())]
+				for t,d in new_types:
+					t_seed = d['seed_type']
+
+					dicttype_seed = isinstance(data_typed[t_seed],dict)
+					if dicttype_seed:
+						data_typed[t] = {}
+					else:
+						data_typed[t] = [None]*len(data_typed[t_seed])
+
+					for i,k in enumerate(data_typed[t_seed]):
+						if dicttype_seed:
+							v = data_typed[t_seed][k]
+						else:
+							v = k
+						
+						shape_seed = list(np.shape(v))
+						axis_seed = d['seed_dimensions'][0]
+						start_seed = d['seed_dimensions'][1]
+
+						if len(d['seed_dimensions']) == 3:
+							indices_seed = d['seed_dimensions'][2]  
+						else:
+							indices_seed = None
+						n_seed = shape_seed[axis_seed]
+
+						if isinstance(start_seed,int):
+							if isinstance(indices_seed,float):
+								indices_seed = np.arange(i_start,
+												i_start+int(indices_seed*
+												n_seed))
+							elif isinstance(indices_seed,int):
+								indices_seed = np.arange(i_start,
+												i_start+indices_seed)
+						elif isinstance(start_seed,index_types):
+							indices_seed = np.array(start_seed)
+						elif start_seed == 'end':
+							start_seed = n_seed
+							if isinstance(indices_seed,float):
+								indices_seed = np.arange(
+												start_seed-int(indices_seed*
+												n_seed),
+												start_seed)
+							elif isinstance(indices_seed,int):
+								indices_seed = np.arange(
+													start_seed-indices_seed,
+													start_seed)
+						else:
+							indices_seed = np.arange(n_seed)
+
+						indices_seed[-1] = min(indices_seed[-1],
+												n_seed-1)
+						shape_seed[axis_seed] = np.size(indices_seed)
+
+						data_seed = np.reshape(
+											np.take(v,indices_seed,axis_seed),
+											shape_seed)
+						
+						k_t = '%s_%d'%(str(t),i)
+						data_params['data_sets'].append(k_t)
+						data_keys[t].append(k_t)
+						data[k_t] = copy.deepcopy(data_seed)
+
+						if dicttype_seed:
+							data_typed[t][k_t] = copy.deepcopy(data_seed)
+							if d.get('remove_seed'):
+								data_typed[t_seed][k] = np.delete(v,
+														indices_seed,axis_seed)
+								data[k] = np.delete(v,indices_seed,axis_seed)
+						else:
+							data_typed[t][i] = copy.deepcopy(data_seed)
+							if d.get('remove_seed'):
+								data_typed[t_seed][i] = np.delete(v,
+														indices_seed,axis_seed)
+								data[k] = np.delete(v,indices_seed,axis_seed)
+
+					for t_other in other_types:
+						indices_other = copy.copy(indices_seed)
+						for j,k_other in enumerate(data_typed[t_other]):
+							if dicttype_seed:
+								v_other = data_typed[t_other][k_other]
+							else:
+								v_other = k_other
+
+							if np.shape(v_other)[axis_seed] == n_seed:
+								if dicttype_seed:
+									data_typed[t_other][k_other] = (
+												np.delete(v_other,
+												indices_other,axis_seed))
+									data[k_other] = np.delete(v_other,
+												indices_other,axis_seed)
+								else:
+									data_typed[t_other][j] = (
+												np.delete(v_other,
+												indices_other,axis_seed))
+									data[k_other] = np.delete(v_other,
+												indices_other,axis_seed)
+							else:
+								try:
+									indices_other[-1] = min(
+											np.shape(v_other)[axis_seed]-1,
+											n_seed-1)
+									if dicttype_seed:
+										data_typed[t_other][k_other] = (
+												np.take(v_other,
+												indices_other,axis_seed))
+										data[k_other] = np.take(v_other,
+												indices_other,axis_seed)
+									else:
+										data_typed[t_other][j] = np.take(
+											v_other,indices_other,axis_seed)
+										data[k_other] = np.take(
+											v_other,indices_other,axis_seed)
+								except IndexError as e:
+									indices_other = np.arange(
+												np.size(indices_other))
+									if dicttype_seed:
+										data_typed[t_other][k_other] = (
+												np.take(v_other,
+												indices_other,axis_seed))
+										data[k_other] = np.take(v_other,
+											indices_other,axis_seed)
+									else:
+										data_typed[t_other][j] = np.take(
+											v_other,indices_other,axis_seed)
+										data[k_other] = np.take(v_other,
+												indices_other,axis_seed)
+
+
+						
+							
+
+		# Size of Data Sets
+		data_sizes = {}
+		for k in data.keys():
+			v_shape = np.shape(data[k])
+			if data_lists and (np.size(v_shape)==1):
+				data[k] = np.reshape(data[k],(v_shape[0],1))
+			data_sizes[k] = np.shape(data[k])
+		delim_check(data_sizes,delim)
 		
 		# If not NP_FILE format, Export as NP_FILE for easier importing
 		for k,f in format.items():
