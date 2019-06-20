@@ -1,18 +1,3 @@
-# tSNE_Potts
-Magnetic Model on Lattice
-                
-# MagnetismModel
-A class that initializes the other classes and passes system and algorithm configurations parameters to *MonteCarloUpdate*.
-Configurations are input to MonteCarloUpdate as:
-
-```
-{
-property_0: [prop_0_0, prop_0_1,..., prop_0_n] ,
-..., 
- property_m: [prop_m_0, prop_m_1,...prop_m_n]
- }
-```
-
 # MonteCarloUpdates
 A class which does iterations of sweeps over Configurations (i.e different update algorithms), and Temperatures. Equilibrium, then Measurement sweeps are performed, where the number of sweeps is a multiple of Nspins and measurements of the configurations occurs every Nmeas_f, also a multiple of Nspins. 
   
@@ -30,5 +15,5 @@ Contains have some miscellaneous functions.
 
 # dim_reduce_functions
 Performs dimensional reduction algorithms.
-PCA: Performs principal component analysis on datasets <img src="/tex/2680b0c9d94e88940376ae8a0fde82eb.svg?invert_in_darkmode&sanitize=true" align=middle width=153.99942524999997pt height=27.6567522pt/>, where <img src="/tex/1338d1e5163ba5bc872f1411dd30b36a.svg?invert_in_darkmode&sanitize=true" align=middle width=18.269651399999987pt height=22.465723500000017pt/> are <img src="/tex/f9c4988898e7f532b9f826a75014ed3c.svg?invert_in_darkmode&sanitize=true" align=middle width=14.99998994999999pt height=22.465723500000017pt/>-dimensional vectors. Returns <img src="/tex/6baa1ba3a445cb0bfd6bd2eb5bc337f9.svg?invert_in_darkmode&sanitize=true" align=middle width=51.917571749999986pt height=30.267491100000004pt/> components.
+PCA: Performs principal component analysis on datasets <img src="/tSNE_Potts_datastructure/tex/2680b0c9d94e88940376ae8a0fde82eb.svg?invert_in_darkmode&sanitize=true" align=middle width=153.99942524999997pt height=27.6567522pt/>, where <img src="/tSNE_Potts_datastructure/tex/1338d1e5163ba5bc872f1411dd30b36a.svg?invert_in_darkmode&sanitize=true" align=middle width=18.269651399999987pt height=22.465723500000017pt/> are <img src="/tSNE_Potts_datastructure/tex/f9c4988898e7f532b9f826a75014ed3c.svg?invert_in_darkmode&sanitize=true" align=middle width=14.99998994999999pt height=22.465723500000017pt/>-dimensional vectors. Returns <img src="/tSNE_Potts_datastructure/tex/6baa1ba3a445cb0bfd6bd2eb5bc337f9.svg?invert_in_darkmode&sanitize=true" align=middle width=51.917571749999986pt height=30.267491100000004pt/> components.
 t-SNE: Performs t-distributed stochastic neighbour embedding, with optional initial PCA processing. Initially performs binary search for variances in input data that correspond to a user-defined perplexity.

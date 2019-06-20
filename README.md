@@ -1,18 +1,3 @@
-# tSNE_Potts
-Magnetic Model on Lattice
-                
-# MagnetismModel
-A class that initializes the other classes and passes system and algorithm configurations parameters to *MonteCarloUpdate*.
-Configurations are input to MonteCarloUpdate as:
-
-```
-{
-property_0: [prop_0_0, prop_0_1,..., prop_0_n] ,
-..., 
- property_m: [prop_m_0, prop_m_1,...prop_m_n]
- }
-```
-
 # MonteCarloUpdates
 A class which does iterations of sweeps over Configurations (i.e different update algorithms), and Temperatures. Equilibrium, then Measurement sweeps are performed, where the number of sweeps is a multiple of Nspins and measurements of the configurations occurs every Nmeas_f, also a multiple of Nspins. 
   
