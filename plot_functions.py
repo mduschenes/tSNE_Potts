@@ -10,113 +10,67 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from matplotlib.colors import LinearSegmentedColormap
-#from colour import Color
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-#from matplotlib.ticker import MaxNLocator
+from mpl_toolkits.axes_grid1 import axes_size
 
-# Define Figure Font Properties
-FONT_SIZE = 22
-matplotlib.rcParams['text.usetex'] = False
-matplotlib.rcParams['axes.labelsize']  = FONT_SIZE
-#rcParams['figure.figsize']  = fig_size
-matplotlib.rcParams['font.family']     = 'serif'
-matplotlib.rcParams['font.serif']      = ['Computer Modern']
-matplotlib.rcParams['font.size']   = FONT_SIZE
-#rcParams['legend.fontsize'] = 9
-#rcParams['xtick.labelsize'] = 9
-#rcParams['ytick.labelsize'] = 9
-#matplotlib.rcParams['mathtext.fontset'] = 'custom'
-#matplotlib.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
-#matplotlib.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
-#matplotlib.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
-
-class MidpointNormalize(colors.Normalize):
-    def __init__(self, vmin=None, vmax=None, midpoint=None, clip=False):
-        self.midpoint = midpoint
-        colors.Normalize.__init__(self, vmin, vmax, clip)
-
-    def __call__(self, value, clip=None):
-        # I'm ignoring masked values and all kinds of edge cases to make a
-        # simple example...
-        x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
-        return np.ma.masked_array(np.interp(value, x, y))
-
-
-plot_image_types = ['image','scatter']
-list_sort = lambda a,j: list(zip(*sorted(list(zip(*a)),key=lambda i:i[j])))
+# Import miscellaneous other functions
+from miscellaneous_functions import sort_unhashable
 
 def plot_decorator(plot_func):
     
-	def plot_wrapper(data,domain=None,fig=None,ax=None,plot_props={}):
+	def plot_wrapper(data,domain={},fig=None,axes={},key=None,props={}):
 		
 		# Define Figure and Axes
-		if fig is None or ax is None:
-			fig = plt.figure()
-			ax = fig.gca()
+		ax = axes.get(key)
 		ax.axis('on')     
+		ax.cla()					
+		
+
+		# Pre process data and properties
+		pre_process(props)
+
+
+		if isinstance(data,dict):
+			plot = {}
+			for k in data.keys():
+				
+				# Get plot label
+				if callable(props['plot'].get('label')):
+					props['plot']['label'] = props['plot']['label'](k)
+
+				# Plot data
+				plot[k] = plot_func(*set_data(data,domain,k,**props['data']),
+										props['plot'])		
+				plt.draw()
 			
-		plot_props = copy.deepcopy(plot_props)
-					
-		# Plot Data and Get Plot Properties
-		plot = {}
-		
-		if not isinstance(data,dict):
-			data = {plot_props.get('other',{}).get('plot_key',''): data}
-		
-		if not isinstance(domain,dict):
-			domain = {plot_props.get('other',{}).get('plot_key',''): domain}
+		else:
+			plot = {}
+			k = None
 
-		for k,d in data.items():
-			if (d is not None) or (d != []):
-				y,x,props = get_props(d,domain[k],k,plot_props)
+			# Get plot label
+			if callable(props['plot'].get('label')):
+				props['plot']['label'] = props['plot']['label'](k)
 
-				plot[k] = plotter(x,y,plot_func,fig,ax,props)		
-		
-			# Set Plot Properties
-			set_props(plot[k],fig,ax,plot_props)
-        
-		return     
-        
+			# Plot data
+			plot[k] = plot_func(*set_data(data,domain,k,**props['data']),
+										props['plot'])
+			plt.draw()
+		# Post process data and properties
+		post_process(fig,axes,plot[k],key,props)
+
+		return				
+
 	return plot_wrapper
 
-	
-def plotter(x,y,plot_func,fig,ax,props):
-	
-	props0 = props.copy()
-	plot_ind = props0.pop('plot_ind',None)
-	
-	if not plot_ind:
-		plot_obj = plot_func(x,y,props0)
-	else:
-		
-		if not isinstance(plot_ind,list):
-			plot_ind = props.keys()
-		props0_ind = props0.copy()
-		
-		for p in [p for p in plot_ind if p not in ['c']]:
-			props0_ind.pop(p,None);
-		props0_ind['zorder'] = -np.inf
-		plot_obj = plot_func(x,y,props0_ind)
-		
-		for i,(xi,yi) in enumerate(zip(x,y)):
-			for p in plot_ind:
-				v = props0[p]
-				if callable(v):
-					props0[p] = v(props0,props)
-				elif isinstance(v,(list,np.ndarray)):
-					props0[p] = v[i]
-			plot_func(xi,yi,props0)
-			
-	return plot_obj
 
 @plot_decorator
-def plot_plot(x,y,props):
+def plot_plot(x,y,props={}):
 	plot = plt.plot(x,y,**props)
 	return plot
 
 
 @plot_decorator
-def plot_histogram(x,y,props):
+def plot_histogram(x,y,props={}):
 	if np.size(y) <= 1:
 		return plt.plot([],label=props['label'])
 	props['bins'] = min(10,int(1+3.322*np.log10(np.size(y))))
@@ -125,174 +79,261 @@ def plot_histogram(x,y,props):
 
 
 @plot_decorator
-def plot_scatter(x,y,props):
+def plot_scatter(x,y,props={}):
 	plot = plt.scatter(x,y,**props)
 	return plot
 
 
 @plot_decorator
-def plot_image(x,y,props):  
+def plot_image(x,y,props={}):  
 	plt.cla()
 	plot = plt.imshow(y,**props)
 	return plot
 
 
-def set_props(plot,fig,ax,plot_props):
-	
-	# Plot Legend
-	if (not plot_props.get('other',{}).get('sup_legend')) and  (
-		plot_props.get('other',{}).get('plot_legend',False)) and (
-		len(ax.get_legend_handles_labels()) > 1):
-		# ax.get_legend().remove()
-		plt.legend(*(list_sort(ax.get_legend_handles_labels(),1)),
-					**plot_props.get('other',{}).get('legend',{}))
-
-
-	# Plot Colourbar
-	if plot_props.get('data',{}).get('plot_type','plot') in plot_image_types:
-		
-		cbar_props = plot_props.get('other',{}).get('cbar',{}).copy()
-		cax = make_axes_locatable(ax).append_axes('right',
-												  size='5%',pad=0.05)
-		
-		plt.cla()
-		fig.sca(cax)
-		cbar = plt.colorbar(plot,cax=cax)
-		cbar.set_label(**cbar_props.get('title',{}))
-		
-		if plot_props.get('data',{}).get('plot_range') is not None:
-			try:
-				cbar_vals=np.array(list(set(
-										 plot_props['data']['plot_range'])))
-				vals_slice = cbar_props.get('vals_slice',slice(0,None,1))
-				cbar_labels = cbar_vals[vals_slice]
-				cbar_vals = cbar_vals[vals_slice]+0.5
-			except RuntimeError:
-				cbar_vals = np.linspace(
-									min(plot_props['data']['plot_range']),
-									max(plot_props['data']['plot_range']),5)
-				cbar_labels = cbar_vals
-			cbar.set_ticks(cbar_vals)
-			cbar.set_ticklabels(cbar_labels)
-			
-		else:
-			cbar_vals = None
-			cbar_labels = None
-		
-		if cbar_props.get('plot') == False:
-			cbar.ax.set_visible(False)
 
 	
-	# Plot Ticks
-	for w,wlim in plot_props.get('other',{}).get('axis_ticks',{}).items():
-		if wlim.get('lim'):
-			wmin,wmax = plt.getp(ax,w+'lim')
-			if wmax-wmin > wlim.get('lim') and wlim.get('ticksmax') != None:
-				getattr(ax,w+'axis').set_major_locator(
-									  plt.MultipleLocator(wlim['ticksmax']))
-			elif wlim.get('ticksmin') != None:
-				getattr(ax,w+'axis').set_major_locator(
-									  plt.MultipleLocator(wlim['ticksmin']))
 	
+
+# Set figure properties
+def set_prop(fig,ax,plot,props={},
+				props_not_set = ['other','data','plot'],**kwargs):
 	
-	# Set Figure Properties
-	plot_not_set_props = ['other','data','plot']
-	for prop in np.setdiff1d(list(plot_props.keys()),plot_not_set_props):
+	for prop in np.setdiff1d(list(props.keys()),props_not_set):
 		if '_attr' in prop:
 			obj = locals()[prop.replace('_attr','')]
-			for k,p in plot_props[prop].items():
+			
+			for k,p in props[prop].items():
 				if not callable(p):
-					p0 = p
-					p = lambda a: p0
+					p = lambda a,p0 = p: p0
+				
+				if 'set_' in k:
+					getattr(obj,k)(**p)
+					continue
+
 				if 'get_' in k:
 					obj_k = getattr(obj,k)()
 				else:
 					obj_k = getattr(obj,k)
 					
 				plt.setp(obj_k,**p(plt.getp(obj,k.replace('get_',''))));
+		
+		# Not attribute objects must
 		else:
 			obj = locals().get(prop,None)
-			prop_obj = plot_props.get(prop,{})
-			for p in prop_obj.copy():
+			prop_obj = copy.deepcopy(props.get(prop,{}))
+			for p in prop_obj.keys():
 				if callable(prop_obj[p]):
 					prop_obj[p] = prop_obj.pop(p)(plt.getp(obj,p))
 			
 			plt.setp(obj,**prop_obj);
 
-	# Pause
-	plt.pause(plot_props['other'].get('pause',0.01))
+	return
+
+# Set data for plotting
+def set_data(data=[],domain=[],key=None,
+		   data_process=None,domain_process=None,
+		   **kwargs):
+
+	if not callable(data_process):
+		data_process = lambda x:np.real(x)
+
+	if not callable(domain_process):
+		domain_process = lambda x:np.real(x)
+
+	if not isinstance(data,dict) or not isinstance(domain,dict):
+		return domain_process(domain),data_process(data)
+	else:
+		return domain_process(domain[key]),data_process(data[key])
+
+
+
+# Set legend, with unique sorted labels
+def set_legend(obj,props={},inds=-1,**kwargs):	
+
+	legend_labels = sort_unhashable([a.get_legend_handles_labels()
+										for a in plt.gcf().axes],
+									inds=inds,key=lambda i: i[-1])
+	if len(legend_labels[0]) >1:
+		obj.get_legend().remove()
+		obj.legend(*legend_labels,**props)
+
+	return
+
+
+# Set axis ticks based on attributes per axis, for example:
+# ax.xaxis.set_major_locator(plt.MultipleLocator(base))
+def set_ticks(fig=None,ax=None,plot=None, axis_ticks = {},  **kwargs):
+
+	# Iterate over axis
+	for axis,axis_props in axis_ticks.items():
+		for (set_attr,set_func,set_prop),set_wrapper in axis_props.items():
+			getattr(getattr(ax,axis+'axis'),set_attr)(
+									set_wrapper(getattr(plt,set_func),ax,axis,
+									plt.getp(ax,axis+set_prop)))
+	return
+
+
+
+# Set colormap
+def set_colormap(color=None,boundaries=[],normalization='linear',
+					color_bad='magenta',**kwargs):
+
+	if color is None or boundaries == []:
+		return {}
+
+	ncolors = len(boundaries)
+
+	cmap = matplotlib.cm.get_cmap(color,ncolors)
+	
+	if normalization == 'linear':
+		norm = colors.Normalize(min(boundaries),max(boundaries))
+	elif normalization == 'discrete':
+		norm = colors.BoundaryNorm(boundaries,ncolors)
+	elif normalization == "log":
+		norm = colors.LogNorm(min(boundaries),max(boundaries))
+	else:
+		norm = colors.NoNorm(None,None)
+
+	cmap.set_bad(color=color_bad)
+
+	return {'cmap':cmap,'norm':norm}
+
+
+
+# Set colorbar based on ticks: {tick_value: tick_label}
+def set_colorbar(fig=None,axes=None,plot=None,key=None,cmap=None,norm=None,
+				 labels={},
+				 props={'position':'right','size':'5%','pad':'2%'},
+				 new_ax  = False,
+				 update_ax = False,
+				 display=True,**kwargs):
+		
+		
+		if (not update_ax and axes.get(key+'_cax'))  or (
+								cmap is None or not display):
+			return
+
+		elif new_ax and not axes.get(key+'_cax'):
+			cax = fig.add_axes(new_ax,frame_on=False)
+			cax.axis('off')
+		elif axes.get(key+'_cax'):
+			cax = axes.get(key+'_cax')
+		else:
+			cax = axes[key]
+		cax = make_axes_locatable(cax).append_axes(**props)
+		
+		
+		axes[key+'_cax'] = cax
+
+		# size=axes_size.AxesY(axes[key], aspect=1./props.pop('aspect',100))
+		# pad = axes_size.Fraction(props.pop('pad_fraction', 1),size)
+		# props.update(dict(size=size,pad=pad))
+		fig.sca(cax)
+		plt.cla()
+
+		try:
+			cbar = plt.colorbar(plot,ax=axes[key],cax=cax)
+		except:
+			smap = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+			smap.set_array([]);
+			fig.colorbar(smap,cax=cax,**props)		
+
+		if isinstance(labels.get('ticks'),dict):
+			cbar.set_ticks(list(labels['ticks'].keys()))
+			cbar.ax.set_yticklabels(list(labels['ticks'].values()),**labels.get('ticks_params',{}))
+			
+
+		cbar.set_label(**labels.get('label',{}))
+		
+
+		cbar.ax.set_visible(display)
+
+		return cax
+
+
+# Pre processing of plot
+def post_process(fig,axes,plot,key,props={}):
+
+	ax = axes[key]
+	# Set properties
+	set_prop(fig,ax,plot,props)
+
+	# Show figure title
+	if props.get('other',{}).get('sup_title'):
+		fig.suptitle(**props.get('other',{}).get('sup_title',{}))
+
+	# Plot legend on axes or figure
+	if props.get('other',{}).get('legend'):
+		set_legend(ax,props.get('other',{}).get('legend',{}))
+	
+	if props.get('other',{}).get('sup_legend'):
+		set_legend(fig,props.get('other',{}).get('legend',{}))
+
+
+	# Set ticks
+	if props.get('other',{}).get('ticks'):
+		set_ticks(fig,ax,plot,**props.get('other',{}).get('ticks',{}))
+
+	# Set colorbar
+	if props.get('other',{}).get('colorbar',{}):
+		set_colorbar(fig,axes,plot,key,**props.get('other',{}).get('colorbar'))
+
+	# Set which axes has labels
+	for a in fig.axes:
+		try:
+			a.label_outer()
+		except:
+			pass
+
+	# Adjust layout of figure
+	try:
+		fig.tight_layout(**props.get('other',{}).get('figure_layout',
+									{'pad':0.05,'w_pad':0.1, 'h_pad':0.1}))
+	except:
+		pass
+	try:
+		fig.subplots_adjust(**props.get('other',{}).get('subplots_adjust',
+														{'top':0.85}))
+	except:
+		pass
+
+
+	# Other properties
+	plt.pause(props.get('other',{}).get('pause',0.01))
+
+	# Clear colorbar for next plot
+	# if props.get('other',{}).get('colorbar'):
+		# cax.cla()
+		# cax.axis('off')
 	
 	return
+
 	
-	
-def get_props(data,domain,key,plot_props):
 
-	# Setup Image Colourbar
-	if plot_props.get('data',{}).get('plot_type','plot') in plot_image_types or(
-				plot_props.get('other',{}).get('cbar_plot')):
-		cbar_props = plot_props.get('other',{}).get('cbar')
-		# Colorbar Range
-		if plot_props.get('data',{}).get('plot_range') is None:
-			vmin = np.min(data[~np.isnan(data)])
-			vmax = np.max(data[~np.isnan(data)])
-			plot_range = np.linspace(vmax,vmin,10)
-		else:
-			vmin = min(plot_props['data']['plot_range'])
-			vmax = max(plot_props['data']['plot_range'])
-			plot_range = plot_props['data']['plot_range']
-		n_plot_range = len(plot_range)
-		
-		# Colorbar Normalization
-		color_list = cbar_props.get('color','jet')
-		if data.dtype == np.integer and (
-					plot_props.get('data',{}).get('plot_range') is not None):
-						
-			cmap=plt.cm.get_cmap(color_list,n_plot_range)
-			cmap.set_bad(color = cbar_props.get('color_bad', 'magenta'))
-			
-			norm = colors.BoundaryNorm(plot_props['data']['plot_range'],
-									   ncolors=n_plot_range)
-			
-			# Update plot_props
-			plot_props.get('plot',{})['cmap'] = cmap
-			plot_props.get('plot',{})['norm'] = norm
-			
-		
-		else:
-			cmap=plt.cm.get_cmap(color_list)
-			# if isinstance(color_list,list):
-				# ncolors = np.size(data) #color_list[2]
-				# color_list =list(Color(color_list[0]).range_to(
-								 # Color(color_list[1]),
-								 # ncolors))
-				# color_list = list(map(lambda x: (x.red,x.green,x.blue),
-												# color_list))
-				# cmap = colors.ListedColormap(color_list)
-			
-			#norm = MidpointNormalize(cbar_props.get('midpoint'))
-			
-			cmap.set_bad(color = cbar_props.get('color_bad', 'magenta'))
-			plot_props.get('plot',{})['cmap'] = cmap
-			#plot_props.get('plot',{})['norm'] = MidpointNormalize(cbar_props.get('midpoint'))
-			
+# Pre processing of plot
+def pre_process(props={}):
 
-		
-		
-		#plot_props.get('data',{})['plot_range'] = plot_range
-	# Setup Labels
-	plot_props.get('plot',{})['label'] = plot_props.get('other',{}).get('label',
-													 lambda x:str_check(x))(key)
+	# Ensure fields in props exist
+	for p in ['plot','data','other']:
+		if not props.get(p):
+			props[p] = {}
 
-	# Setup Plot Data
+	# Define style
+	plt.style.use(props['other'].get('style','matplotlibrc'))
 
-	y = np.squeeze(plot_props.get('data',{}).get('data_process',
-								lambda x:np.real(x))(data))
-	
-	x = np.squeeze(plot_props.get('data',{}).get('domain_process',
-								lambda x:np.real(x))(domain))
+	# Set colormap
+	colormap = set_colormap(**props['other'].get('colorbar',{}))
+	props['plot'].update(colormap)
+	props['other'].get('colorbar',{}).update(colormap)
 
-	return y,x, plot_props.get('plot',{})
-	
+	return
+
+
+
+
+
+
 #def cursor_annotate(plot,leg,fig,ax):
 #    
 #    lined = {}

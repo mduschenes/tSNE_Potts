@@ -6,185 +6,98 @@ Created on Mon Feb 19 20:23:39 2018
 
 import numpy as np
 
-from misc_functions import get_attr
+from Lattice import Lattice
 
-
-class Model(object):
+class Model(Lattice):
     
     # Define a Model class for spin model with: 
     # Lattice Model Type: Model Name and Max Spin Value q
     
-	def __init__(self,model={'model_name':'potts', 'q':3, 'd':2, 'T': 2.2269,
-							 'coupling_param':[0,1], 'data_value_type':np.int_},
-                 observe=['temperature','energy','order']):
+	def __init__(self,name='potts',q=3,d=2,L=6,T=2.2269,couplings=[0,1],
+					dtype=np.int_,**kwargs):
         # Define Models dictionary for various spin models, with
         # [ Individual spin calculation function, 
         #   Spin Upper, Lower, and Excluded Values]
         
         # Define spin value model and q (~max spin value) parameters
         # (i.e: Ising(s)-> s, Potts(s) -> exp(i2pi s/q)  )
-		self.model_name = model.get('model_name','potts').lower()
-		self.q = model.get('q',2)
-		self.d = model.get('d',2)
-		
-		t = model.get('T',-1)
-		self.T = self.critical_temperature(t,self.d,self.q,self.model_name)
+		self.name = name.lower()
+		self.q = q
+		self.d = d
+		self.L = L
+		if T < 0:
+			self.T = self.critical_temperature(model.get('T'),d,q,name)
+		else:
+			self.T = T
 
-		self.coupling_param = model.get('coupling_param',[0,1])
-
-
+		self.couplings = couplings
+		self.dtype = dtype
 		self.model_types = ['ising','potts']
-        
+		self.observables = ['state','interaction','magnetization','order',
+							'twoptcorr','specific_heat','susceptibility',
+							'local_energy','state_difference']
+
+
+		# Set up model Lattice
+		Lattice.__init__(self,L=L,d=d)
+
 		# Define model specific parameters
-		self.models_params = {'ising': {'state_update': {
-										'metropolis': {(dE,t): 
-											np.exp(-self.coupling_param[1]*dE/t) 
-												 for dE in range(-2*2*self.d,
-																  2*2*self.d+1)
-												 for t in self.T},
+		self.models_params = {'ising': {'transition_probability': {
+										'metropolis': {dE: 
+											np.exp(-self.couplings[1]*dE/self.T) 
+												 for dE in range(-2*self.z,
+																  2*self.z+1)},												
+										'wolff':1 - np.exp(
+												   -2*self.couplings[1]/self.T)
+												  },
 												
-										'wolff':{t: (1 - np.exp(
-												   -2*self.coupling_param[1]/t))
-													 for t in self.T}},
-												
-									   'value_range': [-self.q,self.q,0]},
+									   'state_range': [x for x in range(-self.q,
+									   						self.q+1) if x!=0]},
 							
-							'potts':  {'state_update': {
-										'metropolis': {(dE,t): 
-											np.exp(-self.coupling_param[1]*dE/t) 
-												 for dE in range(-2*self.d,
-																  2*self.d+1)
-												 for t in self.T},
+							'potts':  {'transition_probability': {
+										'metropolis': {dE: 
+											np.exp(-self.couplings[1]*dE/self.T) 
+												 for dE in range(-self.z,
+																  self.z+1)
+												  },
 												
-											'wolff':{t: (1 - np.exp(
-												   -1*self.coupling_param[1]/t))
-													 for t in self.T}},
+											'wolff':1 - np.exp(
+												   -1*self.couplings[1]/self.T)
+													 },
 												
-									   'value_range': [1,self.q,None]}} 
+									   'state_range': list(range(1,self.q+1))}} 
 		
 		# Define model specific functions                                
-		for t in self.model_types:
-		
-			self.models_params[t]['state_update']['metropolis_wolff'] = {
-			  'metropolis': self.models_params[t]['state_update']['metropolis'],
-			  'wolff': self.models_params[t]['state_update']['wolff']}
-		
-			for k in ['value','int','order','magnetization','twoptcorr']:
+		for t in self.model_types:		
+			for k in self.observables:
 				self.models_params[t][k] = getattr(self,t+'_'+k,
 												   lambda *args:[])
 
-		# Define Model Value function and Name for given Input
-		self.model_params = self.models_params[self.model_name]
-		self.model_value = self.model_params['value']
 
-		# Define Range of Possible Spin Values and  Energy Function                     
-		self.state_range = self.state_ranges(dtype=model.get('data_value_type',
-															  np.int_))
+		# Given model name, set model
+		self.set_model(self.name)
 
-		
-		# Define Observables
-		self.observables_functions = {k: getattr(self,k,lambda *args:[]) 
-										 for k in observe}
-		
-		# self.observables_props = {k: lambda prop,*arg: get_attr(v,prop,v,*arg) 
-								 # for k,v in self.observables_functions.items()}
-		
 		return
 		
-		   
-	 
-		
-	# Generate array of possible q values
-	def state_ranges(self,xNone=None,xmin=float('inf'),xmax=-float('inf'),
-					 dtype=np.int_):
-		
-		vals = self.model_params['value_range']
-		
-		# Exclude xNone Values
-		if xNone == None:
-			xNone = np.atleast_1d([vals[2]])
-			
-		# List of range of possible spin values, depending on model
-		return np.array([x for x in range(min([xmin,vals[0]]),
-										  max([xmax,vals[1]+1])) 
-						 if x not in xNone],dtype=dtype)
+	# Model Name Specific Parameters
+	def set_model(self,name):
+		for k,v in self.models_params[name].items():
+			setattr(self,k,v)
 
-
-
-
-	# Generate N Random q values, exluding n0
-	def state_gen(self,N=1,n0=None):
+	# Generate N Random q values, exluding s
+	def state_generate(self,s=None,N=1):
 		# Return array of N random spins, per possible state_range spin values
 		# excluding the possible n0 spin
 		# Model dependent generator of spin values 
 
-		return self.model_value(np.random.choice(
-										  np.setdiff1d(self.state_range,n0),N))
+		return self.state(np.random.choice(
+										  np.setdiff1d(self.state_range,s),N))
 	
 	
 	
 	
 	
-##### Model Observables (per site) #########
-		 
-	def temperature(self,sites,neighbours,T):
-		return T
-	
-	def sites(self,sites,neighbours,T):
-		return sites
-
-	def energy(self,sites,neighbours,T):
-		# Calculate energy of spins as sum of spins 
-		# + sum of r-distance neighbour interactions
-		site_int = self.model_params['int']
-		return ((-self.coupling_param[0]*np.sum(site_int(sites),axis=-1))+(
-			   -(1/2)*np.sum(np.array([self.coupling_param[i+1]*(
-									   site_int(
-										 np.expand_dims(sites,axis=-1),
-										 np.take(sites,neighbours[i],axis=-1)))
-				for i in range(len(self.coupling_param)-1)]),
-				axis=(0,-2,-1))))/np.shape(sites)[-1]
-
-	
-	def magnetization(self,sites,neighbours,T,u=1):
-		magnet = self.model_params['magnetization']
-		return magnet(sites)
-	
-	def order(self,sites,neighbours,T):
-		site_order = self.model_params['order']        
-		return site_order(sites)
-	
-	def twoptcorr(self,sites,neighbours,T):
-		site_twoptcorr = self.model_params['twoptcorr']
-		return site_twoptcorr(sites)
-	
-	def specific_heat(self,sites,neighbours,T):  
-	  wrapper = lambda x: np.power(x,2)
-	  return np.reshape((self.obs_mean(self.energy,wrapper,sites,neighbours,T) - 
-			 wrapper(self.obs_mean(self.energy,None,sites,neighbours,T)))*(
-			 np.shape(sites)[-1]/wrapper(T)),
-			 (np.size(T),-1))
-  
- 
-	def susceptibility(self,sites,neighbours,T):        
-	  wrapper = lambda x: np.power(x,2)
-	  return np.reshape(np.mean([(self.obs_mean(self.magnetization, wrapper,
-										sites,neighbours,T,u) - 
-			 wrapper(self.obs_mean(self.magnetization, np.abs,
-									sites,neighbours,T,u)))*(
-			 np.shape(sites)[-1]/T) for u in range(0,self.q)],axis=0),
-			 (np.size(T),-1))
-	
-		
-	def local_energy(self,i,sites,neighbours,T):
-		site_int = self.model_params['int']
-		return -np.sum(np.array([self.coupling_param[j+1]*site_int(
-				np.expand_dims(np.take(sites,i,axis=-1),axis=-1),
-				np.take(sites,neighbours[j][i],axis=-1)) 
-				for j in range(len(self.coupling_param)-1)]),
-				axis=(0,-1))
-
-
+	### Model Observables (per site) ######
 
 	def obs_mean(self,func=None,wrapper=None,*args):
 		if func is None: func = lambda x:x
@@ -192,52 +105,109 @@ class Model(object):
 		
 		return np.mean(wrapper(func(*args)),axis=-1)
 
+   
 
 
-
-
-
-		   
-	# Model Site Values                                 
-	def ising_value(self,s):
+	### Ising Model ###
+                              
+	def ising_state(self,s):
 		return s
-	
-	def potts_value(self,s):
-		return s
-	
-	
 
-	# Model Interactions Energy 
-	def ising_int(self,*args):
-		try:
-			return args[0]*args[1]
-		except IndexError:
-			return args[0]
-	
-	def potts_int(self,*args):
-		try:
-			return 1*np.equal(args[0],args[1])
-		except IndexError:
-			return args[0]
-		
+	def ising_interaction(self,s1,s2):
+		return s1*s2
 
-	# Model Order Parameter
-	
-	def ising_magnetization(self,s,u):
+
+	def ising_energy(self,sites,neighbours,T):
+		# Calculate energy of spins as sum of spins 
+		# + sum of r-distance neighbour interactions
+		return ((-self.couplings[0]*np.sum(site_int(sites),axis=-1))+(
+			   -(1/2)*np.sum(np.array([self.couplings[i+1]*(
+									   self.ising_interaction(
+										 np.expand_dims(sites,axis=-1),
+										 np.take(sites,neighbours[i],axis=-1)))
+				for i in range(len(self.couplings)-1)]),
+				axis=(0,-2,-1))))/np.shape(sites)[-1]
+
+
+	def ising_magnetization(self,s,u=None):
 		return np.mean(s,axis=-1)
-		
+
 	def ising_order(self,s):
 		return self.ising_magnetization(s)
 	
 	def ising_twoptcorr(self,s):
 		shape_l = np.shape(s)[-1]
-		return np.sum([self.ising_int(np.delete(s,i,axis=-1),
+		return np.sum([self.ising_interaction(np.delete(s,i,axis=-1),
 									  np.take(s,i,axis=-1))
 					   for i in range(shape_l)],axis=(0,-1))/shape_l
+
+
+	def ising_specific_heat(self,sites,neighbours,T):  
+		wrapper = lambda x: np.power(x,2)
+		return np.reshape((self.obs_mean(self.energy,wrapper,sites,neighbours,T) - 
+			wrapper(self.obs_mean(self.energy,None,sites,neighbours,T)))*(
+			np.shape(sites)[-1]/wrapper(T)),
+			(np.size(T),-1))
+
+
+
+	def ising_susceptibility(self,sites,neighbours,T):        
+		wrapper = lambda x: np.power(x,2)
+		return np.reshape(np.mean([(self.obs_mean(self.ising_magnetization, wrapper,
+									sites,neighbours,T,u) - 
+				wrapper(self.obs_mean(self.ising_magnetization, np.abs,
+									sites,neighbours,T,u)))*(
+				np.shape(sites)[-1]/T) for u in range(0,self.q)],axis=0),
+				(np.size(T),-1))
+
+		
+	def ising_local_energy(self,i,sites,neighbours,T): 
+		return np.sum(
+					np.array([self.couplings[j+1]*
+						self.ising_interaction(			
+							np.expand_dims(np.take(sites,i,axis=-1),axis=-1),
+							np.take(sites,neighbours[j][i],axis=-1)) 
+				for j in range(len(self.couplings)-1)]),
+				axis=(0,-1))
+
+
+	def ising_state_difference(self,s1,s2,neighbours):
+		return -np.sum(self.ising_interaction(s1,neighbours)) + (
+			    np.sum(self.ising_interaction(s2,neighbours)))
+
+
+
+
+
+
+
+
+	### Potts Model ###
 	
+	def potts_state(self,s):
+		return s
+
+	
+	def potts_interaction(self,s1,s2):
+		return 1*np.equal(s1,s2)
+
+
+
+	def potts_energy(self,sites,neighbours,T):
+		# Calculate energy of spins as sum of spins 
+		# + sum of r-distance neighbour interactions
+		return ((-self.couplings[0]*np.sum(site_int(sites),axis=-1))+(
+			   -(1/2)*np.sum(np.array([self.couplings[i+1]*(
+									   self.ising_interaction(
+										 np.expand_dims(sites,axis=-1),
+										 np.take(sites,neighbours[i],axis=-1)))
+				for i in range(len(self.couplings)-1)]),
+				axis=(0,-2,-1))))/np.shape(sites)[-1]
+		
+
 	
 	def potts_magnetization(self,s,u=1):
-		return np.mean(self.potts_int(s,u), axis=-1)
+		return np.mean(self.potts_interaction(s,u), axis=-1)
 	
 	def potts_order(self,s,u=1):
 		return np.mean(np.array([(self.q*self.potts_magnetization(s,u)-1)/(
@@ -246,21 +216,54 @@ class Model(object):
 
 	def potts_twoptcorr(self,s):
 		shape_l = np.shape(s)[-1]
-		return np.sum([self.potts_int(np.delete(s,i,axis=-1),
+		return np.sum([self.potts_interaction(np.delete(s,i,axis=-1),
 									  np.take(s,i,axis=-1))
 					   for i in range(shape_l)],axis=(0,-1))/shape_l
+
+
+	def potts_specific_heat(self,sites,neighbours,T):  
+		wrapper = lambda x: np.power(x,2)
+		return np.reshape((self.obs_mean(self.energy,wrapper,sites,neighbours,T) - 
+			wrapper(self.obs_mean(self.energy,None,sites,neighbours,T)))*(
+			np.shape(sites)[-1]/wrapper(T)),
+			(np.size(T),-1))
+
+
+
+	def potts_susceptibility(self,sites,neighbours,T):        
+		wrapper = lambda x: np.power(x,2)
+		return np.reshape(np.mean([(self.obs_mean(self.potts_magnetization, wrapper,
+									sites,neighbours,T,u) - 
+				wrapper(self.obs_mean(self.potts_magnetization, np.abs,
+									sites,neighbours,T,u)))*(
+				np.shape(sites)[-1]/T) for u in range(0,self.q)],axis=0),
+				(np.size(T),-1))
+
+		
+	def potts_local_energy(self,i,sites,neighbours,T): 
+		return np.sum(
+					np.array([self.couplings[j+1]*(
+						self.potts_interaction)(			
+							np.expand_dims(np.take(sites,i,axis=-1),axis=-1),
+							np.take(sites,neighbours[j][i],axis=-1)) 
+				for j in range(len(self.couplings)-1)]),
+				axis=(0,-1))
+
+
+
+	def potts_state_difference(self,s1,s2,neighbours):
+		return -np.sum(self.potts_interaction(s1,neighbours)) + (
+			    np.sum(self.potts_interaction(s2,neighbours)))
+
 
 
 
 	# Critical Temperature
 	def critical_temperature(self,T,d,q,model):
-		T = np.atleast_1d(T).astype(float)
-		for i,t in enumerate(T):
-			if t < 0:
-				if d == 2:
-					T[i] =  np.power(np.log(1+np.sqrt(q)),-1)
-					if model == 'ising':
-						T[i] *= 2
+		if T < 0 and d == 2:
+			T =  np.power(np.log(1+np.sqrt(q)),-1)
+			if model == 'ising':
+				T *= 2
 		return T
 
 
