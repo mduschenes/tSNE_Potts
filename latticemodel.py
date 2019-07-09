@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description = "Parse Arguments")
 
 
 
-parser.add_argument('-d','--dir',help = 'Data Directory',
+parser.add_argument('-d','--directory',help = 'Data Directory',
 					type=str,default='./Jobs/job_0')
 
 parser.add_argument('-f','--file',help = 'Configuration File',
@@ -29,8 +29,8 @@ args = parser.parse_args()
 
 
 # Import simulation properties from config file
-properties = importer([args.config_file],args.directory,
-					options={'typer':int,'atleast_1d':True})[args.config_file]
+properties = importer([args.file],args.directory,
+					options={'typer':int,'atleast_1d':True})[args.file]
 props = copy.deepcopy(properties)
 
 
@@ -40,20 +40,11 @@ keys,vals = zip(*properties['model'].items())
 model_sets = [dict(zip(keys,v))for v in itertools.product(*[[v] for v in vals])]
 
 # Set whether plotting and logging will occur
-plotter = props['analysis']['plotting']
-print(plotter is False)
-if plotter:
-	print('False truth')
-if props['analysis']['plotting']:
-	print('yes',plotter)
-else:
-	print('no')
 if props['analysis']['plotting']:
 	plot =  lambda keys,i: set_plot_montecarlo(keys=keys,i=i+1,**props['model'])
 else:
 	plot = False
 log = 'warning'
-print(plot)
 
 # Iterate through all possible sets of parameters
 for i,m in enumerate(model_sets):

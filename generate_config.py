@@ -71,6 +71,10 @@ for i,params in enumerate(sets):
 # Generate .sh file to submit jobs
 if SUBMIT:
 	with open('submit.sh','w') as f:
+		# Activate environment
+		f.write('#!/usr/bin/env bash\nsource /root/environments/py36/bin/activate\n')
+		
+		# Write jobs to submit
 		for i,d in enumerate(directory):
-			f.write('python %s --dir %s --file %s.config\nsleep 1\n\n'%(
+			f.write('python3 %s --dir %s --file %s.config\nsleep 1\n\n'%(
 													SUBMIT,d,NAMEFORMAT%i))

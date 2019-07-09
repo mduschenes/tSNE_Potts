@@ -14,9 +14,9 @@ def montecarlo(N,neighbours,props,job='job_0',directory='.',
 
 	
 	# Array of sample sites and updated clusters during simulation
-	data = {'sites':np.zeros((props['Nmeas']//props['Nmeas_freq'],N),
+	data = {'sites':np.zeros((props['Nmeas_freq'],N),
 								dtype=props['dtype']),
-			'cluster': np.zeros((props['Nmeas']//props['Nmeas_freq'],N),
+			'cluster': np.zeros((props['Nmeas_freq'],N),
 								dtype=props['dtype'])}
 	
 	
@@ -40,7 +40,14 @@ def montecarlo(N,neighbours,props,job='job_0',directory='.',
 	# Perform Monte Carlo simulation, based on algorithm
 	alg = globals().get(props['algorithm'],globals()['metropolis_wolff'])
 	
-	def update(updates,i):
+	if props['algorithm'] == 'metropolis_wolff':
+		Neqb  = int(props['Nmeas_ratio']*props['Neqb']*N) + 
+				int((1-props['Nmeas_ratio'])*props['Neqb'])
+		Nmeas  = int(props['Nmeas']*N)
+		Nmeas_freq = 
+	else:
+
+	def update(i,updates,data,directory):
 		for k in data.keys():
 			data[k][i] = updates[k]
 		exporter({'%s.json'%job:data},directory)
@@ -50,11 +57,11 @@ def montecarlo(N,neighbours,props,job='job_0',directory='.',
 		alg(i/iterations/props['Nmeas_ratio'],N,
 			configurations,neighbours,props)
 		
-		if measure and (True or (i+1)%(props['Nmeas_freq']*N) == 0):
+		if measure and (True or (i+1)%(props['Nmeas_freq']*iterations) == 0):
 			getattr(logging,log)('MC Iteration: %d, Cluster Size: %d'%(i+1,
 					np.count_nonzero(~np.isnan(configurations['cluster']))))
 
-			update(configurations,i//(props['Nmeas_freq']*N))
+			update(configurations,i//(props['Nmeas_freq']*iterations))
 
 			if plot:
 				plot_obj.plot({job:configurations},{job:configurations},
@@ -64,8 +71,8 @@ def montecarlo(N,neighbours,props,job='job_0',directory='.',
 	
 
 	# Perform initial equilibrium iterations
-	for i in range(props['Neqb']*N):
-		simulate(i,props['Neqb']*N,measure=False)
+	for i in range():
+		simulate(i,int(props['Neqb']*N),measure=False)
 
 
 
@@ -75,15 +82,15 @@ def montecarlo(N,neighbours,props,job='job_0',directory='.',
 		# writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
 		animation = animate.FuncAnimation(plot_obj.figs[job], 
 										func=simulate,
-										fargs=(props['Nmeas']*N,True), 
-										frames=props['Nmeas']*N, 
+										fargs=(int(props['Nmeas']*N),True), 
+										frames=int(props['Nmeas']*N), 
 										interval=300,repeat_delay=10000,blit=0)
 		exporter({'%s.gif'%job:animation},directory,
 					options=dict(writer='imagemagick'))
 					
 	else:
-		for i in range(props['Nmeas']*N):
-			simulate(i,props['Nmeas']*N,measure=True)
+		for i in range(int(props['Nmeas']*N)):
+			simulate(i,int(props['Nmeas']*N),measure=True)
 
 
 	return data
