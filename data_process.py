@@ -52,7 +52,10 @@ def importer(files=[],directory='.',options={}):
 		elif format == 'config':
 			config = configparse()
 			config.read(path)
-			return config.get_dict(**options)
+			if not isinstance(options,dict):
+				return config
+			else:
+				return config.get_dict(**options)
 		else:
 			return None
 
@@ -68,7 +71,6 @@ def importer(files=[],directory='.',options={}):
 		if '*' in name or '*' in format:
 			files.remove(f)
 			files += get_files(directory,name.split('*'),format.split('*'))
-			print(files)
 			continue
 		else:
 			data[f] = get_data(f,directory,format,options)
@@ -189,11 +191,15 @@ def seeder(data,seeds,delete_seed=False):
 
 
 # Append data: {file: data} to existing file
-def appender(data={},directory='.'):
+def appender(data={},directory='.',options={}):
 
 	# Append data by type
-	def append_data(data_existing,data):
-		if type(data) != type(data_existing):
+	def append_data(file,data_existing,data):
+		if file.endswith('.config'):
+			for section,options in data.items():
+				for option,value in options.items():
+					data_existing.set_typed(section,option,value)
+		elif type(data) != type(data_existing):
 			return data_existing
 		elif isintance(data_existing,(list,tuple,str)):
 			return data_existing + data
@@ -204,11 +210,11 @@ def appender(data={},directory='.'):
 
 
 	# Existing data dictionary of {file: data}
-	data_existing = importer(data.keys(),directory)
+	data_existing = importer(data.keys(),directory,options)
 
 	# Append data to data_existing
-	for (file,datum_existing),datum in zip(data_existing.items(),data.values):
-		data_existing[file] = append_data(datum_existing,datum)
+	for (file,datum_existing),datum in zip(data_existing.items(),data.values()):
+		data_existing[file] = append_data(file,datum_existing,datum)
 
 	# Export updated data to files
 	exporter(data_existing,directory)		
