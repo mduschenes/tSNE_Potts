@@ -5,7 +5,6 @@ import argparse,os
 # Import defined modules
 from model import model
 from montecarlo import montecarlo
-from plot_properties import set_plot_montecarlo
 from logging_config import logging_config
 from data_process import importer, exporter
 
@@ -33,33 +32,37 @@ args = parser.parse_args()
 
 # Import simulation properties from config file
 file = args.file%args.job
-directory = os.join(args.directory,file)
+directory = os.path.join(args.directory,file)
 props = importer([file+'.config'],directory,
-					options={'typer':int,'atleast_1d':False})[file+'.config']
+					options={'typer':int,'atleast_1d':True})[file+'.config']
 
 
-# Set whether plotting and logging will occur
-if props['simulation']['plotting']:
-	plot =  lambda keys,i: set_plot_montecarlo(keys=keys,i=i+1,**props['model'])
-else:
-	plot = False
-log = 'warning'
+
 
 
 # Setup model
 
-model = Model(**props['model'])
+model = model(**props['model'])
 
 # Setup logging
-logger = logging_config(path+'.log',loggername='warning')
+logger = logging_config(os.path.join(directory,'%s.log'%file),
+										loggername='warning')
+log = 'warning'
 
 
 # Log model
-getattr(logger,log)('\nMonte Carlo Simulation: %s'%path)
+getattr(logger,log)('\nModel Simulation: %s'%directory)
 getattr(logger,log)('Model: %s'%', '.join(['%s: %s'%(str(k),str(v)) 
 								for k,v in props['model'].items()]))
 getattr(logger,log)('Simulation: %s'%', '.join(['%s: %s'%(str(k),str(v)) 
 								for k,v in props['simulation'].items()]))
+
+
+# Set plotting
+if props['simulation']['plotting']:
+	props['simulation']['plotting'] = props['model']
+else:
+	plot = False
 
 
 # Add simulation parameters to props
@@ -71,10 +74,6 @@ data = montecarlo(model.N,model.neighbours[0], props['simulation'],file,director
 data['model'] = props['model']
 
 # Export data
-exporter({'%s.%s'%(job,props['job']['filetype']):data},
-					props['job']['directory'])
+exporter({'%s.%s'%(file,props['simulation']['filetype']):data},directory)
 
-# Update datetime
-props['job']['datetime'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-getattr(logging,log)('Monte Carlo Simulation Complete\n')
+getattr(logger,log)('Model Simulation Complete\n')

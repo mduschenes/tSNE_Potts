@@ -7,16 +7,54 @@ import logging
 # Import data processing files
 from data_process import exporter
 from data_plot import plotter
+from plot_properties import set_plot_montecarlo
 
 
 def montecarlo(N,neighbours,props,job=0,directory='.'):
 
+	# Setup logging
+	logger = logging.getLogger(__name__)
+	if props.get('quiet'):
+		log = 'info'
+	else:
+		log = 'warning'
 	
-	# Array of sample sites and updated clusters during simulation
-	data = {'sites':np.zeros((props['Nfreq'],N),
-								dtype=props['dtype']),
-			'cluster': np.zeros((props['Nfreq'],N),
-								dtype=props['dtype'])}
+
+
+	def Niters(Ni,N,ratios):
+		ratios = np.atleast_1d(ratios)
+		assert 1>=sum(ratios)
+		Nfunc = lambda i,r: (max(1,int(r*Ni*N)) if r>0 else 0) if not i%2 else (
+							 max(1,int(r*Ni)) if r > 0 else 0)
+		Niters = [Nfunc(i,r) for i,r in enumerate(ratios)]
+		Niters.append(Nfunc(len(Niters),1-sum(ratios)))
+		return Niters
+	def Nperiods(Nf,N,Niters):
+		Niters = np.atleast_1d(Niters)
+		Nfunc = lambda i,n: max(1,int(N//Nf))if not i%2 else max(1,int(1//(Nf)))
+		Nperiods = [Nfunc(i,n) for i,n in enumerate(Niters)]
+		return Nperiods
+
+
+	if props['algorithm'] in ['metropolis','wolff','metropolis_wolff']:
+		alg = [globals().get(a) for a in ['metropolis','wolff']]
+	else:
+		alg = [globals().get(a) for a in props['algorithm']]
+	Neqb  = Niters(props['Neqb'],N,props['Nratio'])
+	Nmeas  = Niters(props['Nmeas'],N,props['Nratio'])
+	Nperiods = Nperiods(props['Nfreq'],N,Nmeas)
+	# Nmeas_total = [Nm//Nf for Nm,Nf in zip(Nmeas,Nperiods)]
+	measure_buffer = [(j+1)*Nperiods[i] for i in range(len(Nmeas)) 
+										for j in range(Nmeas[i]//Nperiods[i])]
+	iter_buffer = list(range(len(measure_buffer)))
+	stage_eqb_buffer = [(i-1,sum(Neqb[:i])) for i in range(1,len(Neqb)+1)]
+	stage_meas_buffer = [(i-1,sum(Nmeas[:i])) for i in range(1,len(Nmeas)+1)]
+	getattr(logging,log)('Monte Carlo: %d Eqb MC steps, %d Meas MC Steps, %s Meas sweeps, every %s Steps'%(
+							sum(Neqb),sum(Nmeas),str(Nmeas),str(Nperiods)))
+
+		# Array of sample sites and updated clusters during simulation
+	data = {'sites':np.zeros((iter_buffer[-1],N),dtype=props['dtype']),
+			'cluster': np.zeros((iter_buffer[-1],N),dtype=props['dtype'])}
 	
 	
 	# Define simulation parameters for lattice with N sites
@@ -24,90 +62,64 @@ def montecarlo(N,neighbours,props,job=0,directory='.'):
 					'cluster': np.nan*np.ones((N),dtype=props['dtype'])}
 
 
-	# Setup logging and plotting
-	logger = logging.getLogger(__name__)
-	if props.get('quiet'):
-		log = 'info'
-	else:
-		log = 'warning'
-	
+	# Setup plotting
 	if props.get('plotting'):
 		plot = plotter({job:[list(configurations.keys())]})
 
 
 
-	# Perform Monte Carlo simulation, based on algorithm
-	def Niters(Ni,N,ratios):
-		ratios = np.atleast_1d(ratios)
-		assert 1>=sum(ratios)
-		Nfunc = lambda i,r: int(r*Ni*N) if i%2 else int(r*Ni)
-		N = [Nfunc(i,r)	for i,r in enumerate(ratios)]
-		N.append(Nfunc(i+1,1-sum(ratios)))
-		return N
-
-
-
-	Neqb  = Neval(props['Neqb'],N,props['Nratio'])
-	Nmeas  = Neval(props['Nmeas'],N,props['Nratio'])
-	Nmeas  = Neval(props['Nmeas'],N,props['Nratio'])
-	Nfreq = [(props['Nmeas']*N)//props['Nfreq'],
-			 (props['Nmeas'])//props['Nfreq']]
-
-
-	alg = globals().get(props['algorithm'],globals()['metropolis_wolff'])
-	def update(i,updates,data,directory):
+	# Algorithm Updates
+	def update(iteration,updates):
 		for k in data.keys():
-			data[k][i] = updates[k]
+			data[k][iteration] = updates[k]
 		exporter({'%s.%s'%(job,props.get('filetype','json')):data},directory)
 		return
 
-	def simulate(i,iterations,measure=True):
-		alg(i/iterations/props['Nratio'],N,
-			configurations,neighbours,props)
-		
-		if measure and (True or (i+1)%(props['Nfreq']*iterations) == 0):
-			getattr(logging,log)('MC Iteration: %d, Cluster Size: %d'%(i+1,
-					np.count_nonzero(~np.isnan(configurations['cluster']))))
-
-			update(configurations,i//(props['Nfreq']*iterations))
+	def simulate(i,measure=True):
+		alg[stage_buffer[0][0]%len(alg)](i,N,configurations,neighbours,props)
+		if i >= stage_buffer[0][1]:
+			stage_buffer.pop(0);
+		if measure and i == measure_buffer[0]:
+			getattr(logging,log)([i,measure_buffer[0],iter_buffer[0],alg[iter_buffer[0]%len(alg)]])
+			update(iter_buffer.pop(0),configurations)
 
 			if props.get('plotting'):
+				getattr(logging,log)('MC Iteration: %d, Cluster Size: %d'%(i+1,
+					np.count_nonzero(~np.isnan(configurations['cluster']))))
 				plot.plot({job:configurations},{job:configurations},
-							    {job:plot(configurations.keys(),i)})
+					 	  {job:set_plot_montecarlo(keys=configurations.keys(),
+					 	   i=measure_buffer.pop(0)+1,**props.get('plotting'))})
+			else:
+				getattr(logging,log)('MC Iteration: %d, Cluster Size: %d'%(
+						measure_buffer.pop(0)+1,
+						np.count_nonzero(~np.isnan(configurations['cluster']))))
 		return
 
 	
 
+
+
 	# Perform equilibrium iterations
-	for i,Ne in enumerate(Neqb):
-		if i%2:
-			for j in range(Ne):
-				simulate(i,sum(Neqb[:i]),measure=False)
-		else:
-			for j in range(Ne):
-				simulate(i+sum(Neqb[:i-1]),sum(Neqb[:i]),measure=False)
-		
+	stage_buffer = stage_eqb_buffer
+	for i in range(sum(Neqb)):
+		simulate(i,measure=False)
+	getattr(logger,log)('System Equilibrated: %s MC Steps'%(str(Neqb)))
 
 	# Perform measurement iterations
+	stage_buffer = stage_meas_buffer
 	if props.get('plotting'):
 		animation = animate.FuncAnimation(plot.figs[job], 
 										func=simulate,
-										fargs=(int(props['Nmeas']*N),True), 
-										frames=int(props['Nmeas']*N), 
+										fargs={'measure':True}, 
+										frames=sum(Nmeas), 
 										interval=300,repeat_delay=10000,blit=0)
 		exporter({'%s.gif'%job:animation},directory,
 					options={'writer':'imagemagick'})
 					
 	else:
-		for i,Nm in enumerate(Neqb):
-			if i%2:
-				for j in range(Nm):
-					simulate(i,sum(Neqb[:i]),measure=False)
-			else:
-				for j in range(Nm):
-					simulate(i+sum(Neqb[:i-1]),sum(Neqb[:i]),measure=False)
-
-
+		for i in range(sum(Nmeas)):
+			simulate(i,Nmeas,measure=True)
+	getattr(logger,log)('System Measured')
 
 	return data
 
