@@ -23,7 +23,7 @@ config = importer([args.configfile],options=True)[args.configfile]
 CONFIG = 'CONFIG'
 PROPERTIES = ['FILE','DIRECTORY','TASK','MODULE','SOURCE','ITERABLES']
 TYPE = int
-DATE = datetime.now().strftime('%Y-%m-%d--%H:%M:%S')
+DATE = datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
 assert CONFIG in config.sections(),'Incorrect main.config file'
 
 for p in PROPERTIES:
@@ -33,6 +33,7 @@ for p in PROPERTIES:
 DIRECTORY = DIRECTORY+'_'+DATE
 config.remove_section(CONFIG)
 
+print(DIRECTORY)
 
 # Get arguments from file
 options = []
@@ -69,10 +70,10 @@ for i,params in enumerate(sets):
 # Write .sh and .pbs file to submit jobs
 
 modules = {'py':'python',None:''}
-sources = {'sh':'./','pbs':'qsub',None:''}
+sources = {'sh':'./','pbs':'qsub','lsf':'bsub',None:''}
 command = lambda job: '%s %s.%s --directory %s --job %s --file %s\nsleep 1\n\n'%(
 							modules.get(MODULE,''),TASK,MODULE,DIRECTORY,job,FILE)
-
+envvar = {'pbs':'$PBS_ARRAY_INDEX' ,'lsf':'$LSB_JOBINDEX'}
 
 os.system('cp template.%s %s.%s'%(SOURCE,TASK,SOURCE))
 with open('%s.%s'%(TASK,SOURCE),'a') as f:
@@ -88,28 +89,32 @@ with open('%s.%s'%(TASK,SOURCE),'a') as f:
 
 		os.system('$(chmod 777 %s.%s)'%(TASK,SOURCE))
 		
-
-	elif SOURCE == 'pbs':
-	
+	elif SOURCE in ['pbs','lsf']:
 		# Job submission
-		if len(sets) > 1:
-			f.write('\n#PBS -t %d-%d\n'%(0,len(sets)-1))
-		else:
-			f.write('\n#PBS -t %d\n'%0)
-		f.write('\n#PBS -N %s\n'%TASK)
+		if SOURCE =='pbs':
+			if len(sets) > 1:
+				f.write('\n#%s -t %d-%d\n'%(sources.get(SOURCE).upper(),
+											 0,len(sets)-1))
+			f.write('\n#%s -N %s\n'%(sources.get(SOURCE).upper(),TASK))
+
+		elif SOURCE =='lsf':
+			if len(sets) > 1:
+				f.write('\n#%s -J %s %d-%d\n'%(sources.get(SOURCE).upper(),
+										   TASK,0,len(sets)-1))
+			else:
+				f.write('\n#%s -J %s\n'%(sources.get(SOURCE).upper(),TASK))
+		
 
 		f.write("\n##### SCRIPT #####\n")
 		
 		# Write jobs to submit
-		i = '$PBS_ARRAY_INDEX'
-		f.write(command(i))
+		f.write(command(envvar.get(SOURCE,'')))
 
 
 
 # Output Source
-if __name__ == "__main__":
-	for w in [sources.get(SOURCE),TASK,SOURCE,DIRECTORY]:
-		print(w)
+for w in [sources.get(SOURCE),TASK,SOURCE,DIRECTORY]:
+	print(w)
 
 
 

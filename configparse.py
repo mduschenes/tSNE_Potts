@@ -3,6 +3,9 @@
 # Configuration Parser
 import numpy as np
 from configparser import ConfigParser, ExtendedInterpolation,NoSectionError,NoOptionError
+import logging
+logger = logging.getLogger(__name__)
+log = 'warning'
 
 class configparse(ConfigParser):
 
@@ -60,6 +63,8 @@ def is_number(s):
 def make_number(values,typer):
 	if any(['.' in x for x in values]):
 		return [float(x) for x in values]
+	elif any(['e' in x for x in values]):
+		return [int(float(x)) for x in values]
 	else:
 		return [typer(x) for x in values]
 
@@ -68,7 +73,6 @@ def is_string(s):
 	return not is_number(s) or "'" in s or r'"' in s
 
 def make_string(values,typer):
-
 	for i,v in enumerate(values):
 		if v == 'None':
 			values[i] = None

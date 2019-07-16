@@ -142,8 +142,8 @@ def str_check(string,decimals=0,delims={}):
 # Function wrapper to pass some args and kwargs
 def argswrapper(function):
 
-	def wrapper(*args0,**kwargs):
-		return lambda *args,**kwargs: function(*args0,*args,**kwargs)
+	def wrapper(*args0,**kwargs0):
+		return lambda *args,**kwargs: function(*args0,*args,**kwargs0,**kwargs)
 
 	return wrapper
 

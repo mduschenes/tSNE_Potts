@@ -27,27 +27,24 @@ parser.add_argument('-f','--file',help = 'Name Format',
 # Parse Args Command
 args = parser.parse_args()
 
-
-
-
 # Import simulation properties from config file
 file = args.file%args.job
 directory = os.path.join(args.directory,file)
-props = importer([file+'.config'],directory,
-					options={'typer':int,'atleast_1d':True})[file+'.config']
-
-
-
-
-
-# Setup model
-
-model = model(**props['model'])
 
 # Setup logging
 logger = logging_config(os.path.join(directory,'%s.log'%file),
 										loggername='warning')
 log = 'warning'
+
+
+props = importer([file+'.config'],directory,
+					options={'typer':int,'atleast_1d':True})[file+'.config']
+
+
+# Setup model
+model = model(**props['model'])
+
+
 
 
 # Log model

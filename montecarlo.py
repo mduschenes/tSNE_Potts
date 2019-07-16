@@ -37,24 +37,28 @@ def montecarlo(N,neighbours,props,job=0,directory='.'):
 
 
 	if props['algorithm'] in ['metropolis','wolff','metropolis_wolff']:
-		alg = [globals().get(a) for a in ['metropolis','wolff']]
+		alg = [(a,globals().get(a)) for a in ['metropolis','wolff']]
 	else:
-		alg = [globals().get(a) for a in props['algorithm']]
+		alg = [(a,globals().get(a)) for a in [props['algorithm']]]
 	Neqb  = Niters(props['Neqb'],N,props['Nratio'])
 	Nmeas  = Niters(props['Nmeas'],N,props['Nratio'])
 	Nperiods = Nperiods(props['Nfreq'],N,Nmeas)
 	# Nmeas_total = [Nm//Nf for Nm,Nf in zip(Nmeas,Nperiods)]
-	measure_buffer = [(j+1)*Nperiods[i] for i in range(len(Nmeas)) 
+	measure_buffer = [(j+1)*Nperiods[i]+sum(Nmeas[:i]) for i in range(len(Nmeas)) 
 										for j in range(Nmeas[i]//Nperiods[i])]
 	iter_buffer = list(range(len(measure_buffer)))
 	stage_eqb_buffer = [(i-1,sum(Neqb[:i])) for i in range(1,len(Neqb)+1)]
 	stage_meas_buffer = [(i-1,sum(Nmeas[:i])) for i in range(1,len(Nmeas)+1)]
-	getattr(logging,log)('Monte Carlo: %d Eqb MC steps, %d Meas MC Steps, %s Meas sweeps, every %s Steps'%(
+	getattr(logger,log)(['measure_buffer',measure_buffer])
+	getattr(logger,log)(['stage_meas_buff',stage_meas_buffer])
+	getattr(logger,log)(['stage_eqb_buff',stage_eqb_buffer])
+	getattr(logger,log)('''Monte Carlo: %d Eqb MC steps, %d Meas MC Steps, 
+										 %s Meas sweeps, every %s Steps'''%(
 							sum(Neqb),sum(Nmeas),str(Nmeas),str(Nperiods)))
 
 		# Array of sample sites and updated clusters during simulation
-	data = {'sites':np.zeros((iter_buffer[-1],N),dtype=props['dtype']),
-			'cluster': np.zeros((iter_buffer[-1],N),dtype=props['dtype'])}
+	data = {'sites':np.zeros((len(iter_buffer),N),dtype=props['dtype']),
+			'cluster': np.zeros((len(iter_buffer),N),dtype=props['dtype'])}
 	
 	
 	# Define simulation parameters for lattice with N sites
@@ -70,29 +74,35 @@ def montecarlo(N,neighbours,props,job=0,directory='.'):
 
 	# Algorithm Updates
 	def update(iteration,updates):
+		getattr(logger,log)('Iteration %d'%iteration)
 		for k in data.keys():
 			data[k][iteration] = updates[k]
-		exporter({'%s.%s'%(job,props.get('filetype','json')):data},directory)
+		# exporter({'%s.%s'%(job,props.get('filetype','json')):data},directory)
 		return
 
 	def simulate(i,measure=True):
-		alg[stage_buffer[0][0]%len(alg)](i,N,configurations,neighbours,props)
+		
+
 		if i >= stage_buffer[0][1]:
 			stage_buffer.pop(0);
-		if measure and i == measure_buffer[0]:
-			getattr(logging,log)([i,measure_buffer[0],iter_buffer[0],alg[iter_buffer[0]%len(alg)]])
+
+		alg[stage_buffer[0][0]%len(alg)][1](i,N,configurations,neighbours,props)
+
+		if measure and i+1 == measure_buffer[0]:
+
 			update(iter_buffer.pop(0),configurations)
 
 			if props.get('plotting'):
-				getattr(logging,log)('MC Iteration: %d, Cluster Size: %d'%(i+1,
+				getattr(logger,log)('MC Iteration (%s): %d, Cluster Size: %d'%(
+					alg[stage_buffer[0][0]%len(alg)][0],i+1,
 					np.count_nonzero(~np.isnan(configurations['cluster']))))
 				plot.plot({job:configurations},{job:configurations},
 					 	  {job:set_plot_montecarlo(keys=configurations.keys(),
 					 	   i=measure_buffer.pop(0)+1,**props.get('plotting'))})
-			else:
-				getattr(logging,log)('MC Iteration: %d, Cluster Size: %d'%(
-						measure_buffer.pop(0)+1,
-						np.count_nonzero(~np.isnan(configurations['cluster']))))
+		else:
+			getattr(logger,log)('MC Iteration (%s): %d, Cluster Size: %d'%(
+					alg[stage_buffer[0][0]%len(alg)][0],i+1,
+					np.count_nonzero(~np.isnan(configurations['cluster']))))
 		return
 
 	

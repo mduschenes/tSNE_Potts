@@ -3,11 +3,58 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import os,json
+import os,json,zlib,base64,array,gzip,struct,csv
 
 # Import defined modules
 from configparse import configparse
-from miscellaneous_functions import argswrapper
+
+# Function wrapper to pass some args and kwargs
+def argswrapper(function):
+
+	def wrapper(*args0,**kwargs0):
+		return lambda *args,**kwargs: function(*args0,*args,**kwargs0,**kwargs)
+
+	return wrapper
+
+# Type Parsers
+
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+def make_number(s):
+	if '.' in s:
+		return float(s)
+	elif 'e' in s:
+		return int(float(s))
+	else:
+		return int(s)
+
+def is_string(s):
+	return not is_number(s) or "'" in s or r'"' in s
+
+def make_string(s):
+	return str(s)
+
+def is_bool(s):
+	return is_string(s) and s.lower() in ['true','false']
+
+def make_bool(s):
+	if s.lower() == 'true':
+		return True
+	elif s.lower() == 'false':
+		return False
+
+def formatter(s):
+	for t in ['string','number','bool']:
+		if globals()['is_'+t](s):
+			return globals()['make_'+t](s)
+			
+
+
 
 # Import list of files in directory and return dictionary of {file: data}
 def importer(files=[],directory='.',options={}):
@@ -40,15 +87,34 @@ def importer(files=[],directory='.',options={}):
 				return json.load(f, **options.get('load',{}),
 					cls=JSONdecoder(**options.get('decode',{})))
 
+		elif format in ['bin','dat']:
+			with open(path,'rb') as f:
+				metadata =str(f.readline().decode()).replace('\n','').split(' ')
+				print(metadata)
+				dtype = metadata[0]; dshape = (int(m) for m in metadata[1:])
+				print(array.array('d').fromfile(f,np.prod(list(dshape))))
+				if 'float' in dtype:
+					dtypeb = 'd'
+				elif 'int' in dtype:
+					dtypeb = 'i'
+				return np.array(array.array(dtypeb).fromfile(f,np.prod(dshape)),
+								dtype=dtype).reshape(dshape)
+
 		elif format == 'npy':
 			return np.load(path)
 		
 		elif format == 'npz':
-			return np.load(os.path.join(directory,formatter(file,format)))
+			return np.load(path)
 
 		elif format == 'txt':
-			return np.loadtxt(os.path.join(directory,
-											formatter(file,format)))
+			return np.loadtxt(path)
+
+		elif format == 'csv':
+			with open(path,newline='') as f:
+				return [options.get('format',
+						lambda x: [formatter(y) for y in x])(d) 
+						for d in csv.reader(f,**options.get('decode',{}))]
+
 		elif format == 'config':
 			config = configparse()
 			config.read(path)
@@ -107,21 +173,48 @@ def exporter(data={},directory='.',options={},overwrite=True):
 	def set_data(file='',data=[],directory='.',format='',options={}):		
 		
 		path = os.path.join(directory,file)
-		
+
 		if format == 'json':
 			with open(path, 'w') as f:
-				return json.dump(data,f,**options.get('dump',{}), 
-					cls=JSONencoder(**options.get('encode',{})))
+				json.dump(data,f,**options.get('dump',{}), 
+					cls=JSONencoder(**options.get('encode',{})));
+			f.close();
+
+		elif format in ['bin','dat']:
+			assert isinstance(data,
+						np.ndarray), "Wrong data type for binary serialization"
+			with open(path,'wb') as f:
+				metadata = ' '.join([str(data.dtype), 
+									  *['%d'%s for s in data.shape]])+'\n'
+				f.write(metadata.encode());
+				# data.tofile(f);
+				print(metadata[0])
+				if 'float' in str(data.dtype):
+					array.array('d',data.flatten()).tofile(f)
+				elif 'int' in str(data.dtype):
+					array.array('i',data.flatten()).tofile(f)
+				# print(bytearray(data.flatten()))
+				# f.write(bytearray(data.flatten()))
+			f.close();
 
 		elif format == 'npy':
-			np.save(path,data)
+			np.save(path,data);
 		
 		elif format == 'npz':
-			np.savez_compressed(path,data)
+			np.savez_compressed(path,data);
 
 		elif format == 'txt':
 			with open(path,'w') as f:
 				f.write(str(data));
+			f.close();
+
+		elif format == 'csv':
+			with open(path,'w',newline='') as f:
+				file = csv.writer(f,**options.get('encode',{}))
+				for d in data:
+					file.writerow(options.get('format',
+								  lambda x: [str(y) for y in x])(d))
+			f.close();
 		
 		elif format in ['pdf','png','jpg','eps']:
 			options['format'] = format
@@ -132,7 +225,8 @@ def exporter(data={},directory='.',options={},overwrite=True):
 
 		elif format in ['config','ini']:
 			with open(path, 'w') as f: 
-				data.write(f)
+				data.write(f);
+			f.close();
 
 		return
 
@@ -144,9 +238,7 @@ def exporter(data={},directory='.',options={},overwrite=True):
 
 	# Overwritten files
 	files_overwitten = {file:file for file in data.keys()}
-
 	for file,datum in data.items():
-		
 		# Get name and format associated with file
 		name,format = get_name(file),get_format(file)
 		
@@ -230,8 +322,14 @@ def appender(data={},directory='.',options={}):
 @argswrapper
 class JSONencoder(json.JSONEncoder):
 
-	def __init__(self,encode_types={},*args,**kwargs):
+	def __init__(self,encode_types={},wrapper=None,*args,**kwargs):
 		json.JSONEncoder.__init__(self, *args, **kwargs)
+		if wrapper is None:
+			self.wrapper = lambda obj: base64.b64encode(zlib.compress(
+											json.dumps(obj).encode())
+											).decode('ascii')
+		else:
+			self.wrapper = wrapper
 
 		self.encode_types = {dict: self.encode_dict,
 							 np.ndarray: self.encode_ndarray}
@@ -245,7 +343,7 @@ class JSONencoder(json.JSONEncoder):
 								lambda o:json.JSONEncoder.default(self, o))(obj)
 
 	def encode_ndarray(self,obj):
-		return obj.tolist()
+		return self.wrapper(obj.tolist())
 
 	def encode_dict(self,obj):
 		obj_json = {}
@@ -262,31 +360,44 @@ class JSONencoder(json.JSONEncoder):
 @argswrapper
 class JSONdecoder(json.JSONDecoder):
 
-	def __init__(self,decode_types={},*args,**kwargs):
+	def __init__(self,decode_types={},wrapper=None,*args,**kwargs):
 		json.JSONDecoder.__init__(self, object_hook = self.object_hook,
 										*args,**kwargs)
+		if wrapper is None:
+			self.wrapper = lambda obj: json.loads(zlib.decompress(
+													base64.b64decode(obj)))
+		else:
+			self.wrapper = wrapper
 
 		self.decode_types = {dict: self.decode_dict,
-							 np.ndarray: self.decode_ndarray}
+							 list: self.decode_ndarray,
+							 str: lambda x:self.decode_ndarray(self.wrapper(x))}
 		if isinstance(decode_types,dict):
 			self.decode_types.update(decode_types)
 
 		return
 
 	def object_hook(self, obj):
-		if isinstance(obj,dict):
-			return self.decode_types.get(type(obj),lambda o:o)(obj)
-		else:
-			return obj
+		return self.decode_types.get(type(obj),lambda o:o)(obj)
 
 	def decode_ndarray(self,obj):
 		return np.array(obj)
 
 	def decode_dict(self,obj):
 		obj_json = {}
+		print('obj',type(obj))
 		for k,v in obj.items():
-			k = self.decode_types.get(type(k),lambda x:x)(k)
-			v = self.decode_types.get(type(v),lambda x:x)(v)
+			print(k)
+			try:
+				v = self.wrapper(v)
+				k = self.decode_types.get(type(k),lambda x:x)(k)
+				v = self.decode_types.get(type(v),lambda x:x)(v)
+			except:
+				try:
+					k = self.decode_types.get(type(k),lambda x:x)(k)
+					v = self.decode_types.get(type(v),lambda x:x)(v)
+				except:
+					pass
 			obj_json[k] = v
 
 		return obj_json

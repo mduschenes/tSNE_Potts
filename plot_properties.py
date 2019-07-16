@@ -132,7 +132,7 @@ def set_plot_montecarlo(keys,**kwargs):
 											 	 'fontsize':10},
 											  'ticks':{i-1.5:i 
 											  		for i in 
-											  		range(1,kwargs['q']+2,2)},
+											  		range(1,kwargs['q']+3,2)},
 											 'ticks_params':
 											 	{'fontsize':10},
 											},
