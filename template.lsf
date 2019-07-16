@@ -1,0 +1,19 @@
+#!/bin/bash
+#
+#BSUB -a openmpi            		# tell lsf this is an openmpi job
+#BSUB -c 86400                		# total cpu time for job (sum of all processes ?, sec)
+#BSUB -n 640                    		# number of tasks in job
+#BSUB -R "span[ptile=20]" 		# limit 20 processes per node. See note above about HT
+#BSUB -R rusage[mem=100000] 	# amount of total memory in MB for all processes
+#BSUB -R "affinity[core(1):cpubind=core:distribute=balance]"
+#BSUB -M 1000			# amount of memory in MB per process
+#BSUB -J epit_big			# job name
+#BSUB -e errors.%J      		# error file name in which %J is replaced by the job ID
+#BSUB -o output.%J      		# output file name in which %J is replaced by the job ID
+#BSUB -q normal			# choose the queue to use: see list below
+#BSUB -B 				# email job start notification
+#BSUB -N 				# email job end notification
+#BSUB -u mduschen@umich.edu	# email address to send notifications
+
+# #BSUB -R "affinity[thread(2):cpubind=thread:distribute=balance]"      # for 40 processes
+# #BSUB -R "select[ngpus>0] rusage[ngpus_excl_p=1]" # set gpu's in exclusive mode
