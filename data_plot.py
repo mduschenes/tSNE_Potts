@@ -26,7 +26,6 @@ class plotter(object):
 		# Define plot_keys and plot_bool
 		self.plot_keys = {}
 		self.plot_bool = {}
-
 					
 		# Add Figures and Axes with keys
 		self.add_plot(plot_keys,plot_bool)
@@ -159,7 +158,7 @@ class plotter(object):
 				if k is not None:
 					axes[k] = fig.add_subplot(list(gs)[i:i+2])
 			return axes
- 
+	
 
 		for plot_key,axis_keys in plot_keys.items():
 
@@ -197,4 +196,3 @@ class plotter(object):
 				continue
 
 		return
-

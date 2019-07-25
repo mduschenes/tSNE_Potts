@@ -136,15 +136,21 @@ def set_data(data=[],domain=[],key=None,
 		   **kwargs):
 
 	if not callable(data_process):
-		data_process = lambda x:np.real(x)
+		data_process = lambda x:x
 
 	if not callable(domain_process):
-		domain_process = lambda x:np.real(x)
+		domain_process = lambda x:x
 
-	if not isinstance(data,dict) or not isinstance(domain,dict):
-		return domain_process(domain),data_process(data)
-	else:
-		return domain_process(domain[key]),data_process(data[key])
+	try:
+		if not isinstance(data,dict) or not isinstance(domain,dict):
+			return domain_process(domain),data_process(data)
+		else:
+			return domain_process(domain[key]),data_process(data[key])
+	except:
+		if not isinstance(data,dict) or not isinstance(domain,dict):
+			return domain,data
+		else:
+			return domain[key],data[key]
 
 
 
@@ -320,7 +326,10 @@ def pre_process(props={}):
 			props[p] = {}
 
 	# Define style
-	plt.style.use(props['other'].get('style','matplotlibrc'))
+	try:
+		plt.style.use(props['other'].get('style','matplotlibrc'))
+	except:
+		pass
 
 	# Set colormap
 	colormap = set_colormap(**props['other'].get('colorbar',{}))
