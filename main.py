@@ -35,11 +35,9 @@ elif '%s' in args.file:
 else:
 	file = args.file
 
-print(file)
 
 directory = os.path.join(args.directory,file)
 if not os.path.isdir(directory):
-	print('New Directory')
 	os.makedirs(directory)
 
 
