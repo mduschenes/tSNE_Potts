@@ -128,7 +128,7 @@ def montecarlo(N,neighbours,props,job=0,directory='.'):
 					
 	else:
 		for i in range(sum(Nmeas)):
-			simulate(i,Nmeas,measure=True)
+			simulate(i,measure=True)
 	getattr(logger,log)('System Measured')
 
 	return data
