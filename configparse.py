@@ -41,14 +41,15 @@ class configparse(ConfigParser):
 
 
 def is_range(s):
-	return s == '...' 
+	return '...' in s
 
-def make_range(values,typer):
+def make_range(values,typer=int):
 	values.remove('...')
 	assert len(values) == 3, "Incorrect range parameters"
-
 	if any(['.' in x for x in values]):
 		return np.linspace(*[float(x) for x in values])
+	elif any(['e' in x for x in values]):
+		return range(*[int(float(x)) for x in values])
 	else:
 		return range(*[int(x) for x in values])
 

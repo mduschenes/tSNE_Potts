@@ -14,11 +14,12 @@
 *OLD**
 *Results/**
 
+2019**/**
 
 # Specific File Formats
 *.txt
 *.pdf
-*.sh
+#*.sh
 *.ipynb
 *.exe*
 

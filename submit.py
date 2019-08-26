@@ -10,30 +10,51 @@ from configparse import configparse
 
 # Parser Object
 parser = argparse.ArgumentParser(description = "Parse Arguments")
-parser.add_argument('-config','--configfile',help = 'Configuration File',
+parser.add_argument('-dir','--directory',help = 'Directory',
+					type=str,default='.')
+parser.add_argument('-configs','--configs',help = 'Configuration File',
 					type=str,default='template.config')
-parser.add_argument('-pbs','--pbsfile',help = 'PBS File',
-					type=str,default='template.PBS')
-args = parser.parse_args()
+parser.add_argument('-options','--options',help = 'Job Options File',
+					type=str,default='template.sh')
+parser.add_argument('-task','--task',help = 'Task',
+					type=str,default='main')
+args = dict(**vars(parser.parse_args()))
+
+for k,v in args.items():
+	locals()[k.upper()] = v
 
 
-config = importer([args.configfile],options=True)[args.configfile]
+# Job Submission Defaults
+modules = {'py':'python',None:''}
+commands = {'sh':'.', 'pbs':'qsub', 'sbatch':'sbatch',
+			'lsf':'bsub', None:''}
+jobindices = {'sh':None, 'pbs':'$PBS_ARRAY_INDEX', 'sbatch':'SLURM_ARRAY_TASK_ID',
+			  'lsf':'$LSB_JOBINDEX', None:''}
+
+
+
+# Environmental Variable Defaults
+DATE = datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
+DIRECTORY = os.path.join(DIRECTORY,DATE).replace(' ','\\ ')
+SOURCE = OPTIONS.split('.')[-1]
+MODULE = TASK.split('.')[-1]
+TASK = '.'.join(TASK.split('.')[:-1])
+COMMAND = commands.get(SOURCE,'').upper()
+JOBID = TASK+'_'+DATE
+JOBINDEX = jobindices.get(SOURCE,'')
+config = importer([CONFIGS],options=True)[CONFIGS]
 
 # Get TASK arguments
 CONFIG = 'CONFIG'
-PROPERTIES = ['FILE','DIRECTORY','TASK','MODULE','SOURCE','ITERABLES']
+PROPERTIES = ['FILE','ARGUMENTS']
 TYPE = int
-DATE = datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
+
 assert CONFIG in config.sections(),'Incorrect main.config file'
 
 for p in PROPERTIES:
 	locals()[p] = config.get_typed(CONFIG,p,TYPE,atleast_1d=True)
-
-
-DIRECTORY = DIRECTORY+'_'+DATE
 config.remove_section(CONFIG)
 
-print(DIRECTORY)
 
 # Get arguments from file
 options = []
@@ -41,14 +62,14 @@ values = []
 for section in config.sections():
 		for option in config.options(section):
 			options.append(option)
-			if section in ITERABLES:
+			if section in ARGUMENTS:
 				values.append(config.get_typed(section,option,TYPE))
 			else:
 				values.append([config.get_typed(section,option,TYPE)])
 			
 
 # Get all permutations of values from lists of arguments
-sets = [dict(zip(options,params))for params in  list(itertools.product(*values))]
+sets = [dict(zip(options,params))for params in list(itertools.product(*values))]
 
 
 # Create config files from permutations of arguments
@@ -67,16 +88,12 @@ for i,params in enumerate(sets):
 
 
 
-# Write .sh and .pbs file to submit jobs
-
-modules = {'py':'python',None:''}
-sources = {'sh':'./','pbs':'qsub','lsf':'bsub',None:''}
-command = lambda job: '%s %s.%s --directory %s --job %s --file %s\nsleep 1\n\n'%(
-							modules.get(MODULE,''),TASK,MODULE,DIRECTORY,job,FILE)
-envvar = {'pbs':'$PBS_ARRAY_INDEX' ,'lsf':'$LSB_JOBINDEX'}
-
-os.system('cp template.%s %s.%s'%(SOURCE,TASK,SOURCE))
-with open('%s.%s'%(TASK,SOURCE),'a') as f:
+# Write file to submit jobs
+TASK_SRC = os.path.join(DIRECTORY,'%s.%s'%(TASK,SOURCE))
+os.system('cp %s %s'%(OPTIONS,TASK_SRC))
+jobline = lambda j:'%s %s.%s --directory %s --job %s --file %s\nsleep 1\n\n'%(
+						  modules.get(MODULE,''),TASK,MODULE,DIRECTORY,j,FILE)
+with open(TASK_SRC,'a') as f:
 	
 
 	if SOURCE == 'sh':
@@ -85,36 +102,60 @@ with open('%s.%s'%(TASK,SOURCE),'a') as f:
 		
 		# Write jobs to submit
 		for i in range(len(sets)):
-			f.write(command(i))
+			f.write(jobline(i))
 
-		os.system('$(chmod 777 %s.%s)'%(TASK,SOURCE))
+		os.system('$(chmod 777 %s)'%(TASK_SRC))
 		
-	elif SOURCE in ['pbs','lsf']:
+	
+	elif SOURCE =='pbs':
 		# Job submission
-		if SOURCE =='pbs':
-			if len(sets) > 1:
-				f.write('\n#%s -t %d-%d\n'%(sources.get(SOURCE).upper(),
-											 0,len(sets)-1))
-			f.write('\n#%s -N %s\n'%(sources.get(SOURCE).upper(),TASK))
+		if len(sets) > 1:
+			f.write('\n#%s -t %d-%d\n'%(COMMAND,
+										 0,len(sets)-1))
+		f.write('\n#%s -N %s\n'%(COMMAND,JOBID))
+		f.write('\n#%s -o %s\n'%(COMMAND,os.path.join(DIRECTORY,JOBID+'.log')))
 
-		elif SOURCE =='lsf':
-			if len(sets) > 1:
-				f.write('\n#%s -J %s %d-%d\n'%(sources.get(SOURCE).upper(),
-										   TASK,0,len(sets)-1))
-			else:
-				f.write('\n#%s -J %s\n'%(sources.get(SOURCE).upper(),TASK))
-		
 
 		f.write("\n##### SCRIPT #####\n")
 		
 		# Write jobs to submit
-		f.write(command(envvar.get(SOURCE,'')))
+		f.write(jobline(envvar.get(SOURCE,0)))
+
+	elif SOURCE =='sbatch':
+		# Job submission
+		if len(sets) > 1:
+			f.write('\n#%s --array %s %d-%d\n'%(COMMAND,
+									   TASK,0,len(sets)-1))
+		f.write('\n#%s --job_name %s\n'%(COMMAND,JOBID))
+		f.write('\n#%s --output %s\n'%(COMMAND,os.path.join(DIRECTORY,JOBID+'.log')))
+
+
+		f.write("\n##### SCRIPT #####\n")
+		
+		# Write jobs to submit
+		f.write(jobline(envvar.get(SOURCE,0)))
+
+	elif SOURCE =='lsf':
+		# Job submission
+		if len(sets) > 1:
+			f.write('\n#%s -J %s %d-%d\n'%(COMMAND,
+									   TASK,0,len(sets)-1))
+		else:
+			f.write('\n#%s -J %s\n'%(COMMAND.upper(),TASK))
+		
+		f.write('\n#%s -o %s\n'%(COMMAND,os.path.join(DIRECTORY,JOBID+'.log')))
+
+
+		f.write("\n##### SCRIPT #####\n")
+		
+		# Write jobs to submit
+		f.write(jobline(envvar.get(SOURCE,0)))
 
 
 
 # Output Source
-for w in [sources.get(SOURCE),TASK,SOURCE,DIRECTORY]:
-	print(w)
+for p in [DIRECTORY,COMMAND,SOURCE,TASK_SRC]: 
+	print(p)
 
 
 
