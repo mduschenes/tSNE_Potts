@@ -74,7 +74,6 @@ def montecarlo(N,neighbours,props,job=0,directory='.'):
 
 	# Algorithm Updates
 	def update(iteration,updates):
-		getattr(logger,log)('Iteration %d'%iteration)
 		for k in data.keys():
 			data[k][iteration] = updates[k]
 		# exporter({'%s.%s'%(job,props.get('filetype','json')):data},directory)
