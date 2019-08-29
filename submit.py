@@ -123,11 +123,10 @@ with open(TASK_SRC,'a') as f:
 
 	elif SOURCE =='sbatch':
 		# Job submission
+		f.write('\n#%s --job_name=%s\n'%(COMMAND,JOBID))
 		if len(sets) > 1:
-			f.write('\n#%s --array %s %d-%d\n'%(COMMAND,
-									   TASK,0,len(sets)-1))
-		f.write('\n#%s --job_name %s\n'%(COMMAND,JOBID))
-		f.write('\n#%s --output %s\n'%(COMMAND,os.path.join(DIRECTORY,JOBID+'.log')))
+			f.write('\n#%s --array=%d-%d\n'%(COMMAND,0,len(sets)-1))
+		f.write('\n#%s --output=%s\n'%(COMMAND,os.path.join(DIRECTORY,JOBID+'.log')))
 
 
 		f.write("\n##### SCRIPT #####\n")

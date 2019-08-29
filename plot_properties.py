@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Import miscellaneous other functions
-from miscellaneous_functions import texify
+from misc_functions import texify
 
 FONT_SIZE = 12
 
