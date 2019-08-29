@@ -15,28 +15,36 @@ parser = argparse.ArgumentParser(description = "Parse Arguments")
 
 
 parser.add_argument('-d','--directory',help = 'Data Directory',
-					type=str,default='./Jobs/job_0')
+					type=str,default='.')
 
 parser.add_argument('-j','--job',help = 'Job Number',
 					type=int,default=0)
 
 parser.add_argument('-f','--file',help = 'Name Format',
-					type=str,default='job_%')
+					type=str,default="job_%d")
 
 
 # Parse Args Command
 args = parser.parse_args()
 
 # Import simulation properties from config file
-file = args.file%args.job
+if '%d' in args.file:
+	file = args.file%args.job
+elif '%s' in args.file:
+	file = args.file%str(args.job)
+else:
+	file = args.file
+
+
 directory = os.path.join(args.directory,file)
+if not os.path.isdir(directory):
+	os.makedirs(directory)
+
 
 # Setup logging
+log = 'warning'
 logger = logging_config(os.path.join(directory,'%s.log'%file),
 										loggername='warning')
-log = 'warning'
-
-
 props = importer([file+'.config'],directory,
 					options={'typer':int,'atleast_1d':True})[file+'.config']
 
