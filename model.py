@@ -33,7 +33,7 @@ class model(lattice):
 		self.couplings = couplings
 		self.dtype = dtype
 		self.model_types = ['ising','potts']
-		self.observables = ['state','interaction','magnetization','order',
+		self.observables = ['state','interaction','energy','magnetization','order',
 							'twoptcorr','specific_heat','susceptibility',
 							'local_energy','state_difference']
 

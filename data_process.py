@@ -3,7 +3,7 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import os,json,zlib,base64,array,gzip,struct,csv
+import os,glob,json,zlib,base64,array,gzip,struct,csv
 
 # Import defined modules
 from configparse import configparse
@@ -67,13 +67,6 @@ def importer(files=[],directory='.',options={}):
 	def get_format(file):
 		return file.split('.')[-1]
 
-	# Gets files associated with name and or format
-	def get_files(directory='',name=[''],format=['']):
-		return [f for f in os.listdir(directory)
-					if os.path.isfile(os.path.join(directory,f))
-					and all([i in get_name(f) for i in name]) 
-					and all([i in get_format(f) for i in format])]
-
 
 	# Import data from file based on format
 	def get_data(file='',directory='.',format='',options={}):		
@@ -136,7 +129,8 @@ def importer(files=[],directory='.',options={}):
 		name,format = get_name(f),get_format(f)
 		if '*' in name or '*' in format:
 			files.remove(f)
-			files += get_files(directory,name.split('*'),format.split('*'))
+			files += [os.path.join(*(p.split(os.path.sep)[1:])) 
+					  for p in glob.glob(os.path.join(directory,f))]
 			continue
 		else:
 			data[f] = get_data(f,directory,format,options)
@@ -160,13 +154,6 @@ def exporter(data={},directory='.',options={},overwrite=True):
 	# Gets format of file
 	def get_format(file):
 		return file.split('.')[-1]
-
-	# Gets files associated with name and or format
-	def get_files(directory='',name=[''],format=['']):
-		return [f for f in os.listdir(directory)
-					if os.path.isfile(os.path.join(directory,f))
-					and all([i in get_name(f) for i in name]) 
-					and all([i in get_format(f) for i in format])]
 
 
 	# Export data to file based on format

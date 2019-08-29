@@ -9,7 +9,7 @@ import numpy as np
 # Important defined functions
 import plot_functions
 from data_process import exporter
-from miscellaneous_functions import caps
+from misc_functions import caps
 
 
 class plotter(object):
@@ -26,6 +26,7 @@ class plotter(object):
 		# Define plot_keys and plot_bool
 		self.plot_keys = {}
 		self.plot_bool = {}
+
 					
 		# Add Figures and Axes with keys
 		self.add_plot(plot_keys,plot_bool)
@@ -52,28 +53,23 @@ class plotter(object):
 			
 			
 			# Plot for each data key
-			for axes_key in sorted([a for a in axes_keys.flatten() if a]):
+			for axes_key in sorted([a for a in axes_keys.flatten() if a 
+									]):
+				if axes_key not in data[plot_key].keys():
+					continue
 			
 				# Define axis properties
 				props_ax = props.get(plot_key,{}).get(axes_key,props)
 				# props['other']['plot_key'] = plot_key
 				# props['other']['axes_key'] = axes_key
 
-				# Define axis axes and figure
-				ax = self.axes[plot_key][axes_key]
-				fig = self.figs[plot_key]
-				plt.figure(fig.number)
-				fig.sca(ax)
-				ax.cla()
-			
-				
 				# Plot axis data
 				getattr(plot_functions,'plot_' + 
 						props[plot_key][axes_key].get('data',{}).get(
 						'plot_type','plot'))(
 									data[plot_key][axes_key],
 									domain[plot_key][axes_key],
-									fig,self.axes[plot_key],
+									self.figs[plot_key],self.axes[plot_key],
 									axes_key,props[plot_key][axes_key])
 
 											
@@ -82,9 +78,8 @@ class plotter(object):
         
     # Add new plots based on plot_keys and plot_bool
 	def add_plot(self,plot_keys,plot_bool=None,layout=None):
-		self.plot_keys.update(plot_keys)
 		for k in plot_keys:
-			self.plot_keys[k] = plot_keys[k]
+			self.plot_keys[k] = plot_keys[k]#np.array(plot_keys[k]).flatten().tolist()
 			if not self.figs.get(k):
 				self.figs[k] = None
 			if not self.axes.get(k):
@@ -101,7 +96,7 @@ class plotter(object):
 
 	# Close all current figures and reset figures and axes dictionaries
 	def plot_close(self):
-		plt.close('all')   
+		plt.close('all');   
 		self.axes = {}
 		self.figs ={}
 		return
@@ -120,18 +115,21 @@ class plotter(object):
 		for key,file in files.items():
 					
 			# Set current figure
-			fig = plt.figure(self.figs[key].number)        
+			fig = self.figs[key];  
 			
 			# Change plot size for saving            
-			figure_size = fig.get_size_inches()
+			figure_size = fig.get_size_inches();
 			if options.get('figure_size'):
-				fig.set_size_inches(options.pop('figure_size'))
+				fig.set_size_inches(options.pop('figure_size'));
+			else:
+				pass
+				# fig.set_size_inches(11,8,5)
 
 			# Export figure to file
-			exporter({file:fig},directory,options)
+			exporter({file:fig},directory,options);
 
 			# Revert to original plot size
-			fig.set_size_inches(figure_size) 
+			fig.set_size_inches(figure_size); 
 			
 		return
 
@@ -158,7 +156,7 @@ class plotter(object):
 				if k is not None:
 					axes[k] = fig.add_subplot(list(gs)[i:i+2])
 			return axes
-	
+ 
 
 		for plot_key,axis_keys in plot_keys.items():
 
@@ -175,9 +173,8 @@ class plotter(object):
 
 			# Only update non-existing figures based on self.axes[plot_key]
 			elif any([k not in self.axes.get(plot_key,{}).keys() 
-						for k in np.array(axis_keys).flatten() if k is not None]):
+					for k in np.array(axis_keys).flatten() if k is not None]):
 
-				# print('New Figures',axis_keys)
 				self.figs[plot_key] = plt.figure()
 				self.axes[plot_key] = layout_grid(axis_keys,
 												self.figs[plot_key],

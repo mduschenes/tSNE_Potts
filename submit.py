@@ -46,19 +46,38 @@ config = importer([CONFIGS],options=True)[CONFIGS]
 
 # Get TASK arguments
 CONFIG = 'CONFIG'
-PROPERTIES = ['FILE','ARGUMENTS']
+PROPERTIES = ['FILE','ARGUMENTS','PARAMETERS']
 TYPE = int
 
 assert CONFIG in config.sections(),'Incorrect main.config file'
 
 for p in PROPERTIES:
 	locals()[p] = config.get_typed(CONFIG,p,TYPE,atleast_1d=True)
-config.remove_section(CONFIG)
+locvars = locals()
 
+
+# Create config files from arguments not in PARAMETERS
+f = configparse()
+for section,options in config.items():
+	if section in PARAMETERS or section == "DEFAULT":
+		continue
+	f.add_section(section)
+	for option,value in (list((o,v) for o,v in options.items() 
+							   if o not in PROPERTIES) + 
+						[(p,locvars.get(p)) for p in ['DIRECTORY','FILE']] 
+						 if section == CONFIG else []):
+		if isinstance(value,str):
+			while '%' in value:
+				i = value.index('%')
+				value = value[:i]+'*'+value[i+2:]
+		f.set_typed(section,option,value)
+
+exporter({TASK+'.config': f},DIRECTORY)
 
 # Get arguments from file
 options = []
 values = []
+config.remove_section(CONFIG)
 for section in config.sections():
 		for option in config.options(section):
 			options.append(option)
@@ -72,11 +91,13 @@ for section in config.sections():
 sets = [dict(zip(options,params))for params in list(itertools.product(*values))]
 
 
-# Create config files from permutations of arguments
+# Create config files from permutations of arguments in PARAMETERS
 # and add job section with job id directory and date
 for i,params in enumerate(sets):
 	f = configparse()
-	for section,options in config.items(): 
+	for section,options in config.items():
+		if section not in PARAMETERS:
+			continue 
 		section_options = [(o,v) for o,v in params.items() if o in options]
 		if section_options == []:
 			continue
@@ -155,7 +176,6 @@ with open(TASK_SRC,'a') as f:
 # Output Source
 for p in [DIRECTORY,COMMAND,SOURCE,TASK_SRC]: 
 	print(p)
-
 
 
 

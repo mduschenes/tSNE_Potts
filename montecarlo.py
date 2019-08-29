@@ -21,7 +21,7 @@ def montecarlo(N,neighbours,props,job=0,directory='.'):
 	
 
 
-	def Niters(Ni,N,ratios):
+	def Niter(Ni,N,ratios):
 		ratios = np.atleast_1d(ratios)
 		assert 1>=sum(ratios)
 		Nfunc = lambda i,r: (max(1,int(r*Ni*N)) if r>0 else 0) if not i%2 else (
@@ -29,7 +29,7 @@ def montecarlo(N,neighbours,props,job=0,directory='.'):
 		Niters = [Nfunc(i,r) for i,r in enumerate(ratios)]
 		Niters.append(Nfunc(len(Niters),1-sum(ratios)))
 		return Niters
-	def Nperiods(Nf,N,Niters):
+	def Nperiod(Nf,N,Niters):
 		Niters = np.atleast_1d(Niters)
 		Nfunc = lambda i,n: max(1,int(N//Nf))if not i%2 else max(1,int(1//(Nf)))
 		Nperiods = [Nfunc(i,n) for i,n in enumerate(Niters)]
@@ -40,20 +40,19 @@ def montecarlo(N,neighbours,props,job=0,directory='.'):
 		alg = [(a,globals().get(a)) for a in ['metropolis','wolff']]
 	else:
 		alg = [(a,globals().get(a)) for a in [props['algorithm']]]
-	Neqb  = Niters(props['Neqb'],N,props['Nratio'])
-	Nmeas  = Niters(props['Nmeas'],N,props['Nratio'])
-	Nperiods = Nperiods(props['Nfreq'],N,Nmeas)
+	Neqb  = Niter(props['Neqb'],N,props['Nratio'])
+	Nmeas  = Niter(props['Nmeas'],N,props['Nratio'])
+	Nperiods = Nperiod(props['Nfreq'],N,Nmeas)
 	# Nmeas_total = [Nm//Nf for Nm,Nf in zip(Nmeas,Nperiods)]
 	measure_buffer = [(j+1)*Nperiods[i]+sum(Nmeas[:i]) for i in range(len(Nmeas)) 
 										for j in range(Nmeas[i]//Nperiods[i])]
 	iter_buffer = list(range(len(measure_buffer)))
 	stage_eqb_buffer = [(i-1,sum(Neqb[:i])) for i in range(1,len(Neqb)+1)]
 	stage_meas_buffer = [(i-1,sum(Nmeas[:i])) for i in range(1,len(Nmeas)+1)]
-	getattr(logger,log)(['measure_buffer',measure_buffer])
+	getattr(logger,log)(['measure_buffer',Nmeas,sum(Neqb),sum(Nmeas),measure_buffer])
 	getattr(logger,log)(['stage_meas_buff',stage_meas_buffer])
 	getattr(logger,log)(['stage_eqb_buff',stage_eqb_buffer])
-	getattr(logger,log)('''Monte Carlo: %d Eqb MC steps, %d Meas MC Steps, 
-										 %s Meas sweeps, every %s Steps'''%(
+	getattr(logger,log)('''Monte Carlo: %d Eqb MC steps, %d Meas MC Steps, %s Meas sweeps, every %s Steps'''%(
 							sum(Neqb),sum(Nmeas),str(Nmeas),str(Nperiods)))
 
 		# Array of sample sites and updated clusters during simulation
@@ -87,21 +86,19 @@ def montecarlo(N,neighbours,props,job=0,directory='.'):
 
 		alg[stage_buffer[0][0]%len(alg)][1](i,N,configurations,neighbours,props)
 
-		if measure and i+1 == measure_buffer[0]:
+
+		if measure and (i+1) == measure_buffer[0]:
 
 			update(iter_buffer.pop(0),configurations)
 
-			if props.get('plotting'):
-				getattr(logger,log)('MC Iteration (%s): %d, Cluster Size: %d'%(
-					alg[stage_buffer[0][0]%len(alg)][0],i+1,
-					np.count_nonzero(~np.isnan(configurations['cluster']))))
-				plot.plot({job:configurations},{job:configurations},
-					 	  {job:set_plot_montecarlo(keys=configurations.keys(),
-					 	   i=measure_buffer.pop(0)+1,**props.get('plotting'))})
-		else:
 			getattr(logger,log)('MC Iteration (%s): %d, Cluster Size: %d'%(
 					alg[stage_buffer[0][0]%len(alg)][0],i+1,
 					np.count_nonzero(~np.isnan(configurations['cluster']))))
+
+			if props.get('plotting'):
+				plot.plot({job:configurations},{job:configurations},
+					 	  {job:set_plot_montecarlo(keys=configurations.keys(),
+					 	   i=measure_buffer.pop(0),**props.get('plotting'))})
 		return
 
 	
@@ -109,12 +106,16 @@ def montecarlo(N,neighbours,props,job=0,directory='.'):
 
 
 	# Perform equilibrium iterations
+	getattr(logger,log)('Monte Carlo Equilibration')
 	stage_buffer = stage_eqb_buffer
 	for i in range(sum(Neqb)):
 		simulate(i,measure=False)
 	getattr(logger,log)('System Equilibrated: %s MC Steps'%(str(Neqb)))
 
+	
+
 	# Perform measurement iterations
+	getattr(logger,log)('Monte Carlo Measurements')
 	stage_buffer = stage_meas_buffer
 	if props.get('plotting'):
 		animation = animate.FuncAnimation(plot.figs[job], 

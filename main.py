@@ -17,11 +17,11 @@ parser = argparse.ArgumentParser(description = "Parse Arguments")
 parser.add_argument('-d','--directory',help = 'Data Directory',
 					type=str,default='.')
 
-parser.add_argument('-j','--job',help = 'Job Number',
-					type=int,default=0)
-
 parser.add_argument('-f','--file',help = 'Name Format',
 					type=str,default="job_%d")
+
+parser.add_argument('-j','--job',help = 'Job Number',
+					type=int,default=0)
 
 
 # Parse Args Command
@@ -66,8 +66,6 @@ getattr(logger,log)('Simulation: %s'%', '.join(['%s: %s'%(str(k),str(v))
 # Set plotting
 if props['simulation']['plotting']:
 	props['simulation']['plotting'] = props['model']
-else:
-	plot = False
 
 
 # Add simulation parameters to props

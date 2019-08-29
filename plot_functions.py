@@ -12,18 +12,20 @@ import matplotlib.colors as colors
 from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1 import axes_size
+from matplotlib.legend_handler import HandlerPatch
 
 # Import miscellaneous other functions
-from miscellaneous_functions import sort_unhashable
+from misc_functions import sort_unhashable
 
 def plot_decorator(plot_func):
     
 	def plot_wrapper(data,domain={},fig=None,axes={},key=None,props={}):
 		
 		# Define Figure and Axes
-		ax = axes.get(key)
-		ax.axis('on')     
-		ax.cla()					
+		plt.figure(fig.number);
+		ax = axes.get(key);
+		fig.sca(ax);
+		ax.axis('on')   
 		
 
 		# Pre process data and properties
@@ -40,8 +42,7 @@ def plot_decorator(plot_func):
 
 				# Plot data
 				plot[k] = plot_func(*set_data(data,domain,k,**props['data']),
-										props['plot'])		
-				plt.draw()
+										fig,ax,props['plot'])		
 			
 		else:
 			plot = {}
@@ -53,8 +54,8 @@ def plot_decorator(plot_func):
 
 			# Plot data
 			plot[k] = plot_func(*set_data(data,domain,k,**props['data']),
-										props['plot'])
-			plt.draw()
+										fig,ax,props['plot'])
+
 		# Post process data and properties
 		post_process(fig,axes,plot[k],key,props)
 
@@ -64,13 +65,13 @@ def plot_decorator(plot_func):
 
 
 @plot_decorator
-def plot_plot(x,y,props={}):
+def plot_plot(x,y,fig,ax,props={}):
 	plot = plt.plot(x,y,**props)
 	return plot
 
 
 @plot_decorator
-def plot_histogram(x,y,props={}):
+def plot_histogram(x,y,fig,ax,props={}):
 	if np.size(y) <= 1:
 		return plt.plot([],label=props['label'])
 	props['bins'] = min(10,int(1+3.322*np.log10(np.size(y))))
@@ -79,15 +80,44 @@ def plot_histogram(x,y,props={}):
 
 
 @plot_decorator
-def plot_scatter(x,y,props={}):
+def plot_scatter(x,y,fig,ax,props={}):
 	plot = plt.scatter(x,y,**props)
 	return plot
 
 
 @plot_decorator
-def plot_image(x,y,props={}):  
+def plot_image(x,y,fig,ax,props={}):  
 	plt.cla()
 	plot = plt.imshow(y,**props)
+	return plot
+
+
+@plot_decorator
+def plot_graph(x,y,fig,ax,props={}):  
+	props.update({'fig':fig,'ax':ax})
+	# if 'norm' in props:
+	# 	for keys,vals in props.items():
+	# 		if isinstance(vals,dict):
+	# 			for key,val in vals.items():
+	# 				if isinstance(val,dict):
+	# 					for k,v in val.items():
+	# 						if (isinstance(k,str) and 'color' in k and 
+	# 						   isinstance(props[keys][key][k],(list,np.ndarray))
+	# 						   and not isinstance(props[keys][key][k][0],str)):
+	# 							props[keys][key][k] = props['norm']([
+	# 											d if d!=0 else d+1e-14 
+	# 											for d in props[keys][key][k]])
+	# 				elif (isinstance(key,str) and 'color' in key and 
+	# 					  isinstance(props[keys][key],(list,np.ndarray)) and
+	# 					  not isinstance(props[keys][key][0],str)):
+	# 					props[keys][key] = props['norm']([d if d!=0 else d+1e-14 
+	# 											for d in props[keys][key]])
+	# 		elif (isinstance(keys,str) and 'color' in keys and 
+	# 		     isinstance(props[keys],(list,np.ndarray)) and 
+	# 		     not isinstance(props[keys][0],str)):
+	# 			props[keys] = props['norm']([d if d!=0 else d+1e-14 
+	# 										 for d in props[keys]])
+	plot = y.graph_plot(**props)
 	return plot
 
 
@@ -155,14 +185,58 @@ def set_data(data=[],domain=[],key=None,
 
 
 # Set legend, with unique sorted labels
-def set_legend(obj,props={},inds=-1,**kwargs):	
+def set_legend(obj,handle,label,props={},inds=-1,**kwargs):	
 
-	legend_labels = sort_unhashable([a.get_legend_handles_labels()
-										for a in plt.gcf().axes],
-									inds=inds,key=lambda i: i[-1])
-	if len(legend_labels[0]) >1:
+	def make_legend_arrow(legend, orig_handle,
+	      xdescent, ydescent,
+	      width, height, fontsize):
+		return matplotlib.patches.FancyArrow(0, 0.5*height, width, 0, 
+	                               length_includes_head=True, 
+	                                head_width=0.5*height)
+	def make_legend_rectangle(legend, orig_handle,
+	      xdescent, ydescent,
+	      width, height, fontsize):
+		return matplotlib.patches.FancyArrow(0, 0.5*height, width, 0, 
+	                               length_includes_head=True, 
+	                                head_width=0.25*height)
+	
+	for ax in plt.gcf().axes:
+		h,l=[],[]
+		hi,li = ax.get_legend_handles_labels()
+		h.extend(hi)
+		l.extend(li)
+		handles,texts = ax.get_legend().legendHandles,ax.get_legend().texts           
+		if not ([] in handles or [] in texts):
+			h.extend(handles)
+			l.extend([t.get_text() for t in texts])
+
+	if label not in l:
+		h.append(handle)
+		l.append(label)
+
+	h = [hi[1] for hi in sorted(enumerate(h),
+	                            key=lambda x:l[x[0]],reverse=True)]
+	l = [li[1] for li in sorted(enumerate(l),
+	                            key=lambda x:l[x[0]],reverse=True)]
+		
+
+	# handles_labels = sort_unhashable([a.get_legend_handles_labels()
+	# 									for a in plt.gcf().axes],
+	# 								inds=inds,key=lambda i: i[-1])
+	try:
 		obj.get_legend().remove()
-		obj.legend(*legend_labels,**props)
+	except:
+		pass	
+		
+	if h !=[] and l != []:
+		obj.legend(h,l,handler_map={
+	            matplotlib.patches.FancyArrowPatch : HandlerPatch(
+	                                patch_func=make_legend_arrow),
+	            matplotlib.patches.FancyArrow : HandlerPatch(
+	                                patch_func=make_legend_arrow),
+	            matplotlib.patches.Rectangle : HandlerPatch(
+	                                patch_func=make_legend_rectangle)
+	            },**props_plotting.get('legend',{}))   
 
 	return
 
@@ -183,22 +257,27 @@ def set_ticks(fig=None,ax=None,plot=None, axis_ticks = {},  **kwargs):
 
 # Set colormap
 def set_colormap(color=None,boundaries=[],normalization='linear',
-					color_bad='magenta',**kwargs):
+					color_bad='w',**kwargs):
 
 	if color is None or boundaries == []:
 		return {}
 
-	ncolors = len(boundaries)
-
-	cmap = matplotlib.cm.get_cmap(color,ncolors)
+	ncolors = len(set(boundaries))
 	
-	if normalization == 'linear':
+	if ncolors == 1 or normalization == 'none':
+		cmap = matplotlib.cm.get_cmap(color)
+		norm = colors.NoNorm(None,None)
+	elif normalization == 'linear':
+		cmap = matplotlib.cm.get_cmap(color)
 		norm = colors.Normalize(min(boundaries),max(boundaries))
 	elif normalization == 'discrete':
+		cmap = matplotlib.cm.get_cmap(color,ncolors)
 		norm = colors.BoundaryNorm(boundaries,ncolors)
 	elif normalization == "log":
-		norm = colors.LogNorm(min(boundaries),max(boundaries))
+		cmap = matplotlib.cm.get_cmap(color)
+		norm = colors.LogNorm(max(min(boundaries),1e-14),max(boundaries))
 	else:
+		cmap = matplotlib.cm.get_cmap(color)
 		norm = colors.NoNorm(None,None)
 
 	cmap.set_bad(color=color_bad)
@@ -222,38 +301,63 @@ def set_colorbar(fig=None,axes=None,plot=None,key=None,cmap=None,norm=None,
 
 		elif new_ax and not axes.get(key+'_cax'):
 			cax = fig.add_axes(new_ax,frame_on=False)
-			cax.axis('off')
 		elif axes.get(key+'_cax'):
 			cax = axes.get(key+'_cax')
 		else:
 			cax = axes[key]
-		cax = make_axes_locatable(cax).append_axes(**props)
-		
-		
+		if axes.get(key+'_cbar'):
+			cbar = axes.get(key+'_cbar')
+			cbar.remove()
 		axes[key+'_cax'] = cax
+		fig.sca(cax);
+		plt.cla();
+		cax.cla();
+		cax.axis('off')
+		
+		cax = make_axes_locatable(cax).append_axes(**props)
+		fig.sca(cax)
+		plt.cla();
+		cax.axis('off');
+		plt.cla();
+
+		
+		
 
 		# size=axes_size.AxesY(axes[key], aspect=1./props.pop('aspect',100))
 		# pad = axes_size.Fraction(props.pop('pad_fraction', 1),size)
 		# props.update(dict(size=size,pad=pad))
 		fig.sca(cax)
-		plt.cla()
+		# cax.axis('off')
+		cax.clear();
+		plt.cla();
 
 		try:
-			cbar = plt.colorbar(plot,ax=axes[key],cax=cax)
+			if isinstance(p,(list,np.ndarray)) and any(
+					[isinstance(p,(list,np.ndarray)) for p in plot]):
+				for p in plot:
+					try:
+						cbar = fig.colorbar(p,ax=axes[key],cax=cax)
+					except:
+						continue
+			else:
+				cbar = fig.colorbar(plot,ax=axes[key],cax=cax)
 		except:
 			smap = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
 			smap.set_array([]);
-			fig.colorbar(smap,cax=cax,**props)		
+			cbar = fig.colorbar(smap,cax=cax)	
 
 		if isinstance(labels.get('ticks'),dict):
 			cbar.set_ticks(list(labels['ticks'].keys()))
-			cbar.ax.set_yticklabels(list(labels['ticks'].values()),**labels.get('ticks_params',{}))
+			cbar.ax.set_yticklabels(list(labels['ticks'].values()),
+				**labels.get('ticks_params',{}))
 			
 
 		cbar.set_label(**labels.get('label',{}))
 		
 
 		cbar.ax.set_visible(display)
+
+		axes[key+'_cbar'] = cbar
 
 		return cax
 
@@ -271,10 +375,12 @@ def post_process(fig,axes,plot,key,props={}):
 
 	# Plot legend on axes or figure
 	if props.get('other',{}).get('legend'):
-		set_legend(ax,props.get('other',{}).get('legend',{}))
+		set_legend(ax,plot,props.get('label'),
+				   props.get('other',{}).get('legend',{}))
 	
 	if props.get('other',{}).get('sup_legend'):
-		set_legend(fig,props.get('other',{}).get('legend',{}))
+		set_legend(fig,plot,props.get('label'),
+				   props.get('other',{}).get('legend',{}))
 
 
 	# Set ticks
@@ -283,7 +389,7 @@ def post_process(fig,axes,plot,key,props={}):
 
 	# Set colorbar
 	if props.get('other',{}).get('colorbar',{}):
-		set_colorbar(fig,axes,plot,key,**props.get('other',{}).get('colorbar'))
+		set_colorbar(fig,axes,plot,key,**props.get('other',{}).get('colorbar'));
 
 	# Set which axes has labels
 	for a in fig.axes:
@@ -304,14 +410,18 @@ def post_process(fig,axes,plot,key,props={}):
 	except:
 		pass
 
+	if not props.get('other',{}).get('visible',True):
+		for k,ax in axes.items():
+			if '_cax' not in k and '_cbar' not in k:
+				try:
+					ax.axis('off')
+				except AttributeError:
+					ax.ax.set_visible(False)
+
 
 	# Other properties
 	plt.pause(props.get('other',{}).get('pause',0.01))
 
-	# Clear colorbar for next plot
-	# if props.get('other',{}).get('colorbar'):
-		# cax.cla()
-		# cax.axis('off')
 	
 	return
 
@@ -324,6 +434,10 @@ def pre_process(props={}):
 	for p in ['plot','data','other']:
 		if not props.get(p):
 			props[p] = {}
+
+	# Clear Figure
+	if props['other'].get('clear'):
+		plt.cla()			
 
 	# Define style
 	try:
@@ -372,3 +486,4 @@ def pre_process(props={}):
 #
 #    fig.canvas.mpl_connect("pick_event", onpick)
 #    plt.show()
+

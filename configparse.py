@@ -10,7 +10,7 @@ log = 'warning'
 class configparse(ConfigParser):
 
 	def __init__(self,interpolation=ExtendedInterpolation(),*args,**kwargs):
-		ConfigParser.__init__(self,interpolation=interpolation,*args,**kwargs)
+		ConfigParser.__init__(self,interpolation=ExtendedInterpolation(),*args,**kwargs)
 		self.optionxform=str
 		return
 
