@@ -203,7 +203,7 @@ def exporter(data={},directory='.',options={},overwrite=True):
 								  lambda x: [str(y) for y in x])(d))
 			f.close();
 		
-		elif format in ['pdf','png','jpg','eps']:
+		elif format in ['pdf','png','jpg','eps','svg']:
 			options['format'] = format
 			data.savefig(path,**options);
 
