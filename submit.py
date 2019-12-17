@@ -42,7 +42,6 @@ SOURCE = OPTIONS.split('.')[-1]
 MODULE = TASK.split('.')[-1]
 TASK = '.'.join(TASK.split('.')[:-1]) if '.' in TASK else TASK
 COMMAND = commands.get(SOURCE,'').upper()
-JOBID = TASK+'_'+DATE
 JOBINDEX = jobindices.get(SOURCE,'')
 config = importer([CONFIGS],options=True)[CONFIGS]
 
@@ -156,8 +155,8 @@ with open(TASK_SRC,'a') as f:
 		# Job submission
 		f.write('\n#%s --job_name=%s\n'%(COMMAND,JOBID))
 		if len(sets) > 1:
-			f.write('\n#%s --array=%d-%d\n'%(COMMAND,0,len(sets)-1))
-		f.write('\n#%s --output=%s\n'%(COMMAND,os.path.join(DIRECTORY,JOBID+'.log')))
+			f.write('\n#%s --array=%d-%d\n'%(COMMAND.lower(),0,len(sets)-1))
+		f.write('\n#%s --output=%s\n'%(COMMAND.lower(),os.path.join(DIRECTORY,JOBID+'.log')))
 
 
 		f.write("\n##### SCRIPT #####\n")
@@ -183,7 +182,7 @@ with open(TASK_SRC,'a') as f:
 		for i in range(len(sets)):
 			f.write(jobline(i))
 
-
+	exec_cmd("chmod 777 %s"%TASK_SRC)
 
 # Output Source
 for l,p in zip(['DIRECTORY','COMMAND','SOURCE','TASK','TASK_SRC'],

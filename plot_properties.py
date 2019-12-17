@@ -433,7 +433,7 @@ def set_plot_analysis(keys,props={},**kwargs):
 					  'plot':  {'label': lambda x='':texify(x,
 												   every_word=True,
 												   sep_char=' ',split_char='_'),
-					  			'bins'},
+					  			'bins':20},
 					  'data':  {'plot_type':kwargs.get('plot_type','plot'),
 								'data_process':lambda data: np.real(data)},
 								
