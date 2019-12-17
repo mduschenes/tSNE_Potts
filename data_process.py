@@ -158,9 +158,9 @@ def importer(files=[],directory='.',options={}):
 		# Find files associated with name and format
 		f = files[i]
 		name,format = get_name(f),get_format(f)
-		if '*' in name or '*' in format:
+		if '*' in name or '*' in format or '*' in directory:
 			files.remove(f)
-			files += [p.split(directory)[1][1:]
+			files += [os.path.join(*p.split(directory)[1].split(os.path.sep))
 					  for p in glob.glob(os.path.join(directory,f))]
 			continue
 		else:

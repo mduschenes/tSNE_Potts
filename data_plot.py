@@ -56,7 +56,6 @@ class plotter(object):
 									]):
 				if axes_key not in data[plot_key].keys():
 					continue
-			
 				# Define axis properties
 				props_ax = props.get(plot_key,{}).get(axes_key,props)
 				# props['other']['plot_key'] = plot_key

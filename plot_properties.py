@@ -415,29 +415,38 @@ def set_plot_analysis(keys,props={},**kwargs):
 
 
 	# Default props
-	plot_props = {
-					 k: {
+	FONT_SIZE = 6
+	plot_props = {}
+	for k in keys:
+		plot_props[k] = {
 					
 					  'ax':   {'title' : kwargs.get('title',''), 
 								'xlabel': kwargs.get('xlabel',texify('$x$',every_word=None)),
-								'ylabel': kwargs.get('xlabel',texify('$y$',every_word=None)),
-								'xticks': kwargs.get('xticks',[]),
+								'ylabel': kwargs.get('ylabel',texify('$y$',every_word=None)),
 								'xticklabels': kwargs.get('xticklabels',[]),
-								'zorder':1},
+								'zorder':kwargs.get('zorder',1)},
 					  'ax_attr': {'get_xticklabels':{'visible':True,
-													 'fontsize':FONT_SIZE},
-								  'xaxis': {'ticks_position': 'none'},
+													 },
+								  # 'xaxis': {'ticks_position': 'none'},
 								  'get_yticklabels':{'visible':True,
-													 'fontsize':FONT_SIZE},
-								  'yaxis': {'ticks_position': 'none'}},
+													 # 'fontsize':6
+													 },
+								  # 'yaxis': {'ticks_position': 'none'}
+								  },
 					  'plot':  {'label': lambda x='':texify(x,
 												   every_word=True,
 												   sep_char=' ',split_char='_'),
-					  			'bins':20},
+					  			**({'marker':kwargs.get('marker'),
+					  				'linestyle':kwargs.get('linestyle')}
+					  				if kwargs.get('plot_type') != 'histogram' else {}),
+					  			**({'bins':kwargs.get('bins',20),
+					  				'density':True} 
+					  				if kwargs.get('plot_type')=='histogram' else {})
+					  			},
 					  'data':  {'plot_type':kwargs.get('plot_type','plot'),
 								'data_process':lambda data: np.real(data)},
 								
-					  'other': {'style':'simulation.mplstyle',
+					  'other': {'style':'analysis.mplstyle',
 					  			'label': lambda x='':texify(x,
 												   every_word=True,
 												   sep_char=' ',split_char='_'),
@@ -467,13 +476,14 @@ def set_plot_analysis(keys,props={},**kwargs):
 										   'loc':"center left",
 										   'ncol':2
 										  } if kwargs.get('legend') else None,
-								'tight_layout':{'pad':0.05,'w_pad':0.1, 
-												 'h_pad':0.1},
-								'subplots_adjust':{'top':0.85},
+								'tight_layout':{
+												 # 'pad':0.05,'w_pad':0.1, 
+												 # 'h_pad':0.1
+												 },
+								# 'subplots_adjust':{'top':0.85},
 								'sup_title': kwargs.get('sup_title')}
-								}
+					}
 					 
-					for k in keys}
 	props.update(plot_props)
 	return props				
 

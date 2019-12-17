@@ -169,8 +169,8 @@ with open(TASK_SRC,'a') as f:
 	elif SOURCE =='lsf':
 		# Job submission
 		if len(sets) > 1:
-			f.write('\n#%s -J %s %d-%d\n'%(COMMAND,
-									   TASK,0,len(sets)-1))
+			f.write('\n#%s -J %s JOBARRAY[%d:%d]\n'%(COMMAND,
+									   TASK,1,len(sets)))
 		else:
 			f.write('\n#%s -J %s\n'%(COMMAND.upper(),TASK))
 		

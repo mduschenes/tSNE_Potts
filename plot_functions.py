@@ -6,6 +6,7 @@ Created on Mon Apr 23 02:43:27 2018
 """
 import numpy as np
 import copy
+from functools import wraps
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
@@ -19,32 +20,45 @@ from misc_functions import sort_unhashable
 
 def plot_decorator(plot_func):
     
+	@wraps(plot_func)
 	def plot_wrapper(data,domain={},fig=None,axes={},key=None,props={}):
 		
 		# Define Figure and Axes
 		plt.figure(fig.number);
 		ax = axes.get(key);
-		fig.sca(ax);
+		# fig.sca(ax);
 		ax.axis('on')   
 		
 
-		# Pre process data and properties
-		pre_process(props)
 
 
 		if isinstance(data,dict):
 			plot = {}
 			for k in data.keys():
-				
+
+				# Pre process data and properties
+				prop = copy.deepcopy(props.get(k,props))
+				pre_process(prop)
+
+				try:
+					function = globals()['plot_'+prop['data']['plot_type']].__wrapped__
+				except:
+					print('errrr')
+					function = plot_func
 				# Get plot label
-				if callable(props['plot'].get('label')):
-					props['plot']['label'] = props['plot']['label'](k)
+				if callable(prop['plot'].get('label')):
+					prop['plot']['label'] = prop['plot']['label'](k)
 
 				# Plot data
-				plot[k] = plot_func(*set_data(data,domain,k,**props['data']),
-										fig,ax,props['plot'])		
+
+				plot[k] = function(*set_data(data,domain,k,**prop['data']),
+										fig,ax,prop['plot'])		
+
+				# Post process data and properties
+				post_process(fig,axes,plot[k],key,prop)
 			
 		else:
+			pre_process(props)
 			plot = {}
 			k = None
 
@@ -56,8 +70,8 @@ def plot_decorator(plot_func):
 			plot[k] = plot_func(*set_data(data,domain,k,**props['data']),
 										fig,ax,props['plot'])
 
-		# Post process data and properties
-		post_process(fig,axes,plot[k],key,props)
+			# Post process data and properties
+			post_process(fig,axes,plot[k],key,props)
 
 		return				
 
@@ -470,6 +484,7 @@ def pre_process(props={}):
 
 	# Clear Figure
 	if props['other'].get('clear'):
+		print('Clear Figure')
 		plt.cla()			
 
 	# Define style

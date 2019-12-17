@@ -120,7 +120,7 @@ class model(lattice):
 	def ising_energy(self,sites,neighbours,T):
 		# Calculate energy of spins as sum of spins 
 		# + sum of r-distance neighbour interactions
-		return ((-self.couplings[0]*np.sum(site_int(sites),axis=-1))+(
+		return ((-self.couplings[0]*np.sum(self.ising_state(sites),axis=-1))+(
 			   -(1/2)*np.sum(np.array([self.couplings[i+1]*(
 									   self.ising_interaction(
 										 np.expand_dims(sites,axis=-1),
@@ -196,7 +196,7 @@ class model(lattice):
 	def potts_energy(self,sites,neighbours,T):
 		# Calculate energy of spins as sum of spins 
 		# + sum of r-distance neighbour interactions
-		return ((-self.couplings[0]*np.sum(site_int(sites),axis=-1))+(
+		return ((-self.couplings[0]*np.sum(self.potts_state(sites),axis=-1))+(
 			   -(1/2)*np.sum(np.array([self.couplings[i+1]*(
 									   self.ising_interaction(
 										 np.expand_dims(sites,axis=-1),
