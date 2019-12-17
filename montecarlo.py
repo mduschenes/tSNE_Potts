@@ -1,6 +1,5 @@
 # Import standard python modules
 import numpy as np
-from celluloid import Camera
 import matplotlib.animation as animate
 import logging
 

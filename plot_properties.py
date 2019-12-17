@@ -17,241 +17,241 @@ def set_nested_dict(dictionary,keys,func,**kwargs):
 			dictionary_k = dictionary_k[key_i]
 		dictionary_k[keys[-1]] = func(keys,**kwargs)
 	return
-								'zorder':1},
-					  'ax_attr': {'get_xticklabels':{'visible':True,
-													 'fontsize':FONT_SIZE},
-								  'xaxis': {'ticks_position': 'none'},
-								  'get_yticklabels':{'visible':True,
-													 'fontsize':FONT_SIZE},
-								  'yaxis': {'ticks_position': 'none'}},
-					  'plot':  {'label': lambda x='':texify(x,
-												   every_word=True,
-												   sep_char=' ',split_char='_')},
-					  'data':  {'plot_type':'scatter',
-								'data_process':lambda data: np.real(data)},
+# 								'zorder':1},
+# 					  'ax_attr': {'get_xticklabels':{'visible':True,
+# 													 'fontsize':FONT_SIZE},
+# 								  'xaxis': {'ticks_position': 'none'},
+# 								  'get_yticklabels':{'visible':True,
+# 													 'fontsize':FONT_SIZE},
+# 								  'yaxis': {'ticks_position': 'none'}},
+# 					  'plot':  {'label': lambda x='':texify(x,
+# 												   every_word=True,
+# 												   sep_char=' ',split_char='_')},
+# 					  'data':  {'plot_type':'scatter',
+# 								'data_process':lambda data: np.real(data)},
 								
-					  'other': {'style':'simulation.mplstyle',
+# 					  'other': {'style':'simulation.mplstyle',
 
-def PROPS(plot,**kwargs):
-    props = {}
-    if plot == 'hist':
-        props.update({
-                'plot':{
-                        'color':kwargs.get('color'),
-                        'alpha':kwargs.get('alpha',1),
-                        'orientation': kwargs.get('orientation','vertical'),
-                        'bins':kwargs.get('bins',100),
-                        'range': kwargs.get('range',None),
-                        'density':kwargs.get('density',True),
-                        'zorder':kwargs.get('zorder'),
-                        'label':kwargs.get('label'),
-                        },
-                'type':plot,
-                'ax':   {'title' : kwargs.get('title',''), 
-                        'xlabel': kwargs.get('xlabel',r'$X$'),
-                        'ylabel': kwargs.get('ylabel','Counts'), 
-                        'set_aspect':kwargs.get('aspect'),
-                        'set_xlim':{k:v for k,v in zip(['left','right'],kwargs.get('xlim',[None,None]))},
-                        'set_ylim':{k:v for k,v in zip(['bottom','top'],kwargs.get('ylim',[None,None]))},
-                        'set_xscale':{'value':kwargs.get('xscale','linear')},
-                        'set_yscale':{'value':kwargs.get('yscale','linear')}                         
-                        },
-                'legend': kwargs.get('legend',{}),
-                'figsize':kwargs.get('figsize',None)            
-               }) 
-    elif plot in ['plot']:
-        props.update({
-                'plot':{'alpha':kwargs.get('alpha'),
-                        'color':kwargs.get('color'),
-                        'marker':kwargs.get('marker'),
-                        'linestyle':kwargs.get('linestyle','-'),
-                        'linewidth':kwargs.get('linewidth'),
-                        'markersize':kwargs.get('markersize'),
-                        'zorder':kwargs.get('zorder'),
-                        'label':kwargs.get('label')
-                        },
-                'type':plot,
-                'ax':   {'title' : kwargs.get('title',''), 
-                        'xlabel': kwargs.get('xlabel',r'$X$'),
-                        'ylabel': kwargs.get('ylabel',''),
-                        'set_aspect':kwargs.get('aspect'),
-                        'set_xlim':{k:v for k,v in zip(['left','right'],kwargs.get('xlim',[None,None]))},
-                        'set_ylim':{k:v for k,v in zip(['bottom','top'],kwargs.get('ylim',[None,None]))},
-                        'set_xscale':{'value':kwargs.get('xscale','linear')},
-                        'set_yscale':{'value':kwargs.get('yscale','linear')}
-                        },
-                  'legend':kwargs.get('legend',{}),
-                  'grid': kwargs.get('grid',False),       
-               })
-    elif plot in ['scatter']:
-        props.update({
-                'plot':{'alpha':kwargs.get('alpha',1),
-                        'c':kwargs.get('c'),
-                        'marker':kwargs.get('marker'),
-                        's':kwargs.get('s'),
-                        'edgecolors':kwargs.get('edgecolors'),
-                        'linewidths':kwargs.get('linewidths'),
-                        'zorder':kwargs.get('zorder'),
-                        'label':kwargs.get('label'),
-                        'cmap': kwargs.get('cmap'),
-                        'norm': (matplotlib.colors.Normalize(kwargs['norm'].get('vmin'),
-                                        kwargs['norm'].get('vmax')) 
-                                      if (kwargs.get('norm') and 
-                                          kwargs.get('normalize','linear')=='linear') 
-                                      else 
-                                          matplotlib.colors.LogNorm(
-                                              max(kwargs['norm'].get('vmin'),1e-14),
-                                                  kwargs['norm'].get('vmax')) 
-                                      if (kwargs.get('norm') and 
-                                          kwargs.get('normalize')=='log') 
-                                 else None)
-                        },
-                'type':plot,
-                'ax':   {'title' : kwargs.get('title',''), 
-                        'xlabel': kwargs.get('xlabel',r'$X$'),
-                        'ylabel': kwargs.get('ylabel',''),
-                        'set_aspect':kwargs.get('aspect'),
-                        'set_xlim':{k:v for k,v in zip(['left','right'],
-                                    kwargs.get('xlim',[None,None]))},
-                        'set_ylim':{k:v for k,v in zip(['bottom','top'],
-                                    kwargs.get('ylim',[None,None]))},
-                        'set_xscale':{'value':kwargs.get('xscale','linear')},
-                        'set_yscale':{'value':kwargs.get('yscale','linear')}
-                        },
-                  'legend':kwargs.get('legend',{}),
-                  'colorbar': kwargs.get('colorbar'),
-                  'grid': kwargs.get('grid',False),       
-               })
-    elif plot == 'fill_between':
-        props.update({
-                'plot':{'alpha':0.2,
-                        'color':kwargs.get('color'),
-                        'zorder':kwargs.get('zorder',-np.inf),
-                        'label':kwargs.get('label'),
-                        'linewidth':kwargs.get('linewidth')
-                        },
-                'type':plot,
-                'ax':   {'title' : kwargs.get('title',''), 
-                        'xlabel': kwargs.get('xlabel',r'$X$'),
-                        'ylabel': kwargs.get('ylabel',''),
-                        'set_aspect':kwargs.get('aspect'),
-                        'set_xlim':{k:v for k,v in zip(['left','right'],
-                                    kwargs.get('xlim',[None,None]))},
-                        'set_ylim':{k:v for k,v in zip(['bottom','top'],
-                                    kwargs.get('ylim',[None,None]))},
-                        'set_xscale':{'value':kwargs.get('xscale','linear')},
-                        'set_yscale':{'value':kwargs.get('yscale','linear')}                         
-                        },
-                  'legend':kwargs.get('legend',{}),
-                  'grid': kwargs.get('grid',False),       
-               }),
-    elif plot == 'Circle':
-        props.update({
-                'plot':{'radius':kwargs.get('radius'),
-                        'center':kwargs.get('center'),
-                        'alpha':1,
-                        'fill':kwargs.get('fill',False),
-                        'color':kwargs.get('color','r'),
-                        'zorder':kwargs.get('zorder',np.inf),
-                        'label':kwargs.get('label'),
-                        'linewidth':kwargs.get('linewidth')
-                        },
-                'type':plot,
-                'ax':   {'title' : kwargs.get('title',''), 
-                        'xlabel': kwargs.get('xlabel',r'$X$'),
-                        'ylabel': kwargs.get('ylabel',''),
-                        'set_aspect':kwargs.get('aspect'),
-                        'set_xlim':{k:v for k,v in zip(['left','right'],
-                                    kwargs.get('xlim',[None,None]))},
-                        'set_ylim':{k:v for k,v in zip(['bottom','top'],
-                                    kwargs.get('ylim',[None,None]))},
-                        'set_xscale':{'value':kwargs.get('xscale','linear')},
-                        'set_yscale':{'value':kwargs.get('yscale','linear')}                         
-                        },
-                  'legend':kwargs.get('legend',{}),
-                  'grid': kwargs.get('grid',False),       
-               }),
-    elif plot in ['contour','contourf','tricontour','tricontourf']:
-        props.update({
-                'plot':{'alpha':1,
-                        'label':kwargs.get('label'),
-                        'linestyles':kwargs.get('linestyles'),
-                        'cmap': kwargs.get('cmap'),
-                         'norm': (matplotlib.colors.Normalize(kwargs['norm'].get('vmin'),
-                                        kwargs['norm'].get('vmax')) 
-                                      if (kwargs.get('norm') and 
-                                          kwargs.get('normalize','linear')=='linear') 
-                                      else 
-                                          matplotlib.colors.LogNorm(
-                                              max(kwargs['norm'].get('vmin'),1e-14),
-                                                  kwargs['norm'].get('vmax')) 
-                                      if (kwargs.get('norm') and 
-                                          kwargs.get('normalize')=='log') 
-                                 else None)
-                        },
-                'type':plot,
-                'ax':   {'title' : kwargs.get('title',''), 
-                        'xlabel': kwargs.get('xlabel',r'$x$'),
-                        'ylabel': kwargs.get('ylabel',r'$y$'),
-                        'set_aspect':kwargs.get('aspect'),
-                        'set_xlim':{k:v for k,v in zip(['left','right'],kwargs.get('xlim',[None,None]))},
-                        'set_ylim':{k:v for k,v in zip(['bottom','top'],kwargs.get('ylim',[None,None]))},
-                        'set_xscale':{'value':kwargs.get('xscale','linear')},
-                        'set_yscale':{'value':kwargs.get('yscale','linear')}                         
-                        },
-                  'legend':kwargs.get('legend',{}),
-                  'colorbar': kwargs.get('colorbar'),
-                  'grid': kwargs.get('grid',False),       
-               }),
-    elif plot == 'loglog':
-        props.update({
-                'plot':{'alpha':1,
-                        'color':kwargs.get('color'),
-                        'marker':kwargs.get('marker'),
-                        'linestyle':kwargs.get('linestyle','-'),
-                        'markersize':kwargs.get('markersize'),
-                        'zorder':kwargs.get('zorder'),
-                        'label':kwargs.get('label')
-                        },
-                'type':plot,
-                'ax':   {'title' : kwargs.get('title',''), 
-                        'xlabel': kwargs.get('xlabel',r'$X$'),
-                        'ylabel': kwargs.get('ylabel',''),
-                        'set_aspect':kwargs.get('aspect'),
-                        'set_xlim':{k:v for k,v in zip(['left','right'],kwargs.get('xlim',[None,None]))},
-                        'set_ylim':{k:v for k,v in zip(['bottom','top'],kwargs.get('ylim',[None,None]))},
-                        'set_xscale':{'value':kwargs.get('xscale','linear')},
-                        'set_yscale':{'value':kwargs.get('yscale','linear')}                         
-                        },
-                  'legend':kwargs.get('legend',{}),
-                  'grid': kwargs.get('grid',False),       
-               }),
-    elif plot == 'plot3D':
-        props.update({
-                'plot':{'alpha':1,
-                        'color':kwargs.get('color'),
-                        'marker':kwargs.get('marker'),
-                        'linestyle':kwargs.get('linestyle','-'),
-                        'linewidth':kwargs.get('linewidth'),
-                        'markersize':kwargs.get('markersize'),
-                        'zorder':kwargs.get('zorder'),
-                        'label':kwargs.get('label')
-                        },
-                'type':plot,
-                'ax':   {'title' : kwargs.get('title',''), 
-                        'xlabel': kwargs.get('xlabel',r'$X$'),
-                        'ylabel': kwargs.get('ylabel',''),
-                        'zlabel': kwargs.get('xlabel',None),
-                        'set_aspect':kwargs.get('aspect'),
-                        'set_xlim':{k:v for k,v in zip(['left','right'],kwargs.get('xlim',[None,None]))},
-                        'set_ylim':{k:v for k,v in zip(['bottom','top'],kwargs.get('ylim',[None,None]))},
-                        'set_xscale':{'value':kwargs.get('xscale','linear')},
-                        'set_yscale':{'value':kwargs.get('yscale','linear')}                         
-                        },
-                  'legend':kwargs.get('legend',{}),
-                  'grid': kwargs.get('grid',False),
-               })
-    return props
+# def PROPS(plot,**kwargs):
+#     props = {}
+#     if plot == 'hist':
+#         props.update({
+#                 'plot':{
+#                         'color':kwargs.get('color'),
+#                         'alpha':kwargs.get('alpha',1),
+#                         'orientation': kwargs.get('orientation','vertical'),
+#                         'bins':kwargs.get('bins',100),
+#                         'range': kwargs.get('range',None),
+#                         'density':kwargs.get('density',True),
+#                         'zorder':kwargs.get('zorder'),
+#                         'label':kwargs.get('label'),
+#                         },
+#                 'type':plot,
+#                 'ax':   {'title' : kwargs.get('title',''), 
+#                         'xlabel': kwargs.get('xlabel',r'$X$'),
+#                         'ylabel': kwargs.get('ylabel','Counts'), 
+#                         'set_aspect':kwargs.get('aspect'),
+#                         'set_xlim':{k:v for k,v in zip(['left','right'],kwargs.get('xlim',[None,None]))},
+#                         'set_ylim':{k:v for k,v in zip(['bottom','top'],kwargs.get('ylim',[None,None]))},
+#                         'set_xscale':{'value':kwargs.get('xscale','linear')},
+#                         'set_yscale':{'value':kwargs.get('yscale','linear')}                         
+#                         },
+#                 'legend': kwargs.get('legend',{}),
+#                 'figsize':kwargs.get('figsize',None)            
+#                }) 
+#     elif plot in ['plot']:
+#         props.update({
+#                 'plot':{'alpha':kwargs.get('alpha'),
+#                         'color':kwargs.get('color'),
+#                         'marker':kwargs.get('marker'),
+#                         'linestyle':kwargs.get('linestyle','-'),
+#                         'linewidth':kwargs.get('linewidth'),
+#                         'markersize':kwargs.get('markersize'),
+#                         'zorder':kwargs.get('zorder'),
+#                         'label':kwargs.get('label')
+#                         },
+#                 'type':plot,
+#                 'ax':   {'title' : kwargs.get('title',''), 
+#                         'xlabel': kwargs.get('xlabel',r'$X$'),
+#                         'ylabel': kwargs.get('ylabel',''),
+#                         'set_aspect':kwargs.get('aspect'),
+#                         'set_xlim':{k:v for k,v in zip(['left','right'],kwargs.get('xlim',[None,None]))},
+#                         'set_ylim':{k:v for k,v in zip(['bottom','top'],kwargs.get('ylim',[None,None]))},
+#                         'set_xscale':{'value':kwargs.get('xscale','linear')},
+#                         'set_yscale':{'value':kwargs.get('yscale','linear')}
+#                         },
+#                   'legend':kwargs.get('legend',{}),
+#                   'grid': kwargs.get('grid',False),       
+#                })
+#     elif plot in ['scatter']:
+#         props.update({
+#                 'plot':{'alpha':kwargs.get('alpha',1),
+#                         'c':kwargs.get('c'),
+#                         'marker':kwargs.get('marker'),
+#                         's':kwargs.get('s'),
+#                         'edgecolors':kwargs.get('edgecolors'),
+#                         'linewidths':kwargs.get('linewidths'),
+#                         'zorder':kwargs.get('zorder'),
+#                         'label':kwargs.get('label'),
+#                         'cmap': kwargs.get('cmap'),
+#                         'norm': (matplotlib.colors.Normalize(kwargs['norm'].get('vmin'),
+#                                         kwargs['norm'].get('vmax')) 
+#                                       if (kwargs.get('norm') and 
+#                                           kwargs.get('normalize','linear')=='linear') 
+#                                       else 
+#                                           matplotlib.colors.LogNorm(
+#                                               max(kwargs['norm'].get('vmin'),1e-14),
+#                                                   kwargs['norm'].get('vmax')) 
+#                                       if (kwargs.get('norm') and 
+#                                           kwargs.get('normalize')=='log') 
+#                                  else None)
+#                         },
+#                 'type':plot,
+#                 'ax':   {'title' : kwargs.get('title',''), 
+#                         'xlabel': kwargs.get('xlabel',r'$X$'),
+#                         'ylabel': kwargs.get('ylabel',''),
+#                         'set_aspect':kwargs.get('aspect'),
+#                         'set_xlim':{k:v for k,v in zip(['left','right'],
+#                                     kwargs.get('xlim',[None,None]))},
+#                         'set_ylim':{k:v for k,v in zip(['bottom','top'],
+#                                     kwargs.get('ylim',[None,None]))},
+#                         'set_xscale':{'value':kwargs.get('xscale','linear')},
+#                         'set_yscale':{'value':kwargs.get('yscale','linear')}
+#                         },
+#                   'legend':kwargs.get('legend',{}),
+#                   'colorbar': kwargs.get('colorbar'),
+#                   'grid': kwargs.get('grid',False),       
+#                })
+#     elif plot == 'fill_between':
+#         props.update({
+#                 'plot':{'alpha':0.2,
+#                         'color':kwargs.get('color'),
+#                         'zorder':kwargs.get('zorder',-np.inf),
+#                         'label':kwargs.get('label'),
+#                         'linewidth':kwargs.get('linewidth')
+#                         },
+#                 'type':plot,
+#                 'ax':   {'title' : kwargs.get('title',''), 
+#                         'xlabel': kwargs.get('xlabel',r'$X$'),
+#                         'ylabel': kwargs.get('ylabel',''),
+#                         'set_aspect':kwargs.get('aspect'),
+#                         'set_xlim':{k:v for k,v in zip(['left','right'],
+#                                     kwargs.get('xlim',[None,None]))},
+#                         'set_ylim':{k:v for k,v in zip(['bottom','top'],
+#                                     kwargs.get('ylim',[None,None]))},
+#                         'set_xscale':{'value':kwargs.get('xscale','linear')},
+#                         'set_yscale':{'value':kwargs.get('yscale','linear')}                         
+#                         },
+#                   'legend':kwargs.get('legend',{}),
+#                   'grid': kwargs.get('grid',False),       
+#                }),
+#     elif plot == 'Circle':
+#         props.update({
+#                 'plot':{'radius':kwargs.get('radius'),
+#                         'center':kwargs.get('center'),
+#                         'alpha':1,
+#                         'fill':kwargs.get('fill',False),
+#                         'color':kwargs.get('color','r'),
+#                         'zorder':kwargs.get('zorder',np.inf),
+#                         'label':kwargs.get('label'),
+#                         'linewidth':kwargs.get('linewidth')
+#                         },
+#                 'type':plot,
+#                 'ax':   {'title' : kwargs.get('title',''), 
+#                         'xlabel': kwargs.get('xlabel',r'$X$'),
+#                         'ylabel': kwargs.get('ylabel',''),
+#                         'set_aspect':kwargs.get('aspect'),
+#                         'set_xlim':{k:v for k,v in zip(['left','right'],
+#                                     kwargs.get('xlim',[None,None]))},
+#                         'set_ylim':{k:v for k,v in zip(['bottom','top'],
+#                                     kwargs.get('ylim',[None,None]))},
+#                         'set_xscale':{'value':kwargs.get('xscale','linear')},
+#                         'set_yscale':{'value':kwargs.get('yscale','linear')}                         
+#                         },
+#                   'legend':kwargs.get('legend',{}),
+#                   'grid': kwargs.get('grid',False),       
+#                }),
+#     elif plot in ['contour','contourf','tricontour','tricontourf']:
+#         props.update({
+#                 'plot':{'alpha':1,
+#                         'label':kwargs.get('label'),
+#                         'linestyles':kwargs.get('linestyles'),
+#                         'cmap': kwargs.get('cmap'),
+#                          'norm': (matplotlib.colors.Normalize(kwargs['norm'].get('vmin'),
+#                                         kwargs['norm'].get('vmax')) 
+#                                       if (kwargs.get('norm') and 
+#                                           kwargs.get('normalize','linear')=='linear') 
+#                                       else 
+#                                           matplotlib.colors.LogNorm(
+#                                               max(kwargs['norm'].get('vmin'),1e-14),
+#                                                   kwargs['norm'].get('vmax')) 
+#                                       if (kwargs.get('norm') and 
+#                                           kwargs.get('normalize')=='log') 
+#                                  else None)
+#                         },
+#                 'type':plot,
+#                 'ax':   {'title' : kwargs.get('title',''), 
+#                         'xlabel': kwargs.get('xlabel',r'$x$'),
+#                         'ylabel': kwargs.get('ylabel',r'$y$'),
+#                         'set_aspect':kwargs.get('aspect'),
+#                         'set_xlim':{k:v for k,v in zip(['left','right'],kwargs.get('xlim',[None,None]))},
+#                         'set_ylim':{k:v for k,v in zip(['bottom','top'],kwargs.get('ylim',[None,None]))},
+#                         'set_xscale':{'value':kwargs.get('xscale','linear')},
+#                         'set_yscale':{'value':kwargs.get('yscale','linear')}                         
+#                         },
+#                   'legend':kwargs.get('legend',{}),
+#                   'colorbar': kwargs.get('colorbar'),
+#                   'grid': kwargs.get('grid',False),       
+#                }),
+#     elif plot == 'loglog':
+#         props.update({
+#                 'plot':{'alpha':1,
+#                         'color':kwargs.get('color'),
+#                         'marker':kwargs.get('marker'),
+#                         'linestyle':kwargs.get('linestyle','-'),
+#                         'markersize':kwargs.get('markersize'),
+#                         'zorder':kwargs.get('zorder'),
+#                         'label':kwargs.get('label')
+#                         },
+#                 'type':plot,
+#                 'ax':   {'title' : kwargs.get('title',''), 
+#                         'xlabel': kwargs.get('xlabel',r'$X$'),
+#                         'ylabel': kwargs.get('ylabel',''),
+#                         'set_aspect':kwargs.get('aspect'),
+#                         'set_xlim':{k:v for k,v in zip(['left','right'],kwargs.get('xlim',[None,None]))},
+#                         'set_ylim':{k:v for k,v in zip(['bottom','top'],kwargs.get('ylim',[None,None]))},
+#                         'set_xscale':{'value':kwargs.get('xscale','linear')},
+#                         'set_yscale':{'value':kwargs.get('yscale','linear')}                         
+#                         },
+#                   'legend':kwargs.get('legend',{}),
+#                   'grid': kwargs.get('grid',False),       
+#                }),
+#     elif plot == 'plot3D':
+#         props.update({
+#                 'plot':{'alpha':1,
+#                         'color':kwargs.get('color'),
+#                         'marker':kwargs.get('marker'),
+#                         'linestyle':kwargs.get('linestyle','-'),
+#                         'linewidth':kwargs.get('linewidth'),
+#                         'markersize':kwargs.get('markersize'),
+#                         'zorder':kwargs.get('zorder'),
+#                         'label':kwargs.get('label')
+#                         },
+#                 'type':plot,
+#                 'ax':   {'title' : kwargs.get('title',''), 
+#                         'xlabel': kwargs.get('xlabel',r'$X$'),
+#                         'ylabel': kwargs.get('ylabel',''),
+#                         'zlabel': kwargs.get('xlabel',None),
+#                         'set_aspect':kwargs.get('aspect'),
+#                         'set_xlim':{k:v for k,v in zip(['left','right'],kwargs.get('xlim',[None,None]))},
+#                         'set_ylim':{k:v for k,v in zip(['bottom','top'],kwargs.get('ylim',[None,None]))},
+#                         'set_xscale':{'value':kwargs.get('xscale','linear')},
+#                         'set_yscale':{'value':kwargs.get('yscale','linear')}                         
+#                         },
+#                   'legend':kwargs.get('legend',{}),
+#                   'grid': kwargs.get('grid',False),
+#                })
+#     return props
 
 
 

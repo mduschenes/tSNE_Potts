@@ -3,7 +3,7 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from pdf2image import convert_from_path
+# from pdf2image import convert_from_path
 import os,glob,json,zlib,base64,array,gzip,struct,csv,h5py,pickle
 from PIL import Image
 import networkx as nx
@@ -117,8 +117,8 @@ def importer(files=[],directory='.',options={}):
 			with h5py.File(path,'r') as f:
 				return dict(f)
 
-		elif format == 'pdf':
-			return convert_from_path(path,**options)
+		# elif format == 'pdf':
+		# 	return convert_from_path(path,**options)
 
 		elif format in ['jpg','png']:
 			return Image.open(path,**options)
