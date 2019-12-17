@@ -42,6 +42,7 @@ SOURCE = OPTIONS.split('.')[-1]
 MODULE = TASK.split('.')[-1]
 TASK = '.'.join(TASK.split('.')[:-1]) if '.' in TASK else TASK
 COMMAND = commands.get(SOURCE,'').upper()
+JOBID = TASK+'_'+DATE
 JOBINDEX = jobindices.get(SOURCE,'')
 config = importer([CONFIGS],options=True)[CONFIGS]
 
@@ -173,7 +174,7 @@ with open(TASK_SRC,'a') as f:
 		else:
 			f.write('\n#%s -J %s\n'%(COMMAND.upper(),TASK))
 		
-		f.write('\n#%s -o %s\n'%(COMMAND,os.path.join(DIRECTORY,JOBID+'.log')))
+		f.write('\n#%s -o %s\n'%(COMMAND.lower(),os.path.join(DIRECTORY,JOBID+'.log')))
 
 
 		f.write("\n##### SCRIPT #####\n")
@@ -182,7 +183,7 @@ with open(TASK_SRC,'a') as f:
 		for i in range(len(sets)):
 			f.write(jobline(i))
 
-	exec_cmd("chmod 777 %s"%TASK_SRC)
+
 
 # Output Source
 for l,p in zip(['DIRECTORY','COMMAND','SOURCE','TASK','TASK_SRC'],
