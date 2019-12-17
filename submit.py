@@ -149,7 +149,8 @@ with open(TASK_SRC,'a') as f:
 		f.write("\n##### SCRIPT #####\n")
 		
 		# Write jobs to submit
-		f.write(jobline(envvar.get(SOURCE,0)))
+		for i in range(len(sets)):
+			f.write(jobline(i))
 
 	elif SOURCE =='sbatch':
 		# Job submission
@@ -162,7 +163,8 @@ with open(TASK_SRC,'a') as f:
 		f.write("\n##### SCRIPT #####\n")
 		
 		# Write jobs to submit
-		f.write(jobline(envvar.get(SOURCE,0)))
+		for i in range(len(sets)):
+			f.write(jobline(i))
 
 	elif SOURCE =='lsf':
 		# Job submission
@@ -178,7 +180,8 @@ with open(TASK_SRC,'a') as f:
 		f.write("\n##### SCRIPT #####\n")
 		
 		# Write jobs to submit
-		f.write(jobline(envvar.get(SOURCE,0)))
+		for i in range(len(sets)):
+			f.write(jobline(i))
 
 
 
