@@ -26,7 +26,7 @@ def plot_decorator(plot_func):
 		# Define Figure and Axes
 		plt.figure(fig.number);
 		ax = axes.get(key);
-		# fig.sca(ax);
+		fig.sca(ax);
 		ax.axis('on')   
 		
 
@@ -88,7 +88,7 @@ def plot_plot(x,y,fig,ax,props={}):
 def plot_histogram(x,y,fig,ax,props={}):
 	if np.size(y) <= 1:
 		return plt.plot([],label=props['label'])
-	props['bins'] = min(10,int(1+3.322*np.log10(np.size(y))))
+	# props['bins'] = min(10,int(1+3.322*np.log10(np.size(y))))
 	plot = plt.hist(y,**props)
 	return plot
 
@@ -153,11 +153,13 @@ def set_prop(fig,ax,plot,props={},
 			obj = locals()[prop.replace('_attr','')]
 			
 			for k,p in props[prop].items():
+				if p is None:
+					continue
 				if not callable(p):
 					p = lambda a,p0 = p: p0
 				
 				if 'set_' in k:
-					getattr(obj,k)(**p)
+					getattr(obj,k)(**p(obj,))
 					continue
 
 				if 'get_' in k:
@@ -447,13 +449,16 @@ def post_process(fig,axes,plot,key,props={}):
 
 	# Adjust layout of figure
 	try:
-		fig.tight_layout(**props.get('other',{}).get('figure_layout',
+		if props.get('other',{}).get('figure_layout'):
+			fig.tight_layout(**props.get('other',{}).get('figure_layout',
 									{'pad':0.05,'w_pad':0.1, 'h_pad':0.1}))
 	except:
 		pass
 	try:
-		fig.subplots_adjust(**props.get('other',{}).get('subplots_adjust',
+		if props.get('other',{}).get('subplots_adjust'):
+			fig.subplots_adjust(**props.get('other',{}).get('subplots_adjust',
 														{'top':0.85}))
+			print('ADjusteing subplots')
 	except:
 		pass
 

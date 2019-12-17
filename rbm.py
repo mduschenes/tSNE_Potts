@@ -24,6 +24,9 @@ class RBM(object):
 		self.weights = np.random.randn(*[self.N[v] for v in self.vars])	
 		self.biases = {v: np.random.randn(self.N[v]) for v in self.vars}
 
+
+		
+
 		return
 
 	def energy(self):
@@ -33,5 +36,16 @@ class RBM(object):
 					 -np.dot(self.biases[v],self.neurons[v]))
 		return energy
 
-	def conditional(self,)
+	def conditional(self,):
 
+		probability = 
+
+		return probability
+
+
+
+	def t
+        train_step = network_functions['optimize_functions'][
+                                 alg_params['optimize_func']](
+                                                      cost=cost(x_,y_,y_est),
+                                                      alpha_learn=alpha_learn)

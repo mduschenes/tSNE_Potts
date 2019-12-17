@@ -424,9 +424,16 @@ def set_plot_analysis(keys,props={},**kwargs):
 								'xlabel': kwargs.get('xlabel',texify('$x$',every_word=None)),
 								'ylabel': kwargs.get('ylabel',texify('$y$',every_word=None)),
 								'xticklabels': kwargs.get('xticklabels',[]),
+								# 'yticklabels': kwargs.get('yticklabels',[]),
 								'zorder':kwargs.get('zorder',1)},
 					  'ax_attr': {'get_xticklabels':{'visible':True,
 													 },
+								  'set_xlim':{l:n 
+								  			  for l,n in zip(['left','right'],
+								  			         	   kwargs.get('xlim',[]))} if kwargs.get('xlim') else None,
+								  'set_ylim':{l:n 
+								  			  for l,n in zip(['bottom','top'],
+								  			         	   kwargs.get('ylim',[]))}  if kwargs.get('ylim') else None,
 								  # 'xaxis': {'ticks_position': 'none'},
 								  'get_yticklabels':{'visible':True,
 													 # 'fontsize':6

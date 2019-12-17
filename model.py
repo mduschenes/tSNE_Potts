@@ -198,7 +198,7 @@ class model(lattice):
 		# + sum of r-distance neighbour interactions
 		return ((-self.couplings[0]*np.sum(self.potts_state(sites),axis=-1))+(
 			   -(1/2)*np.sum(np.array([self.couplings[i+1]*(
-									   self.ising_interaction(
+									   self.potts_interaction(
 										 np.expand_dims(sites,axis=-1),
 										 np.take(sites,neighbours[i],axis=-1)))
 				for i in range(len(self.couplings)-1)]),
