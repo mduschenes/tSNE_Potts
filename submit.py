@@ -17,8 +17,10 @@ parser.add_argument('-configs','--configs',help = 'Configuration File',
 parser.add_argument('-options','--options',help = 'Job Options File',
 					type=str,default='template.sh')
 parser.add_argument('-task','--task',help = 'Task',
-					type=str,default='main')
+					type=str,default='main.py')
+
 args = dict(**vars(parser.parse_args()))
+
 
 for k,v in args.items():
 	locals()[k.upper()] = v
@@ -38,7 +40,7 @@ DATE = datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
 DIRECTORY = os.path.join(DIRECTORY,DATE).replace(' ','\\ ')
 SOURCE = OPTIONS.split('.')[-1]
 MODULE = TASK.split('.')[-1]
-TASK = '.'.join(TASK.split('.')[:-1])
+TASK = '.'.join(TASK.split('.')[:-1]) if '.' in TASK else TASK
 COMMAND = commands.get(SOURCE,'').upper()
 JOBID = TASK+'_'+DATE
 JOBINDEX = jobindices.get(SOURCE,'')
@@ -55,6 +57,11 @@ for p in PROPERTIES:
 	locals()[p] = config.get_typed(CONFIG,p,TYPE,atleast_1d=True)
 locvars = locals()
 
+def exec_cmd(cmd):
+	# if __name__ == "__main__":
+	# 	print('STDOUT: ',cmd)
+	os.system(cmd)
+	return
 
 # Create config files from arguments not in PARAMETERS
 f = configparse()
@@ -111,7 +118,9 @@ for i,params in enumerate(sets):
 
 # Write file to submit jobs
 TASK_SRC = os.path.join(DIRECTORY,'%s.%s'%(TASK,SOURCE))
-os.system('cp %s %s'%(OPTIONS,TASK_SRC))
+
+exec_cmd('cp %s %s'%(OPTIONS,TASK_SRC))
+
 jobline = lambda j:'%s %s.%s --directory %s --job %s --file %s\nsleep 1\n\n'%(
 						  modules.get(MODULE,''),TASK,MODULE,DIRECTORY,j,FILE)
 with open(TASK_SRC,'a') as f:
@@ -125,7 +134,7 @@ with open(TASK_SRC,'a') as f:
 		for i in range(len(sets)):
 			f.write(jobline(i))
 
-		os.system('$(chmod 777 %s)'%(TASK_SRC))
+		exec_cmd('$(chmod 777 %s)'%(TASK_SRC))
 		
 	
 	elif SOURCE =='pbs':
@@ -174,7 +183,11 @@ with open(TASK_SRC,'a') as f:
 
 
 # Output Source
-for p in [DIRECTORY,COMMAND,SOURCE,TASK_SRC]: 
+for l,p in zip(['DIRECTORY','COMMAND','SOURCE','TASK','TASK_SRC'],
+			 [DIRECTORY,COMMAND,SOURCE,TASK_SRC]): 
+	# if __name__ == "__main__":
+	# 	print('%s: %s'%(l,p))
+	# else:
 	print(p)
 
 

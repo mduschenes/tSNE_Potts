@@ -26,7 +26,7 @@ TEST/**
 #*.sh
 *.ipynb
 *.exe*
-
+*.config
 # Windows image file caches
 Thumbs.db
 ehthumbs.db

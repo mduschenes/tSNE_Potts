@@ -3,7 +3,10 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import os,glob,json,zlib,base64,array,gzip,struct,csv
+from pdf2image import convert_from_path
+import os,glob,json,zlib,base64,array,gzip,struct,csv,h5py,pickle
+from PIL import Image
+import networkx as nx
 
 # Import defined modules
 from configparse import configparse
@@ -83,15 +86,17 @@ def importer(files=[],directory='.',options={}):
 		elif format in ['bin','dat']:
 			with open(path,'rb') as f:
 				metadata =str(f.readline().decode()).replace('\n','').split(' ')
-				print(metadata)
 				dtype = metadata[0]; dshape = (int(m) for m in metadata[1:])
-				print(array.array('d').fromfile(f,np.prod(list(dshape))))
 				if 'float' in dtype:
 					dtypeb = 'd'
 				elif 'int' in dtype:
 					dtypeb = 'i'
 				return np.array(array.array(dtypeb).fromfile(f,np.prod(dshape)),
 								dtype=dtype).reshape(dshape)
+
+		elif format in ['data']:
+			with open(path,'rb') as f:
+				return pickle.load(f)
 
 		elif format == 'npy':
 			return np.load(path)
@@ -108,6 +113,16 @@ def importer(files=[],directory='.',options={}):
 						lambda x: [formatter(y) for y in x])(d) 
 						for d in csv.reader(f,**options.get('decode',{}))]
 
+		elif format in ['h5','hdf5']:
+			with h5py.File(path,'r') as f:
+				return dict(f)
+
+		elif format == 'pdf':
+			return convert_from_path(path,**options)
+
+		elif format in ['jpg','png']:
+			return Image.open(path,**options)
+
 		elif format == 'config':
 			config = configparse()
 			config.read(path)
@@ -115,9 +130,25 @@ def importer(files=[],directory='.',options={}):
 				return config
 			else:
 				return config.get_dict(**options)
+
+		elif format in ['graphyaml']:
+			path = path.replace('.yaml.graphyaml','.yaml')
+			return nx.read_yaml(path)
+
+		elif format in ['gml']:
+			return nx.read_gml(path)
+
+		elif format in ['graphml']:
+			return nx.read_graphml(path)
+
 		else:
 			return None
 
+		
+
+	# Check if real path
+	if '.' in directory or '..' in directory:
+		directory = os.path.realpath(os.path.expanduser(directory))
 
 	# Data dictionary of {file: data}
 	data = {}
@@ -129,7 +160,7 @@ def importer(files=[],directory='.',options={}):
 		name,format = get_name(f),get_format(f)
 		if '*' in name or '*' in format:
 			files.remove(f)
-			files += [os.path.join(*(p.split(os.path.sep)[1:])) 
+			files += [p.split(directory)[1][1:]
 					  for p in glob.glob(os.path.join(directory,f))]
 			continue
 		else:
@@ -175,14 +206,16 @@ def exporter(data={},directory='.',options={},overwrite=True):
 									  *['%d'%s for s in data.shape]])+'\n'
 				f.write(metadata.encode());
 				# data.tofile(f);
-				print(metadata[0])
 				if 'float' in str(data.dtype):
 					array.array('d',data.flatten()).tofile(f)
 				elif 'int' in str(data.dtype):
 					array.array('i',data.flatten()).tofile(f)
-				# print(bytearray(data.flatten()))
 				# f.write(bytearray(data.flatten()))
 			f.close();
+
+		elif format in ['data']:
+			with open(path,'rb') as f:
+				pickle.dump(data,f)
 
 		elif format == 'npy':
 			np.save(path,data);
@@ -215,9 +248,24 @@ def exporter(data={},directory='.',options={},overwrite=True):
 				data.write(f);
 			f.close();
 
+		elif format in ['graphyaml']:
+			path = path.replace('.graphyaml','.yaml')
+			return nx.write_yaml(data,path)
+
+		elif format in ['gml']:
+			nx.write_gml(data,path)
+
+		elif format in ['graphml']:
+			nx.write_graphml(data,path)
+
+
 		return
 
 	# Data dictionary of {file: data}
+
+	# Check if real path
+	if '.' in directory or '..' in directory:
+		directory = os.path.realpath(os.path.expanduser(directory))
 
 	# Check if directory exists
 	if not os.path.isdir(directory):
@@ -372,9 +420,7 @@ class JSONdecoder(json.JSONDecoder):
 
 	def decode_dict(self,obj):
 		obj_json = {}
-		print('obj',type(obj))
 		for k,v in obj.items():
-			print(k)
 			try:
 				v = self.wrapper(v)
 				k = self.decode_types.get(type(k),lambda x:x)(k)

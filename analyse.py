@@ -33,9 +33,12 @@ assert CONFIG in config.sections(),'Incorrect main.config file'
 for p in PROPERTIES:
 	locals()[p] = config.get_typed(CONFIG,p,TYPE,atleast_1d=True)
 
-print(locals())
 
 # Import Files
 data = importer([os.path.join(FILE,FILE+FILETYPE)],DIRECTORY)
 
-print(data)
+for file,datum in data:
+	print(np.shape(datum['sites']))
+
+
+# print(data)

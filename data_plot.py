@@ -17,7 +17,7 @@ class plotter(object):
     # Create figure and axes dictionaries for keys: 
     # plot_keys={plot_key: [axis_keys]}, plot_bool={plot_key: plot_bool},
     # with given orientation
-	def __init__(self,plot_keys={},plot_bool=None):
+	def __init__(self,plot_keys={},plot_bool=None,layout_props={}):
 
 		# Initialize figures and axes dictionaries
 		self.figs = {}
@@ -29,7 +29,7 @@ class plotter(object):
 
 					
 		# Add Figures and Axes with keys
-		self.add_plot(plot_keys,plot_bool)
+		self.add_plot(plot_keys,plot_bool,layout_props=layout_props)
 
 		return  
 
@@ -48,12 +48,11 @@ class plotter(object):
 			# Create Figures and Axes (if they don't already exist)									
 
 			axes_keys = np.array(self.plot_keys.get(plot_key,[]))
-
 			self.add_plot({plot_key:axes_keys}, layout=layout)
 			
 			
 			# Plot for each data key
-			for axes_key in sorted([a for a in axes_keys.flatten() if a 
+			for axes_key in sorted([a for a in axes_keys.flatten() if a is not None
 									]):
 				if axes_key not in data[plot_key].keys():
 					continue
@@ -77,7 +76,7 @@ class plotter(object):
 		return
         
     # Add new plots based on plot_keys and plot_bool
-	def add_plot(self,plot_keys,plot_bool=None,layout=None):
+	def add_plot(self,plot_keys,plot_bool=None,layout=None,layout_props={}):
 		for k in plot_keys:
 			self.plot_keys[k] = plot_keys[k]#np.array(plot_keys[k]).flatten().tolist()
 			if not self.figs.get(k):
@@ -87,7 +86,7 @@ class plotter(object):
 		
 		if plot_bool is None:
 			self.plot_bool.update({k:True for k in plot_keys.keys()})
-		self.figures_axes(plot_keys,layout)
+		self.figures_axes(plot_keys,layout,**layout_props)
 		return
 
 	def scf(self,key):
@@ -157,7 +156,7 @@ class plotter(object):
 					axes[k] = fig.add_subplot(list(gs)[i:i+2])
 			return axes
  
-
+		figure_props = layout_props.pop('figure',{})
 		for plot_key,axis_keys in plot_keys.items():
 
 			# Only alter figures that are to be plotted that do not exist
@@ -175,7 +174,7 @@ class plotter(object):
 			elif any([k not in self.axes.get(plot_key,{}).keys() 
 					for k in np.array(axis_keys).flatten() if k is not None]):
 
-				self.figs[plot_key] = plt.figure()
+				self.figs[plot_key] = plt.figure(**figure_props)
 				self.axes[plot_key] = layout_grid(axis_keys,
 												self.figs[plot_key],
 												**layout_props)
@@ -193,3 +192,4 @@ class plotter(object):
 				continue
 
 		return
+

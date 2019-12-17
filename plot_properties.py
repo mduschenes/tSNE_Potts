@@ -105,6 +105,12 @@ def set_plot_test(keys,props={},**kwargs):
 
 
 def set_plot_montecarlo(keys,**kwargs):
+	def data_process(data,d):
+		n = np.power(np.size(data),1/d)
+		if int(n) == n and d>1:
+			return np.real(data.reshape(n,tuple(n for i in range(d))))
+		else:
+			return np.real(np.reshape(data,(np.size(data),1)))
 	return {
 					 k: {
 					
@@ -119,8 +125,8 @@ def set_plot_montecarlo(keys,**kwargs):
 								  'yaxis': {'ticks_position': 'none'}},
 					  'plot':  {'interpolation':'nearest'},
 					  'data':  {'plot_type':'image',
-								'data_process':lambda data: np.real(
-									data.reshape(int(np.sqrt(len(data))),-1))},
+								'data_process': lambda data: data_process(data,
+															kwargs.get('d',2))},
 								
 					  'other': {'style':'simulation.mplstyle',
 					  			# 'ticks':{'x':{('set_major_locator',

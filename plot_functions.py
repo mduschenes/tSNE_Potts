@@ -91,6 +91,11 @@ def plot_image(x,y,fig,ax,props={}):
 	plot = plt.imshow(y,**props)
 	return plot
 
+@plot_decorator
+def plot_figimage(x,y,fig,ax,props={}):
+	plot = plt.figimage(y,**props)
+	return plot
+
 
 @plot_decorator
 def plot_graph(x,y,fig,ax,props={}):  
@@ -152,11 +157,16 @@ def set_prop(fig,ax,plot,props={},
 		else:
 			obj = locals().get(prop,None)
 			prop_obj = copy.deepcopy(props.get(prop,{}))
+			prop_objs = {}
 			for p in prop_obj.keys():
 				if callable(prop_obj[p]):
+					prop_objs[p] = copy.deepcopy(prop_obj[p])
 					prop_obj[p] = prop_obj.pop(p)(plt.getp(obj,p))
+				else:
+					prop_objs[p] = copy.deepcopy(prop_obj[p])
 			
 			plt.setp(obj,**prop_obj);
+			prop_obj[p] = prop_objs[p]
 
 	return
 
@@ -227,8 +237,8 @@ def set_legend(obj,handle,label,props={},inds=-1,**kwargs):
 		obj.get_legend().remove()
 	except:
 		pass	
-		
-	if h !=[] and l != []:
+	
+	if h !=[] and l != [] and props_plotting.get('legend') is not None:
 		obj.legend(h,l,handler_map={
 	            matplotlib.patches.FancyArrowPatch : HandlerPatch(
 	                                patch_func=make_legend_arrow),
@@ -238,6 +248,14 @@ def set_legend(obj,handle,label,props={},inds=-1,**kwargs):
 	                                patch_func=make_legend_rectangle)
 	            },**props_plotting.get('legend',{}))   
 
+	return
+
+
+# Set annotations on plot
+def set_annotations(fig=None,ax=None,plot=None,annotations={}, **kwargs):
+	for pos,options in annotations.items():
+		options.update({'xy':pos})
+		ax.annotate(**options)
 	return
 
 
@@ -262,7 +280,16 @@ def set_colormap(color=None,boundaries=[],normalization='linear',
 	if color is None or boundaries == []:
 		return {}
 
-	ncolors = len(set(boundaries))
+
+	if isinstance(boundaries,np.ndarray):
+		boundaries = np.atleast_2d(boundaries)
+		ncolors = len(np.unique(boundaries,axis=0))
+		boundaries = np.linalg.norm(boundaries,axis=1)
+	else:
+		try:
+			ncolors = len(set(boundaries))
+		except TypeError:
+			ncolors = 1
 	
 	if ncolors == 1 or normalization == 'none':
 		cmap = matplotlib.cm.get_cmap(color)
@@ -295,20 +322,21 @@ def set_colorbar(fig=None,axes=None,plot=None,key=None,cmap=None,norm=None,
 				 display=True,**kwargs):
 		
 		
-		if (not update_ax and axes.get(key+'_cax'))  or (
+		if (not update_ax and axes.get(str(key)+'_cax'))  or (
 								cmap is None or not display):
 			return
 
-		elif new_ax and not axes.get(key+'_cax'):
+		elif new_ax and not axes.get(str(key)+'_cax'):
 			cax = fig.add_axes(new_ax,frame_on=False)
-		elif axes.get(key+'_cax'):
-			cax = axes.get(key+'_cax')
+		elif axes.get(str(key)+'_cax'):
+			cax = axes.get(str(key)+'_cax')
 		else:
 			cax = axes[key]
-		if axes.get(key+'_cbar'):
-			cbar = axes.get(key+'_cbar')
+		if axes.get(str(key)+'_cbar'):
+			cbar = axes.get(str(key)+'_cbar')
 			cbar.remove()
-		axes[key+'_cax'] = cax
+		axes[str(key)+'_cax'] = cax
+		
 		fig.sca(cax);
 		plt.cla();
 		cax.cla();
@@ -357,7 +385,7 @@ def set_colorbar(fig=None,axes=None,plot=None,key=None,cmap=None,norm=None,
 
 		cbar.ax.set_visible(display)
 
-		axes[key+'_cbar'] = cbar
+		axes[str(key)+'_cbar'] = cbar
 
 		return cax
 
@@ -369,11 +397,11 @@ def post_process(fig,axes,plot,key,props={}):
 	# Set properties
 	set_prop(fig,ax,plot,props)
 
-	# Show figure title
+	# Set figure title
 	if props.get('other',{}).get('sup_title'):
 		fig.suptitle(**props.get('other',{}).get('sup_title',{}))
 
-	# Plot legend on axes or figure
+	# Set legend on axes or figure
 	if props.get('other',{}).get('legend'):
 		set_legend(ax,plot,props.get('label'),
 				   props.get('other',{}).get('legend',{}))
@@ -381,6 +409,10 @@ def post_process(fig,axes,plot,key,props={}):
 	if props.get('other',{}).get('sup_legend'):
 		set_legend(fig,plot,props.get('label'),
 				   props.get('other',{}).get('legend',{}))
+
+	# Set annotations
+	if props.get('other',{}).get('annotations'):
+		set_annotations(fig,ax,plot,props['other']['annotations'])
 
 
 	# Set ticks
@@ -390,6 +422,7 @@ def post_process(fig,axes,plot,key,props={}):
 	# Set colorbar
 	if props.get('other',{}).get('colorbar',{}):
 		set_colorbar(fig,axes,plot,key,**props.get('other',{}).get('colorbar'));
+
 
 	# Set which axes has labels
 	for a in fig.axes:
@@ -412,7 +445,7 @@ def post_process(fig,axes,plot,key,props={}):
 
 	if not props.get('other',{}).get('visible',True):
 		for k,ax in axes.items():
-			if '_cax' not in k and '_cbar' not in k:
+			if '_cax' not in str(key) and '_cbar' not in str(key):
 				try:
 					ax.axis('off')
 				except AttributeError:
@@ -446,9 +479,10 @@ def pre_process(props={}):
 		pass
 
 	# Set colormap
-	colormap = set_colormap(**props['other'].get('colorbar',{}))
-	props['plot'].update(colormap)
-	props['other'].get('colorbar',{}).update(colormap)
+	if props['other'].get('colorbar'):
+		colormap = set_colormap(**props['other'].get('colorbar',{}))
+		props['plot'].update(colormap)
+		props['other'].get('colorbar',{}).update(colormap)
 
 	return
 
@@ -486,4 +520,3 @@ def pre_process(props={}):
 #
 #    fig.canvas.mpl_connect("pick_event", onpick)
 #    plt.show()
-

@@ -73,7 +73,7 @@ for k in ['state_difference','state_generate','transition_probability','dtype']:
 	props['simulation'][k] = getattr(model,k)
 
 # Perform MonteCarlo simulation
-data = montecarlo(model.N,model.neighbours[0], props['simulation'],file,directory)
+data = montecarlo(model.N,model.d,model.neighbours[0], props['simulation'],file,directory)
 data['model'] = props['model']
 
 # Export data

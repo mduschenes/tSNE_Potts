@@ -40,6 +40,7 @@ class model(lattice):
 
 		# Set up model Lattice
 		lattice.__init__(self,L=L,d=d)
+		print('N - ',self.N)
 
 		# Define model specific parameters
 		self.models_params = {'ising': {'transition_probability': {
