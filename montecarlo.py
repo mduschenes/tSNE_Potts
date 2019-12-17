@@ -14,37 +14,59 @@ def montecarlo(N,d,neighbours,props,job=0,directory='.'):
 
 	# Setup logging
 	logger = logging.getLogger(__name__)
-	if props.get('quiet'):
+	quiet = props.get('quiet',False)
+	if quiet or 1:
 		log = 'info'
 	else:
 		log = 'warning'
 	
+	if props.get('plotting'):
+		plotting = props.get('plotting')
+	else:
+		plotting = False
 
-	def Niter(Ni,N,Nratios):
+
+	def Niter(Ni,N,Nratios,alg):
 		Nratios = np.atleast_1d(Nratios)
+		Nalg = len(alg)
 		assert 1>=sum(Nratios)
-		Nfunc = lambda i,r: (max(1,int(r*Ni*N)) if r>0 else 0) if not i%2 else (
-							 max(1,int(r*Ni)) if r > 0 else 0)
+		def Nfunc(i,r):
+			if r==0:
+				return 0
+			j = alg[i%len(alg)]
+			if j=='metropolis':
+				return max(1,int(r*Ni*N))
+			elif j=='wolff':
+				return max(1,int(r*Ni))
+
 		Niters = [Nfunc(i,r) for i,r in enumerate(Nratios)]
 		Niters.append(Nfunc(len(Niters),1-sum(Nratios)))
 		return Niters
 
-	def Nperiod(Nf,N,Niters):
+	def Nperiod(Nf,N,Niters,alg):
 		Niters = np.atleast_1d(Niters)
-		Nfunc = lambda i,n: max(1,int(N//Nf))if not i%2 else max(1,int(1//(Nf)))
+		def Nfunc(i,n):
+			j = alg[i%len(alg)]
+			if j=='metropolis':
+				return max(1,int(1//Nf) if plotting else int(N//Nf))
+			elif j=='wolff':
+				return max(1,int(1//Nf))
+
 		Nperiods = [Nfunc(i,n) for i,n in enumerate(Niters)]
 		return Nperiods
 
 
 	if props['algorithm'] in ['metropolis','wolff','metropolis_wolff']:
-		alg = [(a,globals().get(a)) for a in ['metropolis','wolff']]
+		alg_names = ['metropolis','wolff']
+		alg = [(a,globals().get(a)) for a in alg_names]
 	else:
+		alg_names = [props['algorithm']]
 		alg = [(a,globals().get(a)) for a in [props['algorithm']]]
 
-
-	Neqb  = Niter(props['Neqb'],N,props['Nratio'])
-	Nmeas  = Niter(props['Nmeas'],N,props['Nratio'])
-	Nperiods = Nperiod(props['Nfreq'],N,Nmeas)
+	Nalg = len(alg)
+	Neqb  = Niter(props['Neqb'],N,props['Nratio'],alg_names)
+	Nmeas  = Niter(props['Nmeas'],N,props['Nratio'],alg_names)
+	Nperiods = Nperiod(props['Nfreq'],N,Nmeas,alg_names)
 	# Nmeas_total = [Nm//Nf for Nm,Nf in zip(Nmeas,Nperiods)]
 	
 	measure_buffer = [(j+1)*Nperiods[i]+sum(Nmeas[:i]) for i in range(len(Nmeas)) 
@@ -53,9 +75,9 @@ def montecarlo(N,d,neighbours,props,job=0,directory='.'):
 	stage_eqb_buffer = [(i-1,sum(Neqb[:i])) for i in range(1,len(Neqb)+1)]
 	stage_meas_buffer = [(i-1,sum(Nmeas[:i])) for i in range(1,len(Nmeas)+1)]
 	
-	getattr(logger,log)(['measure_buffer',Nmeas,sum(Neqb),sum(Nmeas),measure_buffer])
-	getattr(logger,log)(['stage_meas_buff',stage_meas_buffer])
-	getattr(logger,log)(['stage_eqb_buff',stage_eqb_buffer])
+	# getattr(logger,log)(['measure_buffer',Nmeas,sum(Neqb),sum(Nmeas),measure_buffer])
+	# getattr(logger,log)(['stage_meas_buff',stage_meas_buffer])
+	# getattr(logger,log)(['stage_eqb_buff',stage_eqb_buffer])
 	getattr(logger,log)('''Monte Carlo: %d Eqb MC steps, %d Meas MC Steps, %s Meas sweeps, every %s Steps'''%(
 							sum(Neqb),sum(Nmeas),str(Nmeas),str(Nperiods)))
 
@@ -69,9 +91,8 @@ def montecarlo(N,d,neighbours,props,job=0,directory='.'):
 	configurations = {'sites':props['state_generate'](N=N),
 					'cluster': np.nan*np.ones((N),dtype=props['dtype'])}
 
-	print("LATTICE SIZE ",np.shape(configurations['sites']))
 	# Setup plotting
-	if props.get('plotting'):
+	if plotting:
 		plot = plotter({job:[list(configurations.keys())]})
 
 
@@ -89,22 +110,23 @@ def montecarlo(N,d,neighbours,props,job=0,directory='.'):
 		if i >= stage_buffer[0][1]:
 			stage_buffer.pop(0);
 
-		alg[stage_buffer[0][0]%len(alg)][1](i,N,configurations,neighbours,props)
+		alg[stage_buffer[0][0]%Nalg][1](i,N,configurations,neighbours,props)
 
 
 		if measure and (i+1) == measure_buffer[0]:
-
+			m = measure_buffer.pop(0)
 			update(iter_buffer.pop(0),configurations)
 
-			getattr(logger,log)('MC Iteration (%s): %d, Cluster Size: %d'%(
-					alg[stage_buffer[0][0]%len(alg)][0],i+1,
+			if not quiet:
+				getattr(logger,log)('MC Iteration (%s): %d, Cluster Size: %d'%(
+					alg[stage_buffer[0][0]%Nalg][0],i+1,
 					np.count_nonzero(~np.isnan(configurations['cluster']))))
 
-			if props.get('plotting'):
+			if plotting:
 				plot.plot({job:configurations},{job:configurations},
 					 	  {job:set_plot_montecarlo(keys=configurations.keys(),
-											 	   i=measure_buffer.pop(0),
-											 	   **props.get('plotting'))})
+											 	   i=m,
+											 	   **plotting)})
 		return
 
 	
@@ -123,7 +145,7 @@ def montecarlo(N,d,neighbours,props,job=0,directory='.'):
 	# Perform measurement iterations
 	getattr(logger,log)('Monte Carlo Measurements')
 	stage_buffer = stage_meas_buffer
-	if props.get('plotting'):
+	if plotting:
 		animation = animate.FuncAnimation(plot.figs[job], 
 										func=simulate,
 										fargs={'measure':True}, 

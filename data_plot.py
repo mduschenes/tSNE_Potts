@@ -109,7 +109,7 @@ class plotter(object):
 		
 		# Save all current figures if files is empty
 		if files == {}:
-			files = {k:str(k)+'.png' for k in self.figs.keys()}
+			files = {k:str(k)+'.pdf' for k in self.figs.keys()}
 		
 		for key,file in files.items():
 					
