@@ -174,12 +174,14 @@ def set_prop(fig,ax,plot,props={},
 			obj = locals().get(prop,None)
 			prop_obj = copy.deepcopy(props.get(prop,{}))
 			prop_objs = {}
-			for p in prop_obj.keys():
+			for p in list(prop_obj.keys()):
 				if callable(prop_obj[p]):
 					prop_objs[p] = copy.deepcopy(prop_obj[p])
 					prop_obj[p] = prop_obj.pop(p)(plt.getp(obj,p))
-				else:
+				elif prop_obj[p] is not None:
 					prop_objs[p] = copy.deepcopy(prop_obj[p])
+				else:
+					prop_objs[p] = copy.deepcopy(prop_obj.pop(p))
 			
 			plt.setp(obj,**prop_obj);
 			prop_obj[p] = prop_objs[p]

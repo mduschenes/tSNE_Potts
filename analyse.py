@@ -20,82 +20,83 @@ def observables(name,data,observables):
 		return np.mod(((np.atleast_1d(label)[:,np.newaxis]/q_n)).
                         astype(int),q)
 
-
-
-	for obs in observables:
+	key = 'T'
+	observables = [obs for obs in observables if obs in ['energy','order']]
+				
+	domain = {obs:{} for obs in observables}
+	samples = {obs:{} for obs in observables}
+	models = {obs:{} for obs in observables}
+	attrs = []
 		
-		if obs != 'energy':
-			continue
-
-		domain = {}
-		samples = {}
-		models = {}
-
-		key = 'T'
-
-
-
-		
-		for file,datum in data.items():
-			sites = np.array(datum['sites'])
-			model = Model(**datum['model'])
+	for file,datum in data.items():
+		sites = np.array(datum['sites'])
+		model = Model(**datum['model'])
+		attr = str(getattr(model,key))
+		attrs.append(attr)
+		for obs in observables:
 			func = getattr(model,obs)
 
-			attr = str(getattr(model,key))
+			if obs == 'energy':
+				args = [model.neighbours,model.T]
+			elif obs == 'order':
+				args = []
+			
+			samples[obs][attr] = model.obs_mean(getattr(model,obs),None,sites,
+												*args)
 
-			samples[attr] = model.obs_mean(getattr(model,obs),
-										  None,
-										  sites,model.neighbours,model.T)
-
-			samples[attr+'_true'] = model.obs_mean(getattr(model,obs),
+			samples[obs][attr+'_true'] = model.obs_mean(getattr(model,obs),
 										  None,
 										  configuration(
 										  	np.arange(model.q**model.N),
-											model.q,model.N),
-										  model.neighbours,model.T)
+											model.q,model.N),*args)
 
 
-			models[attr] = model
+			models[obs][attr] = model
 
 
-		attrs = sorted(samples.keys())
+	attrs = sorted(attrs)
 
-		plot_keys = {name+'_'+obs:[[name]]}
-		plot = plotter(plot_keys,
-						layout_props = {'figure':{'figsize':(20,20)}})
-		plot_props = lambda file,**kwargs: set_plot_analysis([file],
-										suptitle={'t':'Samples Histogram'},
-										xlabel=r'Site $\sigma$',
-										ylabel='Counts',
-										**kwargs)[file]
+	plot_keys = {name:np.array([[obs for obs in observables]])}
+	plot = plotter(plot_keys,
+					layout_props = {'figure':{'figsize':(20,20)}})
+	plot_props = lambda file,**kwargs: set_plot_analysis([file],
+									**kwargs)[file]
+	
+	plot_data = {x: {k:{obs:{} for obs in observables}for k in plot_keys}
+				 for x in ['data','domain','props']}
+
+	print(attrs)
+	print(samples.keys())
+	print(plot_data)
+	
+	for k in plot_keys:
+		for obs in observables:
 		
-		plot_data = {x: {k:{i:{} for j in v for i in j }for k,v in plot_keys.items()}
-					 for x in ['data','domain','props']}
-		
-		for attr in attrs:
-			for k,v in plot_keys.items():
-				for j in v:
-					for i in j:
-						plot_data['domain'][i][attr] = [attr]
-						plot_data['domain'][i][attr+'_true'] = [attr]
+			plot_data['domain'][k][obs] = {key:[],key+'_true':[]}
+			plot_data['data'][k][obs] = {key:[],key+'_true':[]}
+			plot_data['props'][k][obs] = {key:[],key+'_true':[]}
+			for attr in attrs:
+				plot_data['domain'][k][obs][key].append(float(attr))
+				plot_data['domain'][k][obs][key+'_true'].append(float(attr))
 
-						plot_data['data'][i][attr] = samples[attr]
-						plot_data['data'][i][attr+'_true'] = samples[attr+'_true']
+				plot_data['data'][k][obs][key].append(samples[obs][attr])
+				plot_data['data'][k][obs][key+'_true'].append(samples[obs][attr+'_true'])
 
-						plot_data['props'][i][attr] = plot_props(file,
-					  							plot_type='plot',
-					  							zorder = 1,
-					  							xlabel=key,
-					  							ylabel=obs)
-						plot_data['props'][i][attr+'_true'] = plot_props(file,
-					  							plot_type='plot',
-					  							zorder = 1,
-					  							xlabel=key,
-					  							ylabel=obs)
+			plot_data['props'][k][obs] = {**plot_props(key,
+		  							plot_type='plot',
+		  							zorder = 1,
+		  							marker = '*',
+		  							xlabel=key,
+		  							ylabel=obs),
+		  							**plot_props(key+'_true',
+		  							plot_type='plot',
+		  							zorder = 1,
+		  							marker = 'o',
+		  							xlabel=key,
+		  							ylabel=obs)}
 
-
-		plot.plot(**plot_data)
-		plot.plot_export(directory=DIRECTORY)
+	plot.plot(**plot_data)
+	plot.plot_export(directory=DIRECTORY)
 
 
 
