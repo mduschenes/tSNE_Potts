@@ -378,7 +378,7 @@ def set_colorbar(fig=None,axes=None,plot=None,key=None,cmap=None,norm=None,
 		plt.cla();
 
 		try:
-			if isinstance(p,(list,np.ndarray)) and any(
+			if isinstance(handles,(list,np.ndarray)) and any(
 					[isinstance(p,(list,np.ndarray)) for p in plot]):
 				for p in plot:
 					try:

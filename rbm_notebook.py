@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+
 # Restricted Boltzmann Machine (RBM)
 import numpy as np
 import os,sys,copy
@@ -77,7 +81,9 @@ class RBM(object):
     def train(self,parameter,variable,data,gradient=None,**hyperparams):
 
         def descent(m,v,i,parameter,gradient,alpha,**kwargs):
+            print(i,self.parameters['params'])
             parameter -= alpha*gradient
+            print(self.parameters['params'])
             return [m,v]
 
         def adam(m,v,i,parameter,gradient,alpha,beta1,beta2,epsilon,**kwargs):
@@ -101,7 +107,9 @@ class RBM(object):
             m_hat = ((m/(1 - np.power(beta1, i))) + 
                     (1-beta1)*gradient/(1 - np.power(beta1, i)))
             v_hat = v/(1-np.power(beta2, i))
+            print(i,self.parameters['params'])
             parameter -= alpha*m_hat/(np.sqrt(v_hat)+epsilon)
+            print(self.parameters['params'])
             return [m,v]
 
         if gradient is None:
@@ -135,7 +143,7 @@ class RBM(object):
         data_range = np.arange(n)
         batch_range = np.arange(0,n,b)
         args = [0,0]
-        
+        print('Initi ',self.parameters[parameter])
         for epoch in epoch_range:
             np.random.shuffle(data_range)
             for i in batch_range:
@@ -143,3 +151,55 @@ class RBM(object):
                 args = optimizer(*args,epoch,self.parameters[parameter],
                                     cost(batch),
                                   **hyperparams)
+
+
+
+
+f = lambda x,a,b: a*(x**2) + b
+gab = lambda x,a,b: np.array([x**2,np.ones(len(x))])
+N = {'hidden':5,'visible':4}
+q = {'hidden':3,'visible':2}
+
+r = RBM()
+
+
+
+Ndata = 1000
+datax = np.random.rand(Ndata)
+datay = f(datax,1,2)
+cost = lambda x: np.mean((f(x,*r.params)-f(x,1,1))**2)
+
+
+r.parameters['params'] = [4,5]
+grad = lambda x,parameter: np.mean(np.abs(f(x,*parameter)-f(x,1,2))*2*[x**2,np.ones(np.shape(x)[0])],axis=-1)
+
+
+r.train('params','visible',datax,grad,alpha=1e-3,batch=1,optimizer='descent',epochs=3)
+
+
+
+
+class
+
+
+
+
+for v in rbm.variables:
+    rbm.neurons[v] = np.ones(rbm.N[v])
+    rbm.biases[v] = np.zeros(rbm.N[v])
+rbm.weights = np.eye(*tuple(rbm.N[v] for v in rbm.variables))
+print(rbm.energy())
+for i in range(4):
+    print(rbm.sample('hidden'))
+
+
+
+
+
+
+
+
+
+
+
+

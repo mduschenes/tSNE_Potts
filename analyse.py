@@ -134,7 +134,7 @@ def samples(name,data,observables):
 
 	
 	for file,datum in data.items():
-		sites = np.array(datum['sites'])
+		sites = np.array(datum['sites'])[::100]
 		model = Model(**datum['model'])
 		
 		domain[file] = np.arange(int(model.q**model.N),dtype=int)
@@ -229,7 +229,7 @@ locvars = locals()
 
 # Analysis functions
 for a in ANALYSIS:
-	if a != 'observables':
+	if a != 'samples':
 		continue
 	locvars.get(a,lambda *args:None)(a,data,OBSERVABLES);
 
