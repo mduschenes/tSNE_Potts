@@ -65,7 +65,7 @@ def make_number(values,typer):
 	if any(['.' in x for x in values]):
 		return [float(x) for x in values]
 	elif any(['e' in x for x in values]):
-		return [int(float(x)) for x in values]
+		return [int(float(x)) if (not 'e-' in x) else float(x) for x in values]
 	else:
 		return [typer(x) for x in values]
 
